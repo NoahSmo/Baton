@@ -1,0 +1,68 @@
+{
+  "name": "orchestra-claude",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Feature-first orchestrator for Claude Code agents",
+  "license": "MIT",
+  "author": "NoahSmo",
+  "homepage": "https://github.com/NoahSmo/OrchestraClaude",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NoahSmo/OrchestraClaude.git"
+  },
+  "main": "./out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "dist": "electron-vite build && electron-builder --mac zip --arm64 --publish never"
+  },
+  "build": {
+    "appId": "com.noahsmo.orchestraclaude",
+    "productName": "OrchestraClaude",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**",
+      "package.json"
+    ],
+    "asar": false,
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "identity": "-",
+      "artifactName": "${productName}-${version}.${ext}",
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "hardenedRuntime": false
+    }
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.296",
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-markdown": "^10.1.0",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.7",
+    "vitest": "^5.0.4"
+  }
+}

@@ -1,0 +1,64 @@
+import type { Feature, MenuAction, Project } from '../../shared/types'
+import { openContextMenu } from './contextMenu'
+import { useT } from './i18n'
+
+interface Props {
+  projects: Project[]
+  features: Feature[]
+  activeId: string | null
+  linearActive: boolean
+  onSelectLinear(): void
+  onSelect(id: string): void
+  onNew(): void
+  /** A choice from a tab's context menu that needs a dialog. */
+  onMenuAction(project: Project, action: MenuAction): void
+}
+
+export function TopBar({
+  projects,
+  features,
+  activeId,
+  linearActive,
+  onSelectLinear,
+  onSelect,
+  onNew,
+  onMenuAction
+}: Props) {
+  const t = useT()
+  return (
+    <header className="topbar">
+      <nav className="tabs">
+        <button className={`tab pinned${linearActive ? ' active' : ''}`} onClick={onSelectLinear}>
+          <span className="tab-name">{t.linearView.tab}</span>
+        </button>
+        <span className="tab-divider" />
+        {projects.map((p) => {
+          const waiting = features.filter((f) => f.projectId === p.id && f.status === 'waiting').length
+          return (
+            <button
+              key={p.id}
+              className={`tab${!linearActive && p.id === activeId ? ' active' : ''}`}
+              style={{ '--tab-color': p.color } as React.CSSProperties}
+              onClick={() => onSelect(p.id)}
+              onContextMenu={async (e) => {
+                const action = await openContextMenu(e, { kind: 'project', projectId: p.id })
+                if (action) onMenuAction(p, action)
+              }}
+            >
+              <span className="swatch" />
+              <span className="tab-name">{p.name}</span>
+              {waiting > 0 && (
+                <span className="tab-badge num" title={t.topbar.waitingBadge}>
+                  {waiting}
+                </span>
+              )}
+            </button>
+          )
+        })}
+        <button className="tab-add" onClick={onNew} title={t.topbar.newProject}>
+          +
+        </button>
+      </nav>
+    </header>
+  )
+}
