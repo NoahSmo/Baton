@@ -1,4 +1,5 @@
 import type { Dict, Lang } from '../../shared/i18n'
+import { formatReset } from '../../shared/time'
 import type { FileRef, ImageRef, Notice, Question, StoredEvent } from '../../shared/types'
 
 export type Item =
@@ -36,11 +37,6 @@ export interface Transcript {
   items: Item[]
   /** Latest task list published by the agent, if any. */
   todos: Todo[]
-}
-
-function formatTime(epochSeconds: number | undefined, lang: Lang): string | undefined {
-  if (!epochSeconds) return undefined
-  return new Date(epochSeconds * 1000).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
 }
 
 function noticeText(notice: Notice, t: Dict): string {
@@ -126,10 +122,10 @@ export function buildTranscript(events: StoredEvent[], t: Dict, lang: Lang): Tra
         break
       case 'rate_limit':
         if (ev.status === 'rejected') {
-          items.push({ type: 'note', seq, tone: 'error', text: t.notice.limitReached(formatTime(ev.resetsAt, lang)) })
+          items.push({ type: 'note', seq, tone: 'error', text: t.notice.limitReached(formatReset(ev.resetsAt, lang)) })
         } else if (ev.status === 'allowed_warning' && warnedReset !== ev.resetsAt) {
           warnedReset = ev.resetsAt
-          items.push({ type: 'note', seq, tone: 'warn', text: t.notice.limitNear(formatTime(ev.resetsAt, lang)) })
+          items.push({ type: 'note', seq, tone: 'warn', text: t.notice.limitNear(formatReset(ev.resetsAt, lang)) })
         }
         break
       case 'error':

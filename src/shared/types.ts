@@ -410,7 +410,7 @@ export interface Api {
   setMaxRunning(max: number): Promise<void>
   /** The last warning that a usage window is nearly used up, if any. */
   getUsageWarning(): Promise<UsageWarning | null>
-  onUsageWarning(cb: (warning: UsageWarning) => void): () => void
+  onUsageWarning(cb: (warning: UsageWarning | null) => void): () => void
   /** Builds the context menu for a target; the renderer draws it. */
   menuOpen(spec: ContextMenuSpec): Promise<MenuModel>
   /** Runs an item of the menu last opened. */

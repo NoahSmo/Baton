@@ -40,6 +40,9 @@ const CACHE_TTL_MS = 60 * 60 * 1000
 /** Below this, a summary would cost about as much as it saves. */
 const COMPACT_MIN_TOKENS = 60_000
 
+/** How long to hold back when the limit refuses a request without saying when it resets. */
+const UNKNOWN_RESET_MS = 5 * 60 * 1000
+
 /** A message held back until an agent slot frees up. */
 interface PendingMessage {
   text: string
@@ -58,8 +61,8 @@ export interface ManagerSink {
   stream(featureId: string, text: string): void
   /** Called when a feature moves to a status worth notifying about. */
   attention(feature: Feature): void
-  /** A usage window is nearly used up; called once per window. */
-  usageWarning(warning: UsageWarning): void
+  /** A usage window is nearly used up (called once per window), or null once the limit lifted. */
+  usageWarning(warning: UsageWarning | null): void
 }
 
 export class Manager {
@@ -70,6 +73,8 @@ export class Manager {
   /** Epoch milliseconds until which the usage limit refuses requests: queued agents wait it out. */
   private limitedUntil = 0
   private limitTimer: ReturnType<typeof setTimeout> | null = null
+  /** Which usage window refused the last request, so an unrelated one allowing requests does not lift it. */
+  private limitedType: string | undefined
 
   constructor(
     private readonly store: Store,
@@ -92,6 +97,10 @@ export class Manager {
         }
         this.record(f.id, { kind: 'notice', notice: { code: 'app_closed' } })
         this.patch(f.id, { status: 'idle' })
+      } else if (f.status === 'limited') {
+        // The limit may have lifted while the app was closed; if not, keep waiting it out.
+        if (f.limitResetsAt && f.limitResetsAt * 1000 > Date.now()) this.holdQueueUntil(f.limitResetsAt * 1000)
+        else this.patch(f.id, { status: 'idle', limitResetsAt: null })
       }
     }
   }
@@ -281,7 +290,7 @@ export class Manager {
     // Read before this message joins the journal.
     const idleSince = this.store.lastEventAt(featureId)
     // An agent already in a turn takes the message along; another one needs a free slot.
-    const runNow = isActive(feature) || (feature.status !== 'queued' && this.hasFreeSlot())
+    const runNow = isActive(feature) || (feature.status !== 'queued' && this.hasFreeSlot() && !this.isLimited())
     // The first message is when work on the issue actually begins.
     if (feature.linear && !feature.sessionId) void this.startLinearIssue(feature)
     this.record(featureId, {
@@ -306,7 +315,7 @@ export class Manager {
 
   /** Starts queued agents while slots are free; called whenever one may have freed up. */
   startQueued(): void {
-    if (Date.now() < this.limitedUntil) return
+    if (this.isLimited()) return
     for (const [featureId, messages] of this.queue) {
       if (!this.hasFreeSlot()) return
       this.queue.delete(featureId)
@@ -507,11 +516,21 @@ export class Manager {
     if (event.kind === 'result') patch.costUsd = feature.costUsd + event.turnCostUsd
     if (event.kind === 'rate_limit' && event.status === 'rejected') {
       patch.limitResetsAt = event.resetsAt ?? null
-      if (event.resetsAt) this.holdQueueUntil(event.resetsAt * 1000)
+      this.limitedType = event.limitType
+      // Without a reset time, retry later rather than stay refused for good.
+      this.holdQueueUntil(event.resetsAt ? event.resetsAt * 1000 : Date.now() + UNKNOWN_RESET_MS)
     }
     if (event.kind === 'rate_limit' && event.status === 'allowed_warning') this.warnUsage(event)
     if (event.kind === 'user') patch.limitResetsAt = null
     this.patch(featureId, patch)
+    // Claude says the window we were refused on takes requests again, whatever the clock said.
+    if (event.kind === 'rate_limit' && event.status === 'allowed' && this.isLimited()) {
+      if (!this.limitedType || !event.limitType || this.limitedType === event.limitType) this.liftLimit()
+    }
+  }
+
+  private isLimited(): boolean {
+    return Date.now() < this.limitedUntil
   }
 
   /** Queued agents would only be refused until the limit resets. */
@@ -519,7 +538,21 @@ export class Manager {
     if (at <= this.limitedUntil) return
     this.limitedUntil = at
     if (this.limitTimer) clearTimeout(this.limitTimer)
-    this.limitTimer = setTimeout(() => this.startQueued(), at - Date.now() + 5000)
+    this.limitTimer = setTimeout(() => this.liftLimit(), at - Date.now() + 5000)
+  }
+
+  /** The limit is over: agents it stopped may run again. */
+  private liftLimit(): void {
+    this.limitedUntil = 0
+    this.limitedType = undefined
+    if (this.limitTimer) clearTimeout(this.limitTimer)
+    this.limitTimer = null
+    for (const f of this.store.listFeatures()) {
+      if (f.status === 'limited') this.patch(f.id, { status: 'idle', limitResetsAt: null })
+    }
+    this.warnedWindows.clear()
+    this.sink.usageWarning(null)
+    this.startQueued()
   }
 
   private warnUsage(event: Extract<UiEvent, { kind: 'rate_limit' }>): void {
