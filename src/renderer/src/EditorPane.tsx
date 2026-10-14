@@ -6,6 +6,7 @@ import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Feature, FileEntry, GitChangeKind, GitStatus } from '../../shared/types'
+import { DiffView } from './DiffView'
 import { editorTheme } from './editorTheme'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
@@ -64,6 +65,8 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activePath, setActivePath] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** File whose diff fills the editor, picked from the changes list. */
+  const [diffPath, setDiffPath] = useState<string | null>(null)
   const buffers = useRef(new Map<string, Buffer>())
   const view = useRef<EditorView | null>(null)
   const host = useRef<HTMLDivElement>(null)
@@ -80,7 +83,8 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
     }
     return kinds
   }, [git])
-  const showsText = active?.status === 'text'
+  const diffChange = changes.find((change) => change.path === diffPath)
+  const showsText = !diffChange && active?.status === 'text'
 
   function patchTab(path: string, patch: Partial<Tab>) {
     setTabs((list) => {
@@ -131,6 +135,7 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
   }
 
   async function openFile(path: string) {
+    setDiffPath(null)
     setActivePath(path)
     setError(null)
     if (tabs.some((tab) => tab.path === path)) return
@@ -151,6 +156,11 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
     } catch {
       patchTab(path, { status: 'unreadable' })
     }
+  }
+
+  function selectTab(path: string) {
+    setDiffPath(null)
+    setActivePath(path)
   }
 
   async function save(path: string) {
@@ -310,11 +320,9 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
             {changes.map((change) => (
               <button
                 key={change.path}
-                className={`tree-row${change.path === activePath ? ' selected' : ''}`}
+                className={`tree-row${change.path === diffPath ? ' selected' : ''}`}
                 title={`${t.git.kind[change.kind]} · ${change.path}`}
-                // Nothing is left on disk to open.
-                disabled={change.kind === 'deleted'}
-                onClick={() => void openFile(change.path)}
+                onClick={() => setDiffPath(change.path)}
               >
                 <span className={`change-mark ${change.kind}`}>{CHANGE_MARK[change.kind]}</span>
                 <span className={`tree-name ${change.kind}`}>{change.path.slice(change.path.lastIndexOf('/') + 1)}</span>
@@ -333,11 +341,11 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
                 key={tab.path}
                 role="tab"
                 tabIndex={0}
-                aria-selected={tab === active}
-                className={`editor-tab${tab === active ? ' selected' : ''}`}
+                aria-selected={tab === active && !diffChange}
+                className={`editor-tab${tab === active && !diffChange ? ' selected' : ''}`}
                 title={tab.path}
-                onClick={() => setActivePath(tab.path)}
-                onKeyDown={(e) => e.key === 'Enter' && setActivePath(tab.path)}
+                onClick={() => selectTab(tab.path)}
+                onKeyDown={(e) => e.key === 'Enter' && selectTab(tab.path)}
                 onAuxClick={(e) => e.button === 1 && void closeTab(tab.path)}
               >
                 <span className="editor-tab-name">{tab.name}</span>
@@ -369,8 +377,9 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
         )}
         {error && <p className="editor-notice error">{error}</p>}
 
+        {diffChange && <DiffView id={id} path={diffChange.path} kind={diffChange.kind} revision={git} />}
         <div className="editor-code" ref={host} hidden={!showsText} />
-        {!showsText && <p className="editor-empty">{active ? notice[active.status as keyof typeof notice] : t.editor.pickFile}</p>}
+        {!showsText && !diffChange && <p className="editor-empty">{active ? notice[active.status as keyof typeof notice] : t.editor.pickFile}</p>}
       </div>
     </section>
   )

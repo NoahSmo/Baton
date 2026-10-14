@@ -2262,3 +2262,82 @@ button.toggled:hover:not(:disabled) {
 .tree-name.deleted {
   text-decoration: line-through;
 }
+
+.diff {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-head {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.diff-head span {
+  padding: 4px 14px;
+}
+
+.diff-head span + span {
+  border-left: 1px solid var(--border);
+}
+
+.diff-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.diff-body[hidden] {
+  display: none;
+}
+
+.diff-body .cm-mergeView,
+.diff-body .cm-mergeViewEditors {
+  min-height: 100%;
+}
+
+.diff-body .cm-mergeViewEditor + .cm-mergeViewEditor {
+  border-left: 1px solid var(--border);
+}
+
+/* Left: what was removed; right: what was added. */
+.diff-body .cm-changedLine,
+.diff-body .cm-deletedChunk {
+  background: color-mix(in srgb, var(--green) 12%, transparent);
+}
+
+.diff-body .cm-mergeViewEditor:first-child .cm-changedLine {
+  background: color-mix(in srgb, var(--red) 13%, transparent);
+}
+
+.diff-body .cm-deletedChunk {
+  background: color-mix(in srgb, var(--red) 13%, transparent);
+}
+
+.diff-body .cm-changedText {
+  background: color-mix(in srgb, var(--green) 32%, transparent);
+}
+
+.diff-body .cm-mergeViewEditor:first-child .cm-changedText {
+  background: color-mix(in srgb, var(--red) 34%, transparent);
+}
+
+.diff-body .cm-changedLineGutter {
+  background: var(--green);
+}
+
+.diff-body .cm-mergeViewEditor:first-child .cm-changedLineGutter {
+  background: var(--red);
+}
+
+.diff-body .cm-collapsedLines {
+  background: var(--raised);
+  color: var(--muted);
+}

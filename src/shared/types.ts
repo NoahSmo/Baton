@@ -491,6 +491,8 @@ export interface Api {
   onFilesChanged(cb: (featureId: string, paths: string[]) => void): () => void
   /** Branch and changed files of the feature's worktree. */
   gitStatus(featureId: string): Promise<GitStatus>
+  /** A file as the last commit has it; null when absent there or not diffable. */
+  gitHead(featureId: string, path: string): Promise<string | null>
   gitBranches(featureId: string): Promise<GitBranch[]>
   /** Checks another branch out in the feature's worktree. Rejects with git's own explanation. */
   gitSwitch(featureId: string, branch: string): Promise<void>

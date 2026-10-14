@@ -6,6 +6,12 @@ import { promisify } from 'node:util'
 
 const exec = promisify(execFile)
 
+/** Output untouched: `git` trims it, which would cost a file its last line break. */
+export async function gitRaw(cwd: string, ...args: string[]): Promise<string> {
+  const { stdout } = await exec('git', args, { cwd, maxBuffer: 16 * 1024 * 1024 })
+  return stdout
+}
+
 export async function git(cwd: string, ...args: string[]): Promise<string> {
   const { stdout } = await exec('git', args, { cwd })
   return stdout.trim()
