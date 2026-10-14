@@ -194,16 +194,13 @@ The renderer reloads on save; restart `npm run dev` after changing anything unde
 
 ### Releasing
 
-Versions follow [semantic versioning](https://semver.org). One command bumps the version, runs the checks, builds the macOS zip and the Linux packages, publishes the GitHub release and updates the Homebrew cask:
+Versions follow [semantic versioning](https://semver.org). Every push or merge to `main` publishes a release through [GitHub Actions](.github/workflows/release.yml): it runs the checks, builds the macOS zip and the Linux packages (`.deb`, `.rpm`, `.tar.gz`, for x64 and arm64), creates the GitHub release and updates the Homebrew cask.
 
-```sh
-npm run release -- 0.2.0            # publish
-npm run release -- 0.2.0 --dry-run  # build and show what would be published
-```
+The version is the latest release plus one patch. For a minor or major release, raise `version` in `package.json` in your commit (`npm version 0.4.0 --no-git-tag-version`): when it is ahead of the latest release, that exact version is published. CI never commits back to `main`.
 
-It needs a clean `main` branch, the `gh` CLI logged in, Docker running, and a checkout of the tap next to this repository (or its path in `HOMEBREW_TAP_DIR`).
+One-time setup: a `HOMEBREW_TAP_TOKEN` repository secret, a fine-grained token with *Contents: read and write* on `NoahSmo/homebrew-tap`. Without it the release is published but the cask is not updated.
 
-The Linux packages (`.deb`, `.rpm`, `.tar.gz`, for x64 and arm64) are built in Docker by `scripts/build-linux.sh`, since node-pty has to be compiled on Linux. On an Apple Silicon Mac the x64 build runs under emulation and takes a while.
+Each Linux package is built on a runner of its own architecture, since node-pty has to be compiled there. `scripts/build-linux.sh` does the same locally, in Docker.
 
 ## Limitations
 
