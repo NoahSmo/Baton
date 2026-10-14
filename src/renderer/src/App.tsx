@@ -79,7 +79,11 @@ export function App() {
     void window.api.getLanguage().then(setLang)
     void window.api.getVersion().then(setVersion)
     void window.api.getUpdate().then(setUpdate)
-    return window.api.onUpdate(setUpdate)
+    return window.api.onUpdate((next) => {
+      setUpdate(next)
+      // Ask on our own, unless the user declined this version or is in the middle of something else.
+      if (!next.dismissed) setDialog((open) => open ?? { kind: 'update' })
+    })
   }, [])
 
   useEffect(() => {

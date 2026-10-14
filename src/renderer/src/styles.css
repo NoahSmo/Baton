@@ -1768,6 +1768,19 @@ button.danger-fill:hover:not(:disabled) {
   font-size: 13px;
 }
 
+.update-progress {
+  width: 100%;
+  height: 6px;
+  margin-top: 12px;
+  accent-color: var(--accent);
+}
+
+.update-error {
+  margin: 12px 0 0;
+  color: var(--danger, #e5484d);
+  overflow-wrap: anywhere;
+}
+
 .button-link {
   color: var(--accent);
   text-decoration: none;

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { checkForUpdate } from '../src/main/updater'
+import { mkdtempSync, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { checkForUpdate, detectInstallMode, downloadAsset, pickAsset, type InstallEnv } from '../src/main/updater'
 import { isNewer } from '../src/shared/version'
 
 describe('isNewer', () => {
@@ -32,8 +36,18 @@ describe('checkForUpdate', () => {
     expect(await checkForUpdate('0.2.0', github(200, release))).toEqual({
       version: '0.3.0',
       url: 'https://example.test/v0.3.0',
-      notes: 'Notes'
+      notes: 'Notes',
+      assets: []
     })
+  })
+
+  it('lists the packages with their checksum', async () => {
+    const withAssets = {
+      ...release,
+      assets: [{ name: 'Baton-0.3.0.zip', browser_download_url: 'https://example.test/a.zip', digest: 'sha256:abc' }]
+    }
+    const found = await checkForUpdate('0.2.0', github(200, withAssets))
+    expect(found?.assets).toEqual([{ name: 'Baton-0.3.0.zip', url: 'https://example.test/a.zip', sha256: 'abc' }])
   })
 
   it('stays quiet when up to date', async () => {
@@ -47,5 +61,82 @@ describe('checkForUpdate', () => {
       throw new Error('offline')
     }) as unknown as typeof fetch
     expect(await checkForUpdate('0.1.0', offline)).toBeNull()
+  })
+})
+
+describe('pickAsset', () => {
+  const names = [
+    'Baton-0.3.0.zip',
+    'Baton-0.3.0-linux-x64.tar.gz',
+    'Baton-0.3.0-linux-arm64.tar.gz',
+    'Baton-0.3.0-linux-amd64.deb',
+    'Baton-0.3.0-linux-arm64.deb',
+    'Baton-0.3.0-linux-x86_64.rpm',
+    'Baton-0.3.0-linux-aarch64.rpm'
+  ]
+  const assets = names.map((name) => ({ name, url: `https://example.test/${name}` }))
+  const pick = (...args: Parameters<typeof pickAsset> extends [unknown, ...infer R] ? R : never) =>
+    pickAsset(assets, ...args)?.name
+
+  it('finds the package of each install mode', () => {
+    expect(pick('0.3.0', 'mac-zip', 'arm64')).toBe('Baton-0.3.0.zip')
+    expect(pick('0.3.0', 'linux-user', 'x64')).toBe('Baton-0.3.0-linux-x64.tar.gz')
+    expect(pick('0.3.0', 'linux-pkg', 'arm64', 'deb')).toBe('Baton-0.3.0-linux-arm64.deb')
+    expect(pick('0.3.0', 'linux-pkg', 'x64', 'rpm')).toBe('Baton-0.3.0-linux-x86_64.rpm')
+  })
+
+  it('finds nothing when the release lacks it', () => {
+    expect(pick('0.4.0', 'mac-zip', 'arm64')).toBeUndefined()
+    expect(pick('0.3.0', 'mac-zip', 'x64')).toBeUndefined()
+    expect(pick('0.3.0', 'brew', 'arm64')).toBeUndefined()
+  })
+})
+
+describe('detectInstallMode', () => {
+  const env = (over: Partial<InstallEnv>): InstallEnv => ({
+    platform: 'darwin',
+    execPath: '/Applications/Baton.app/Contents/MacOS/Baton',
+    home: '/home/me',
+    brew: null,
+    writable: () => true,
+    has: () => true,
+    ...over
+  })
+
+  it('prefers Homebrew on macOS', () => {
+    expect(detectInstallMode(env({ brew: '/opt/homebrew/bin/brew' })).mode).toBe('brew')
+  })
+
+  it('replaces the app bundle when it can be written', () => {
+    expect(detectInstallMode(env({})).mode).toBe('mac-zip')
+    expect(detectInstallMode(env({ writable: () => false })).mode).toBe('manual')
+    expect(detectInstallMode(env({ execPath: '/tmp/electron' })).mode).toBe('manual')
+  })
+
+  it('tells the Linux install kinds apart', () => {
+    const linux = { platform: 'linux' as const }
+    expect(detectInstallMode(env({ ...linux, execPath: '/home/me/.local/share/baton/baton' })).mode).toBe('linux-user')
+    expect(detectInstallMode(env({ ...linux, execPath: '/opt/Baton/baton' }))).toEqual({ mode: 'linux-pkg', packager: 'deb' })
+    expect(detectInstallMode(env({ ...linux, execPath: '/opt/Baton/baton', has: (p) => p !== 'apt-get' })).packager).toBe('rpm')
+    expect(detectInstallMode(env({ ...linux, execPath: '/opt/Baton/baton', has: () => false })).mode).toBe('manual')
+  })
+})
+
+describe('downloadAsset', () => {
+  const body = 'package bytes'
+  const serve = (async () => new Response(body)) as unknown as typeof fetch
+  const sha = createHash('sha256').update(body).digest('hex')
+
+  it('saves the package and checks its checksum', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'baton-test-'))
+    const file = await downloadAsset({ name: 'a.zip', url: 'https://example.test/a.zip', sha256: sha }, dir, () => {}, serve)
+    expect(readFileSync(file, 'utf8')).toBe(body)
+  })
+
+  it('rejects a package that does not match its checksum', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'baton-test-'))
+    await expect(
+      downloadAsset({ name: 'a.zip', url: 'https://example.test/a.zip', sha256: 'bad' }, dir, () => {}, serve)
+    ).rejects.toThrow('checksum')
   })
 })
