@@ -1,9 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain, Notification, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, shell } from 'electron'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
 import { DICTS, LANGS, langFromLocale, type Lang } from '../shared/i18n'
+import { DEFAULT_THEME, themeById, type Theme } from '../shared/themes'
 import {
   AGENT_MODELS,
   APP_NAME,
@@ -70,6 +71,7 @@ const settingsFile = join(dataDir, 'settings.json')
 let lang: Lang = 'en'
 const t = () => DICTS[lang]
 let maxRunning = DEFAULT_MAX_RUNNING
+let theme: Theme = DEFAULT_THEME
 
 function readSettings(): Record<string, unknown> {
   try {
@@ -89,6 +91,13 @@ function writeSettings(patch: Record<string, unknown>): void {
 function loadLanguage(): Lang {
   const stored = readSettings().language as Lang
   return LANGS.includes(stored) ? stored : langFromLocale(app.getLocale())
+}
+
+/** Native parts of the window (title bar, scrollbars, pickers) go light or dark with the theme. */
+function applyTheme(next: Theme): void {
+  theme = next
+  nativeTheme.themeSource = next.dark ? 'dark' : 'light'
+  win?.setBackgroundColor(next.colors.bg)
 }
 
 function loadMaxRunning(): number {
@@ -161,7 +170,7 @@ function createWindow(): void {
     title: APP_NAME,
     // Elsewhere the system draws its own title bar.
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 13 } } : {}),
-    backgroundColor: '#1d1a17',
+    backgroundColor: theme.colors.bg,
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,
@@ -388,6 +397,13 @@ function registerIpc(): void {
     lang = next
     writeSettings({ language: lang })
   })
+  ipcMain.handle('theme:get', () => theme.id)
+  ipcMain.handle('theme:set', (_e, id: string) => {
+    const next = themeById(id)
+    if (next.id !== id) return
+    applyTheme(next)
+    writeSettings({ theme: id })
+  })
   ipcMain.handle('settings:maxRunning', () => maxRunning)
   ipcMain.handle('settings:setMaxRunning', (_e, max: number) => {
     if (!Number.isInteger(max) || max < 0) return
@@ -505,6 +521,7 @@ app.setName(APP_NAME)
 void app.whenReady().then(() => {
   mkdirSync(dataDir, { recursive: true })
   lang = loadLanguage()
+  applyTheme(themeById(readSettings().theme))
   maxRunning = loadMaxRunning()
   manager = new Manager(new Store(join(dataDir, 'state.db')), join(dataDir, 'worktrees'), join(dataDir, 'attachments'), linear, t, () => maxRunning, {
     event: (ev) => send('event', ev),

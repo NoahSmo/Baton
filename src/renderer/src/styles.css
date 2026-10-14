@@ -1,18 +1,30 @@
+/* Colors of the default theme; the chosen one overrides them from shared/themes.ts. */
 :root {
   --bg: #1d1a17;
   --panel: #24201c;
   --raised: #2e2823;
+  --hover: #372f29;
   --border: #40362d;
   --border-strong: #5a4838;
   --text: #ece6df;
   --muted: #9a8f84;
+  --faint: #6b6158;
   --accent: #e08e62;
+  --accent-hover: #eb9d74;
   --accent-text: #24140b;
   --blue: #62a5ec;
   --amber: #e5a83b;
   --green: #6cbb7a;
   --red: #e6807a;
+  --red-hover: #ee9590;
+  --danger-text: #2a0f0d;
   --purple: #b392e6;
+  --cyan: #12b8bf;
+  --orange: #d2964a;
+  --punct: #c9bcae;
+  --comment: #857a6f;
+  --shadow: rgba(0, 0, 0, 0.5);
+  --overlay: rgba(0, 0, 0, 0.55);
   --radius: 10px;
   --mono: ui-monospace, 'SF Mono', Menlo, monospace;
   color-scheme: dark;
@@ -55,7 +67,7 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background: #372f29;
+  background: var(--hover);
   border-color: var(--border-strong);
 }
 
@@ -72,8 +84,8 @@ button.primary {
 }
 
 button.primary:hover:not(:disabled) {
-  background: #eb9d74;
-  border-color: #eb9d74;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 button.danger:hover:not(:disabled) {
@@ -634,7 +646,7 @@ button.link:hover:not(:disabled) {
   height: 8px;
   border-radius: 50%;
   flex: none;
-  background: #6b6158;
+  background: var(--faint);
   display: inline-block;
 }
 
@@ -1193,7 +1205,7 @@ button.attach:hover:not(:disabled) {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--overlay);
   display: grid;
   place-items: center;
 }
@@ -1207,7 +1219,7 @@ button.attach:hover:not(:disabled) {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 60px var(--shadow);
 }
 
 .dialog h2 {
@@ -1463,6 +1475,19 @@ input.mono {
   color: var(--text);
 }
 
+.statusbar .theme-select {
+  width: auto;
+  padding: 1px 4px;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.statusbar .theme-select:hover {
+  color: var(--text);
+}
+
 /* Feature rows are not buttons (they can hold the rename field), so they need their own states. */
 
 .feature-row:hover:not(.selected) {
@@ -1653,7 +1678,7 @@ input.mono {
   background: var(--raised);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 36px var(--shadow);
 }
 
 .ctx-item {
@@ -1701,13 +1726,13 @@ input.mono {
 button.danger-fill {
   background: var(--red);
   border-color: var(--red);
-  color: #2a0f0d;
+  color: var(--danger-text);
   font-weight: 600;
 }
 
 button.danger-fill:hover:not(:disabled) {
-  background: #ee9590;
-  border-color: #ee9590;
+  background: var(--red-hover);
+  border-color: var(--red-hover);
 }
 
 /* Version and updates */

@@ -11,7 +11,7 @@ const theme = EditorView.theme(
     '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent)' },
     '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
       { backgroundColor: 'color-mix(in srgb, var(--accent) 28%, transparent)' },
-    '.cm-gutters': { backgroundColor: 'var(--bg)', color: '#6b6158', border: 'none' },
+    '.cm-gutters': { backgroundColor: 'var(--bg)', color: 'var(--faint)', border: 'none' },
     '.cm-lineNumbers .cm-gutterElement': { padding: '0 10px 0 14px' },
     '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, var(--raised) 55%, transparent)' },
     '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--text)' },
@@ -45,22 +45,22 @@ const theme = EditorView.theme(
 )
 
 const highlight = HighlightStyle.define([
-  { tag: [tags.comment, tags.meta], color: '#857a6f', fontStyle: 'italic' },
-  { tag: [tags.keyword, tags.operatorKeyword, tags.modifier, tags.controlKeyword], color: '#b392e6' },
-  { tag: [tags.string, tags.special(tags.string), tags.regexp], color: '#6cbb7a' },
-  { tag: [tags.number, tags.bool, tags.null, tags.atom], color: '#e5a83b' },
-  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: '#62a5ec' },
-  { tag: [tags.typeName, tags.className, tags.namespace], color: '#12b8bf' },
-  { tag: [tags.tagName, tags.heading], color: '#e08e62' },
-  { tag: [tags.attributeName, tags.propertyName], color: '#d2964a' },
-  { tag: [tags.definition(tags.variableName), tags.variableName], color: '#ece6df' },
-  { tag: [tags.operator, tags.punctuation, tags.bracket], color: '#c9bcae' },
-  { tag: tags.link, color: '#62a5ec', textDecoration: 'underline' },
+  { tag: [tags.comment, tags.meta], color: 'var(--comment)', fontStyle: 'italic' },
+  { tag: [tags.keyword, tags.operatorKeyword, tags.modifier, tags.controlKeyword], color: 'var(--purple)' },
+  { tag: [tags.string, tags.special(tags.string), tags.regexp], color: 'var(--green)' },
+  { tag: [tags.number, tags.bool, tags.null, tags.atom], color: 'var(--amber)' },
+  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: 'var(--blue)' },
+  { tag: [tags.typeName, tags.className, tags.namespace], color: 'var(--cyan)' },
+  { tag: [tags.tagName, tags.heading], color: 'var(--accent)' },
+  { tag: [tags.attributeName, tags.propertyName], color: 'var(--orange)' },
+  { tag: [tags.definition(tags.variableName), tags.variableName], color: 'var(--text)' },
+  { tag: [tags.operator, tags.punctuation, tags.bracket], color: 'var(--punct)' },
+  { tag: tags.link, color: 'var(--blue)', textDecoration: 'underline' },
   { tag: tags.heading, fontWeight: '600' },
   { tag: tags.strong, fontWeight: '600' },
   { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.invalid, color: '#e6807a' }
+  { tag: tags.invalid, color: 'var(--red)' }
 ])
 
-/** Editor colors drawn from the app's palette. */
+/** Editor colors drawn from the app's palette, so they follow the theme. */
 export const editorTheme = [theme, syntaxHighlighting(highlight)]

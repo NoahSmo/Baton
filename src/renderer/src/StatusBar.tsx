@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { LANGS, type Lang } from '../../shared/i18n'
+import { THEMES, themeById } from '../../shared/themes'
 import type { Feature, LinearStatus, UpdateInfo, UsageWarning } from '../../shared/types'
 import { useLang, useT } from './i18n'
+import { applyTheme, cachedTheme } from './theme'
 
 interface Props {
   features: Feature[]
@@ -22,9 +24,15 @@ export function StatusBar({ features, linear, onOpenLinear, onLanguage, version,
   const cost = features.reduce((sum, f) => sum + f.costUsd, 0)
   const [maxRunning, setMaxRunning] = useState<number | null>(null)
   const [warning, setWarning] = useState<UsageWarning | null>(null)
+  const [themeId, setThemeId] = useState(() => cachedTheme().id)
 
   useEffect(() => {
     void window.api.getMaxRunning().then(setMaxRunning)
+    // The stored choice wins over the cached one, which may come from another data folder.
+    void window.api.getTheme().then((id) => {
+      setThemeId(id)
+      applyTheme(themeById(id))
+    })
     void window.api.getUsageWarning().then(setWarning)
     return window.api.onUsageWarning(setWarning)
   }, [])
@@ -39,6 +47,12 @@ export function StatusBar({ features, linear, onOpenLinear, onLanguage, version,
   function changeMaxRunning(max: number) {
     setMaxRunning(max)
     void window.api.setMaxRunning(max)
+  }
+
+  function changeTheme(id: string) {
+    setThemeId(id)
+    applyTheme(themeById(id))
+    void window.api.setTheme(id)
   }
 
   const resetTime = warning?.resetsAt
@@ -111,6 +125,19 @@ export function StatusBar({ features, linear, onOpenLinear, onLanguage, version,
         <span className={`dot ${linear.connected ? 'done' : ''}`} />
         {linear.connected ? `Linear · ${linear.userName ?? t.statusbar.linearConnected}` : t.statusbar.connectLinear}
       </button>
+      <select
+        className="theme-select"
+        value={themeId}
+        aria-label={t.statusbar.theme}
+        title={t.statusbar.theme}
+        onChange={(e) => changeTheme(e.target.value)}
+      >
+        {THEMES.map((theme) => (
+          <option key={theme.id} value={theme.id}>
+            {theme.name}
+          </option>
+        ))}
+      </select>
       <span className="lang-switch" role="group" aria-label={t.statusbar.language}>
         {LANGS.map((l) => (
           <button key={l} className={l === lang ? 'selected' : ''} aria-pressed={l === lang} onClick={() => onLanguage(l)}>

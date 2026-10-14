@@ -95,7 +95,8 @@ const en = {
     total: 'Total',
     connectLinear: 'Connect Linear',
     linearConnected: 'connected',
-    language: 'Language'
+    language: 'Language',
+    theme: 'Theme'
   },
 
   empty: {
@@ -445,7 +446,8 @@ const fr: Dict = {
     total: 'Total',
     connectLinear: 'Connecter Linear',
     linearConnected: 'connecté',
-    language: 'Langue'
+    language: 'Langue',
+    theme: 'Thème'
   },
 
   empty: {

@@ -1,7 +1,8 @@
 import { FitAddon } from '@xterm/addon-fit'
-import { Terminal } from '@xterm/xterm'
+import { Terminal, type ITheme } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
 import { useSyncExternalStore } from 'react'
+import { DEFAULT_THEME, type Theme } from '../../shared/themes'
 import type { TerminalInfo, TerminalTarget } from '../../shared/types'
 
 /**
@@ -19,29 +20,43 @@ export interface TerminalTab {
   label: string
 }
 
-const THEME = {
-  background: '#1d1a17',
-  foreground: '#ece6df',
-  cursor: '#e08e62',
-  cursorAccent: '#1d1a17',
-  selectionBackground: '#5a4838',
-  black: '#2e2823',
-  red: '#e6807a',
-  green: '#6cbb7a',
-  yellow: '#e5a83b',
-  blue: '#62a5ec',
-  magenta: '#b392e6',
-  cyan: '#12b8bf',
-  white: '#c9bcae',
-  brightBlack: '#9a8f84',
-  brightRed: '#ee9590',
-  brightGreen: '#8bd198',
-  brightYellow: '#f0c063',
-  brightBlue: '#8bbdf2',
-  brightMagenta: '#c9aff0',
-  brightCyan: '#4fd0d6',
-  brightWhite: '#ece6df'
+/** Moves a hex color a share of the way towards another. */
+function mix(from: string, to: string, share: number): string {
+  const channel = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16)
+  return `#${[0, 1, 2]
+    .map((i) => Math.round(channel(from, i) + (channel(to, i) - channel(from, i)) * share).toString(16).padStart(2, '0'))
+    .join('')}`
 }
+
+function terminalTheme({ colors: c, dark }: Theme): ITheme {
+  // Bright colors stand further out from the background: lighter on a dark one, darker on a light one.
+  const bright = (color: string) => mix(color, dark ? '#ffffff' : '#000000', 0.22)
+  return {
+    background: c.bg,
+    foreground: c.text,
+    cursor: c.accent,
+    cursorAccent: c.bg,
+    selectionBackground: c.borderStrong,
+    black: dark ? c.raised : c.text,
+    red: c.red,
+    green: c.green,
+    yellow: c.amber,
+    blue: c.blue,
+    magenta: c.purple,
+    cyan: c.cyan,
+    white: dark ? c.punct : c.muted,
+    brightBlack: c.muted,
+    brightRed: bright(c.red),
+    brightGreen: bright(c.green),
+    brightYellow: bright(c.amber),
+    brightBlue: bright(c.blue),
+    brightMagenta: bright(c.purple),
+    brightCyan: bright(c.cyan),
+    brightWhite: dark ? c.text : c.punct
+  }
+}
+
+let theme = terminalTheme(DEFAULT_THEME)
 
 let tabs: TerminalTab[] = []
 const listeners = new Set<() => void>()
@@ -91,7 +106,7 @@ export async function openTerminal(target: TerminalTarget, commandId?: string): 
     cursorBlink: true,
     scrollback: 5000,
     macOptionIsMeta: true,
-    theme: THEME
+    theme
   })
   const fit = new FitAddon()
   term.loadAddon(fit)
@@ -157,6 +172,12 @@ export function attachTerminal(tab: TerminalTab, host: HTMLElement): void {
 export function fitTerminal(tab: TerminalTab): void {
   // Nothing to measure while the panel is hidden.
   if (tab.el.clientWidth > 0 && tab.el.clientHeight > 0) tab.fit.fit()
+}
+
+/** Recolors the open terminals, and the ones opened from now on. */
+export function setTerminalTheme(next: Theme): void {
+  theme = terminalTheme(next)
+  tabs.forEach((tab) => (tab.term.options.theme = theme))
 }
 
 export function useTerminals(): TerminalTab[] {

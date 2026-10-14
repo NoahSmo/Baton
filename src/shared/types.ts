@@ -428,6 +428,9 @@ export interface Api {
   onUpdate(cb: (update: UpdateInfo) => void): () => void
   getLanguage(): Promise<Lang>
   setLanguage(lang: Lang): Promise<void>
+  /** Id of the chosen theme, from shared/themes. */
+  getTheme(): Promise<string>
+  setTheme(id: string): Promise<void>
   linearStatus(): Promise<LinearStatus>
   /** Validates the API key against Linear before storing it. */
   linearConnect(apiKey: string): Promise<LinearStatus>
