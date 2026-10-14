@@ -35,7 +35,7 @@
     ],
     "extraResources": [
       {
-        "from": "build/icon.png",
+        "from": "build/icons/512x512.png",
         "to": "icon.png"
       }
     ],
@@ -62,8 +62,13 @@
         "tar.gz"
       ],
       "category": "Development",
-      "icon": "build/icon.png",
+      "icon": "build/icons",
       "executableName": "baton",
+      "desktop": {
+        "entry": {
+          "StartupWMClass": "baton"
+        }
+      },
       "maintainer": "NoahSmo <NoahSmo@users.noreply.github.com>",
       "synopsis": "Feature-first orchestrator for Claude Code agents",
       "artifactName": "${productName}-${version}-linux-${arch}.${ext}"

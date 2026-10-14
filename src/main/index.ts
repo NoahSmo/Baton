@@ -183,7 +183,7 @@ function createWindow(): void {
     // Elsewhere the system draws its own title bar.
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 13 } } : {}),
     // Linux has no bundle to take the window icon from.
-    ...(process.platform === 'linux' ? { icon: app.isPackaged ? join(process.resourcesPath, 'icon.png') : join(app.getAppPath(), 'build/icon.png') } : {}),
+    ...(process.platform === 'linux' ? { icon: app.isPackaged ? join(process.resourcesPath, 'icon.png') : join(app.getAppPath(), 'build/icons/512x512.png') } : {}),
     backgroundColor: theme.colors.bg,
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
