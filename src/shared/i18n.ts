@@ -327,7 +327,17 @@ const en = {
     manualHint: 'Update it from a terminal:',
     copy: 'Copy command',
     later: 'Later',
-    starting: 'Updating…'
+    starting: 'Updating…',
+    downloading: (percent?: number) => (percent === undefined ? 'Downloading…' : `Downloading… ${percent}%`),
+    installing: 'Installing, the app restarts…',
+    failed: (reason: string) => `Update failed: ${reason}`,
+    retry: 'Retry',
+    installHintMac:
+      'The new version is downloaded and replaces the app, which then reopens. Running agents are stopped; their conversations resume when you message them again.',
+    installHintLinuxPkg:
+      'The new package is downloaded and installed (your system asks for your password), then the app reopens. Running agents are stopped; their conversations resume when you message them again.',
+    installHintLinuxUser:
+      'The new version is downloaded and unpacked over this one, then the app reopens. Running agents are stopped; their conversations resume when you message them again.'
   },
 
   /** Native dialogs opened by the main process. */
@@ -677,7 +687,17 @@ const fr: Dict = {
     manualHint: 'Mets-la à jour depuis un terminal :',
     copy: 'Copier la commande',
     later: 'Plus tard',
-    starting: 'Mise à jour…'
+    starting: 'Mise à jour…',
+    downloading: (percent) => (percent === undefined ? 'Téléchargement…' : `Téléchargement… ${percent} %`),
+    installing: "Installation, l'app redémarre…",
+    failed: (reason) => `Échec de la mise à jour : ${reason}`,
+    retry: 'Réessayer',
+    installHintMac:
+      "La nouvelle version est téléchargée et remplace l'app, qui se rouvre ensuite. Les agents en cours sont arrêtés ; leurs conversations reprennent au prochain message.",
+    installHintLinuxPkg:
+      "Le nouveau paquet est téléchargé et installé (le système demande ton mot de passe), puis l'app se rouvre. Les agents en cours sont arrêtés ; leurs conversations reprennent au prochain message.",
+    installHintLinuxUser:
+      "La nouvelle version est téléchargée et dépaquetée par-dessus celle-ci, puis l'app se rouvre. Les agents en cours sont arrêtés ; leurs conversations reprennent au prochain message."
   },
 
   native: {

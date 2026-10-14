@@ -9,13 +9,34 @@ export const BREW_CASK = 'noahsmo/tap/baton'
 /** Installs or upgrades the app on Linux. */
 export const LINUX_INSTALL_COMMAND = `curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh | sh`
 
+export type UpdateInstallMode = 'brew' | 'mac-zip' | 'linux-user' | 'linux-pkg' | 'manual'
+
+export interface UpdateAsset {
+  name: string
+  url: string
+  sha256?: string
+}
+
+export interface UpdateProgress {
+  phase: 'downloading' | 'installing' | 'error'
+  received?: number
+  total?: number
+  message?: string
+}
+
 export interface UpdateInfo {
   version: string
   /** Release page. */
   url: string
   notes: string
-  /** Installed through Homebrew, so the app can upgrade itself. */
+  /** The app can replace itself: through Homebrew, or from the release's own package. */
   canAutoInstall: boolean
+  /** How the update gets installed. */
+  installMode: UpdateInstallMode
+  /** Release package for this platform; absent for Homebrew and manual installs. */
+  asset?: UpdateAsset
+  /** The user already declined this version: no popup, the status bar button stays. */
+  dismissed: boolean
   /** What the user runs to update by hand otherwise. */
   command: string
 }
@@ -423,9 +444,12 @@ export interface Api {
   getVersion(): Promise<string>
   /** The newer release found by the last check, if any. */
   getUpdate(): Promise<UpdateInfo | null>
-  /** Starts the Homebrew upgrade; the app is replaced and reopened. */
+  /** Downloads and installs the update; the app quits, is replaced and reopens. */
   installUpdate(): Promise<void>
+  /** Remembers that this version was declined, so it is not offered again on its own. */
+  dismissUpdate(version: string): Promise<void>
   onUpdate(cb: (update: UpdateInfo) => void): () => void
+  onUpdateProgress(cb: (progress: UpdateProgress) => void): () => void
   getLanguage(): Promise<Lang>
   setLanguage(lang: Lang): Promise<void>
   /** Id of the chosen theme, from shared/themes. */

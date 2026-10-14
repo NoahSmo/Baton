@@ -38,7 +38,19 @@ import { Manager } from './manager'
 import { suggestCommands } from './suggest'
 import { contextMenuTemplate, defaultMenuTemplate, type MenuEntry } from './menus'
 import { SecretFile } from './secrets'
-import { checkForUpdate, findOwningBrew, manualUpdateCommand, upgradeWithBrew } from './updater'
+import {
+  checkForUpdate,
+  currentEnv,
+  detectInstallMode,
+  downloadAsset,
+  findOwningBrew,
+  installScript,
+  manualUpdateCommand,
+  pickAsset,
+  runDetached,
+  updateDir,
+  upgradeWithBrew
+} from './updater'
 import { Store } from './store'
 import { Terminals } from './terminals'
 
@@ -305,16 +317,52 @@ let update: UpdateInfo | null = null
 async function refreshUpdate(): Promise<void> {
   const found = await checkForUpdate(app.getVersion())
   if (!found || found.version === update?.version) return
-  update = { ...found, canAutoInstall: app.isPackaged && findOwningBrew() !== null, command: manualUpdateCommand() }
+  const env = currentEnv()
+  const { mode, packager } = app.isPackaged ? detectInstallMode(env) : { mode: 'manual' as const, packager: 'deb' as const }
+  const asset = pickAsset(found.assets, found.version, mode, process.arch, packager) ?? undefined
+  // Without a package to download there is nothing to install by itself, except through Homebrew.
+  const installMode = mode === 'brew' || asset ? mode : 'manual'
+  const { assets: _assets, ...release } = found
+  update = {
+    ...release,
+    installMode,
+    asset,
+    canAutoInstall: installMode !== 'manual',
+    dismissed: readSettings().skippedUpdate === found.version,
+    command: manualUpdateCommand()
+  }
   send('update:available', update)
+}
+
+async function installUpdate(): Promise<void> {
+  if (!update || update.installMode === 'manual') return
+  const log = join(dataDir, 'update.log')
+  try {
+    if (update.installMode === 'brew') {
+      const brew = findOwningBrew()
+      if (!brew) throw new Error('Homebrew not found')
+      send('update:progress', { phase: 'installing' })
+      upgradeWithBrew(brew, log)
+      return
+    }
+    if (!update.asset) throw new Error('no package for this platform')
+    const file = await downloadAsset(update.asset, updateDir(update.version), (p) => send('update:progress', p))
+    send('update:progress', { phase: 'installing' })
+    const env = currentEnv()
+    runDetached(installScript(update.installMode, file, env, detectInstallMode(env).packager), log)
+    app.quit()
+  } catch (err) {
+    send('update:progress', { phase: 'error', message: err instanceof Error ? err.message : String(err) })
+  }
 }
 
 function registerIpc(): void {
   ipcMain.handle('app:version', () => app.getVersion())
   ipcMain.handle('update:get', () => update)
-  ipcMain.handle('update:install', () => {
-    const brew = findOwningBrew()
-    if (brew) upgradeWithBrew(brew, join(dataDir, 'update.log'))
+  ipcMain.handle('update:install', () => installUpdate())
+  ipcMain.handle('update:dismiss', (_e, version: string) => {
+    writeSettings({ skippedUpdate: version })
+    if (update?.version === version) update = { ...update, dismissed: true }
   })
 
   ipcMain.handle('state:get', () => manager.getState())
