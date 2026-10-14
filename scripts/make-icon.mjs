@@ -1,4 +1,4 @@
-// Renders build/icon.svg into build/icon.png and build/icon.icns.
+// Renders build/icon.svg into build/icon.png, build/icon.icns and build/icons/ (Linux).
 // Run with: npm run icon   (macOS only: uses sips and iconutil)
 import { app, BrowserWindow } from 'electron'
 import { execFileSync } from 'node:child_process'
@@ -54,5 +54,17 @@ void app.whenReady().then(async () => {
   }
   execFileSync('iconutil', ['-c', 'icns', iconset, '-o', join(build, 'icon.icns')])
   rmSync(iconset, { recursive: true, force: true })
+
+  // Linux themes (Mint's Cinnamon among them) draw icons edge to edge, so the
+  // macOS margin around the squircle is cropped out.
+  const icons = join(build, 'icons')
+  const crop = join(build, 'icon-linux.png')
+  rmSync(icons, { recursive: true, force: true })
+  mkdirSync(icons)
+  execFileSync('sips', ['-c', '824', '824', join(build, 'icon.png'), '--out', crop], { stdio: 'ignore' })
+  for (const size of [16, 24, 32, 48, 64, 128, 256, 512]) {
+    execFileSync('sips', ['-z', String(size), String(size), crop, '--out', join(icons, `${size}x${size}.png`)], { stdio: 'ignore' })
+  }
+  rmSync(crop)
   app.exit(0)
 })
