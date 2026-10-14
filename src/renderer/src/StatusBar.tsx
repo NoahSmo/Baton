@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { LANGS, type Lang } from '../../shared/i18n'
+import { formatReset } from '../../shared/time'
 import { THEMES, themeById } from '../../shared/themes'
 import type { Feature, LinearStatus, UpdateInfo, UsageWarning } from '../../shared/types'
 import { useLang, useT } from './i18n'
@@ -55,9 +56,7 @@ export function StatusBar({ features, linear, onOpenLinear, onLanguage, version,
     void window.api.setTheme(id)
   }
 
-  const resetTime = warning?.resetsAt
-    ? new Date(warning.resetsAt * 1000).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
-    : undefined
+  const resetTime = formatReset(warning?.resetsAt, lang)
 
   return (
     <footer className="statusbar">

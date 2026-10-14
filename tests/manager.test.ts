@@ -34,7 +34,7 @@ function setup(maxRunning = 1) {
   const dir = mkdtempSync(join(tmpdir(), 'baton-manager-'))
   const store = new Store(':memory:')
   store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearLabel: null, commands: [] })
-  const warnings: UsageWarning[] = []
+  const warnings: (UsageWarning | null)[] = []
   const sink: ManagerSink = {
     event: () => {},
     feature: () => {},
@@ -153,6 +153,68 @@ describe('agent slots', () => {
     finish('a')
     await flush()
     expect(sent.map((s) => s.featureId)).toEqual(['a'])
+  })
+
+  const reject = (id: string, resetsAt = Math.floor(Date.now() / 1000) + 3600) =>
+    agents.get(id)!.emit({ type: 'event', event: { kind: 'rate_limit', status: 'rejected', resetsAt, limitType: 'five_hour' } })
+
+  it('queues a new message instead of sending it into the limit', () => {
+    const { store, manager, add } = setup(0)
+    add('a')
+    add('b')
+    manager.send('a', 'go')
+    reject('a')
+    manager.send('b', 'go')
+    expect(store.getFeature('b')!.status).toBe('queued')
+    expect(sent.map((s) => s.featureId)).toEqual(['a'])
+  })
+
+  it('lets everything go again once Claude allows the window', () => {
+    const { store, manager, add, warnings } = setup(0)
+    add('a')
+    add('b')
+    manager.send('a', 'go')
+    reject('a')
+    manager.send('b', 'go')
+    agents.get('a')!.emit({ type: 'event', event: { kind: 'rate_limit', status: 'allowed', limitType: 'seven_day' } })
+    expect(store.getFeature('b')!.status).toBe('queued')
+    agents.get('a')!.emit({ type: 'event', event: { kind: 'rate_limit', status: 'allowed', limitType: 'five_hour' } })
+    expect(store.getFeature('a')).toMatchObject({ status: 'idle', limitResetsAt: null })
+    expect(store.getFeature('b')!.status).toBe('working')
+    expect(warnings.at(-1)).toBeNull()
+  })
+
+  it('frees a limited agent once its reset time has passed', () => {
+    vi.useFakeTimers()
+    try {
+      const { store, manager, add } = setup(0)
+      add('a')
+      manager.send('a', 'go')
+      reject('a', Math.floor(Date.now() / 1000) + 60)
+      expect(store.getFeature('a')!.status).toBe('limited')
+      vi.advanceTimersByTime(66_000)
+      expect(store.getFeature('a')).toMatchObject({ status: 'idle', limitResetsAt: null })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not stay limited across a restart once the reset has passed', () => {
+    const { store, manager, add } = setup(0)
+    add('a', { status: 'limited', limitResetsAt: Math.floor(Date.now() / 1000) - 60 })
+    add('b', { status: 'limited', limitResetsAt: Math.floor(Date.now() / 1000) + 3600 })
+    new Manager(store, '', '', {} as never, () => DICTS.en, () => 0, {
+      event: () => {},
+      feature: () => {},
+      featureRemoved: () => {},
+      projectRemoved: () => {},
+      stream: () => {},
+      attention: () => {},
+      usageWarning: () => {}
+    })
+    expect(store.getFeature('a')!.status).toBe('idle')
+    expect(store.getFeature('b')!.status).toBe('limited')
+    manager.shutdown()
   })
 })
 

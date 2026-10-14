@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
 import { DICTS, LANGS, langFromLocale, type Lang } from '../shared/i18n'
+import { formatReset } from '../shared/time'
 import { DEFAULT_THEME, themeById, type Theme } from '../shared/themes'
 import {
   AGENT_MODELS,
@@ -108,13 +109,12 @@ function loadMaxRunning(): number {
 let usageWarning: UsageWarning | null = null
 
 /** Shown even with the window in front: the next agents started could hit the limit. */
-function warnUsage(warning: UsageWarning): void {
+function warnUsage(warning: UsageWarning | null): void {
   usageWarning = warning
   send('usage:warning', warning)
-  const time = warning.resetsAt
-    ? new Date(warning.resetsAt * 1000).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
-    : undefined
-  new Notification({ title: APP_NAME, body: t().notice.limitNear(time) }).show()
+  // null: the limit lifted, the warning is gone.
+  if (!warning) return
+  new Notification({ title: APP_NAME, body: t().notice.limitNear(formatReset(warning.resetsAt, lang)) }).show()
 }
 
 const linear = new LinearClient(() => linearKey.get(), t)
