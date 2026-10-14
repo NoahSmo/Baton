@@ -1,7 +1,8 @@
 import { readFileSync, statSync } from 'node:fs'
 import { isAbsolute, join, resolve, sep } from 'node:path'
 import type { GitBranch, GitChange, GitChangeKind, GitStatus } from '../shared/types'
-import { git } from './worktree'
+import { MAX_FILE_BYTES, resolveInside } from './files'
+import { git, gitRaw } from './worktree'
 
 function kindOf(xy: string): GitChangeKind {
   if (xy[1] === 'D' || xy === 'D.') return 'deleted'
@@ -50,6 +51,17 @@ export async function gitStatus(root: string): Promise<GitStatus> {
 }
 
 /** Branch checked out in each worktree of a repository, from `git worktree list --porcelain`. */
+/** A file as the last commit has it; null when the commit lacks it, or it is binary or too big to diff. */
+export async function headContent(root: string, rel: string): Promise<string | null> {
+  await resolveInside(root, rel)
+  try {
+    const out = await gitRaw(root, 'show', `HEAD:./${rel}`)
+    return out.length > MAX_FILE_BYTES || out.slice(0, 8000).includes('\0') ? null : out
+  } catch {
+    return null
+  }
+}
+
 export function parseWorktrees(out: string): { path: string; branch: string | null }[] {
   return out
     .split(/\n\n+/)

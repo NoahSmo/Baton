@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   gitDirOf,
   gitStatus,
+  headContent,
   hasLanded,
   isTrunkRef,
   lastGitActivity,
@@ -118,6 +119,13 @@ describe('in a repository', () => {
     writeFileSync(join(worktree, 'a.txt'), 'mine\n')
     await expect(switchBranch(worktree, 'feat/x')).rejects.toThrow(/local changes/)
     run(worktree, 'checkout', '--', 'a.txt')
+  })
+
+  it('reads a file as the last commit has it, line breaks kept', async () => {
+    run(worktree, 'switch', 'spare')
+    expect(await headContent(worktree, 'a.txt')).toMatch(/\n$/)
+    expect(await headContent(worktree, 'not-committed.txt')).toBeNull()
+    await expect(headContent(worktree, '../escape')).rejects.toThrow('Outside')
   })
 
   it('finds where git keeps the state of a clone and of a linked worktree', () => {

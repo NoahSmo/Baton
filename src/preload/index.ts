@@ -72,6 +72,7 @@ const api: Api = {
   filesUnwatch: (id) => ipcRenderer.invoke('files:unwatch', id),
   onFilesChanged: (cb) => subscribe('files:changed', cb),
   gitStatus: (id) => ipcRenderer.invoke('git:status', id),
+  gitHead: (id, path) => ipcRenderer.invoke('git:head', id, path),
   gitBranches: (id) => ipcRenderer.invoke('git:branches', id),
   gitSwitch: (id, branch) => ipcRenderer.invoke('git:switch', id, branch),
   gitWatch: (id) => ipcRenderer.invoke('git:watch', id),

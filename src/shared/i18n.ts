@@ -151,6 +151,8 @@ const en = {
   git: {
     changes: 'Changes',
     noChanges: 'No change since the last commit.',
+    before: 'Last commit',
+    after: 'Working copy',
     changed: (n: number) => `${n} changed ${n === 1 ? 'file' : 'files'}`,
     switchBranch: 'Switch branch',
     filterBranches: 'Filter branches…',
@@ -512,6 +514,8 @@ const fr: Dict = {
   git: {
     changes: 'Changements',
     noChanges: 'Aucun changement depuis le dernier commit.',
+    before: 'Dernier commit',
+    after: 'Version actuelle',
     changed: (n) => `${n} ${n > 1 ? 'fichiers modifiés' : 'fichier modifié'}`,
     switchBranch: 'Changer de branche',
     filterBranches: 'Filtrer les branches…',
