@@ -6,6 +6,8 @@ interface Props {
   projects: Project[]
   features: Feature[]
   activeId: string | null
+  /** The Linear tab only exists once an account is connected. */
+  linearAvailable: boolean
   linearActive: boolean
   onSelectLinear(): void
   onSelect(id: string): void
@@ -18,6 +20,7 @@ export function TopBar({
   projects,
   features,
   activeId,
+  linearAvailable,
   linearActive,
   onSelectLinear,
   onSelect,
@@ -28,10 +31,14 @@ export function TopBar({
   return (
     <header className="topbar">
       <nav className="tabs">
-        <button className={`tab pinned${linearActive ? ' active' : ''}`} onClick={onSelectLinear}>
-          <span className="tab-name">{t.linearView.tab}</span>
-        </button>
-        <span className="tab-divider" />
+        {linearAvailable && (
+          <>
+            <button className={`tab pinned${linearActive ? ' active' : ''}`} onClick={onSelectLinear}>
+              <span className="tab-name">{t.linearView.tab}</span>
+            </button>
+            <span className="tab-divider" />
+          </>
+        )}
         {projects.map((p) => {
           const waiting = features.filter((f) => f.projectId === p.id && f.status === 'waiting').length
           return (

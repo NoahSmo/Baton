@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { DICTS, langFromLocale, type Lang } from '../../shared/i18n'
-import type { Feature, LinearIssue, LinearStatus, Project, StoredEvent } from '../../shared/types'
+import type { Feature, LinearIssue, LinearStatus, Project, StoredEvent, UpdateInfo } from '../../shared/types'
 import { ConfirmHost } from './ConfirmHost'
 import { ContextMenuHost } from './ContextMenuHost'
+import { EditorPane, type EditorPanel } from './EditorPane'
 import { FeatureView } from './FeatureView'
+import { LaunchDialog } from './LaunchDialog'
 import { LangContext } from './i18n'
 import { LinearDialog } from './LinearDialog'
 import { LinearView } from './LinearView'
@@ -11,10 +13,20 @@ import { NewFeatureDialog } from './NewFeatureDialog'
 import { ProjectDialog } from './ProjectDialog'
 import { Sidebar } from './Sidebar'
 import { StatusBar } from './StatusBar'
+import { TerminalPanel } from './TerminalPanel'
 import { TopBar } from './TopBar'
+import { UpdateDialog } from './UpdateDialog'
+import { useGitStatus } from './useGitStatus'
+import { useResize } from './useResize'
+
+const SIDEBAR_WIDTH = 300
+/** Room the conversation keeps when the editor is dragged wide. */
+const MIN_CHAT_WIDTH = 340
 
 type Dialog =
-  | { kind: 'feature'; project?: Project; issue?: LinearIssue }
+  | { kind: 'feature'; project?: Project; issue?: LinearIssue; repositories?: Project[] }
+  | { kind: 'update' }
+  | { kind: 'launch'; project: Project }
   | { kind: 'project'; project?: Project } | { kind: 'linear' } | null
 
 export function App() {
@@ -29,6 +41,28 @@ export function App() {
   const [dialog, setDialog] = useState<Dialog>(null)
   /** The Linear tab is showing instead of a project. */
   const [showLinear, setShowLinear] = useState(false)
+  /** Features whose editor was opened; false once hidden again, which keeps its open files. */
+  const [editors, setEditors] = useState<Record<string, boolean>>({})
+  const [editorPanel, setEditorPanel] = useState<EditorPanel>('files')
+  const [terminalOpen, setTerminalOpen] = useState(false)
+  /** Agent being linked to an issue. */
+  const [linkingId, setLinkingId] = useState<string | null>(null)
+  const [editorWidth, startEditorResize] = useResize({
+    key: 'editor-width',
+    initial: 520,
+    min: 360,
+    max: () => window.innerWidth - SIDEBAR_WIDTH - MIN_CHAT_WIDTH,
+    edge: 'left'
+  })
+  const [terminalHeight, startTerminalResize] = useResize({
+    key: 'terminal-height',
+    initial: 260,
+    min: 120,
+    max: () => window.innerHeight - 260,
+    edge: 'top'
+  })
+
+  const linearShown = showLinear && linear.connected
 
   function goToProject(id: string) {
     setShowLinear(false)
@@ -38,8 +72,14 @@ export function App() {
   const [lang, setLang] = useState<Lang>(() => langFromLocale(navigator.language))
   const t = DICTS[lang]
 
+  const [version, setVersion] = useState('')
+  const [update, setUpdate] = useState<UpdateInfo | null>(null)
+
   useEffect(() => {
     void window.api.getLanguage().then(setLang)
+    void window.api.getVersion().then(setVersion)
+    void window.api.getUpdate().then(setUpdate)
+    return window.api.onUpdate(setUpdate)
   }, [])
 
   useEffect(() => {
@@ -108,6 +148,23 @@ export function App() {
     void window.api.getEvents(id).then((list) => setEvents((all) => ({ ...all, [id]: list })))
   }, [feature, events])
 
+  const git = useGitStatus(feature?.id ?? null)
+
+  const toggleEditor = (id: string) => setEditors((all) => ({ ...all, [id]: !all[id] }))
+
+  // Ctrl+` as in most editors. Captured, or a focused terminal would take the key.
+  useEffect(() => {
+    if (!project || linearShown) return
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.ctrlKey || e.metaKey || e.altKey || e.code !== 'Backquote') return
+      e.preventDefault()
+      e.stopPropagation()
+      setTerminalOpen((open) => !open)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [project?.id, linearShown])
+
   function upsertProject(saved: Project) {
     setProjects((list) => (list.some((p) => p.id === saved.id) ? list.map((p) => (p.id === saved.id ? saved : p)) : [...list, saved]))
   }
@@ -125,7 +182,8 @@ export function App() {
         projects={projects}
         features={features}
         activeId={activeProjectId}
-        linearActive={showLinear}
+        linearAvailable={linear.connected}
+        linearActive={linearShown}
         onSelectLinear={() => setShowLinear(true)}
         onSelect={goToProject}
         onNew={() => setDialog({ kind: 'project' })}
@@ -136,47 +194,101 @@ export function App() {
         }}
       />
 
-      {showLinear ? (
+      {linearShown && (
         <LinearView
           linear={linear}
           projects={projects}
           features={features}
           onConnect={() => setDialog({ kind: 'linear' })}
-          onStart={(target, issue) => setDialog({ kind: 'feature', project: target, issue })}
+          onStart={(issue, repos) => {
+            const repositories = repos.length ? repos : projects
+            const target = repositories.find((p) => p.id === activeProjectId) ?? repositories[0]
+            setDialog({ kind: 'feature', project: target, issue, repositories })
+          }}
           onOpenFeature={showFeature}
-          onProjectChanged={upsertProject}
         />
-      ) : project ? (
-        <>
+      )}
+      {project ? (
+        // Kept mounted behind the Linear tab: editors hold unsaved changes.
+        <div className="project-view" hidden={linearShown}>
           <Sidebar
             project={project}
             features={projectFeatures}
             selectedId={feature?.id ?? null}
             onSelect={showFeature}
             onNew={() => setDialog({ kind: 'feature' })}
+            onLink={(f) => {
+              showFeature(f)
+              setLinkingId(f.id)
+            }}
             onEditProject={() => setDialog({ kind: 'project', project })}
+            onEditCommands={() => setDialog({ kind: 'launch', project })}
+            terminalOpen={terminalOpen}
+            onShowTerminal={() => setTerminalOpen(true)}
+            linearConnected={linear.connected}
           />
           <main className="main">
-            {feature ? (
-              <FeatureView
-                key={feature.id}
-                feature={feature}
-                project={project}
-                events={events[feature.id] ?? []}
-                stream={streams[feature.id] ?? ''}
-              />
-            ) : (
-              <div className="empty">
-                <h1>{t.empty.noFeatureTitle}</h1>
-                <p>{t.empty.noFeatureBody(project.name)}</p>
-                <button className="primary" onClick={() => setDialog({ kind: 'feature' })}>
-                  {t.sidebar.newFeature}
-                </button>
-              </div>
+            <div className="workspace">
+              {feature ? (
+                <FeatureView
+                  key={feature.id}
+                  feature={feature}
+                  project={project}
+                  events={events[feature.id] ?? []}
+                  stream={streams[feature.id] ?? ''}
+                  git={git}
+                  editorOpen={Boolean(editors[feature.id])}
+                  terminalOpen={terminalOpen}
+                  onToggleEditor={() => toggleEditor(feature.id)}
+                  onToggleTerminal={() => setTerminalOpen((open) => !open)}
+                  onShowChanges={() => {
+                    setEditors((all) => ({ ...all, [feature.id]: true }))
+                    setEditorPanel('changes')
+                  }}
+                  linearConnected={linear.connected}
+                  linking={linkingId === feature.id}
+                  onLinking={(open) => setLinkingId(open ? feature.id : null)}
+                />
+              ) : (
+                <div className="empty">
+                  <h1>{t.empty.noFeatureTitle}</h1>
+                  <p>{t.empty.noFeatureBody(project.name)}</p>
+                  <button className="primary" onClick={() => setDialog({ kind: 'feature' })}>
+                    {t.sidebar.newFeature}
+                  </button>
+                </div>
+              )}
+              {feature && editors[feature.id] && <div className="resizer vertical" onPointerDown={startEditorResize} />}
+              {features
+                .filter((f) => f.id in editors)
+                .map((f) => (
+                  <EditorPane
+                    key={f.id}
+                    feature={f}
+                    visible={f.id === feature?.id && editors[f.id]}
+                    width={editorWidth}
+                    git={f.id === feature?.id ? git : null}
+                    panel={editorPanel}
+                    onPanel={setEditorPanel}
+                  />
+                ))}
+            </div>
+            {terminalOpen && (
+              <>
+                <div className="resizer horizontal" onPointerDown={startTerminalResize} />
+                <TerminalPanel
+                  key={feature?.id ?? project.id}
+                  project={project}
+                  feature={feature}
+                  height={terminalHeight}
+                  onHide={() => setTerminalOpen(false)}
+                />
+              </>
             )}
           </main>
-        </>
+        </div>
       ) : (
+        !linearShown && (
         <main className="main wide">
           <div className="empty">
             <h1>{t.empty.firstProjectTitle}</h1>
@@ -186,6 +298,7 @@ export function App() {
             </button>
           </div>
         </main>
+        )
       )}
 
       <StatusBar
@@ -193,11 +306,18 @@ export function App() {
         linear={linear}
         onOpenLinear={() => setDialog({ kind: 'linear' })}
         onLanguage={changeLanguage}
+        version={version}
+        update={update}
+        onOpenUpdate={() => setDialog({ kind: 'update' })}
+        terminal={
+          project && !linearShown ? { open: terminalOpen, toggle: () => setTerminalOpen((open) => !open) } : undefined
+        }
       />
 
       {dialog?.kind === 'feature' && (dialog.project ?? project) && (
         <NewFeatureDialog
           project={(dialog.project ?? project)!}
+          repositories={dialog.repositories}
           linearConnected={linear.connected}
           initialIssue={dialog.issue}
           onClose={() => setDialog(null)}
@@ -219,7 +339,20 @@ export function App() {
           }}
         />
       )}
+      {dialog?.kind === 'launch' && (
+        <LaunchDialog
+          project={dialog.project}
+          onClose={() => setDialog(null)}
+          onSaved={(saved) => {
+            upsertProject(saved)
+            setDialog(null)
+          }}
+        />
+      )}
       {dialog?.kind === 'linear' && <LinearDialog status={linear} onChange={setLinear} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'update' && update && (
+        <UpdateDialog update={update} currentVersion={version} onClose={() => setDialog(null)} />
+      )}
       <ContextMenuHost />
       <ConfirmHost />
     </div>

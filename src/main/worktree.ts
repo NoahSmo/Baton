@@ -6,9 +6,15 @@ import { promisify } from 'node:util'
 
 const exec = promisify(execFile)
 
-async function git(cwd: string, ...args: string[]): Promise<string> {
+export async function git(cwd: string, ...args: string[]): Promise<string> {
   const { stdout } = await exec('git', args, { cwd })
   return stdout.trim()
+}
+
+/** Asks the remotes what they hold now. Offline or signed out, what was last known stands. */
+export async function fetchRemotes(repo: string): Promise<void> {
+  const env = { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+  await exec('git', ['fetch', '--all', '--prune', '--quiet'], { cwd: repo, env, timeout: 60_000 }).catch(() => undefined)
 }
 
 export async function isGitRepo(path: string): Promise<boolean> {

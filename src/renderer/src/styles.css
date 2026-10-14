@@ -131,6 +131,11 @@ pre {
   -webkit-app-region: drag;
 }
 
+:root[data-mac='false'] .topbar {
+  padding-left: 8px;
+  -webkit-app-region: no-drag;
+}
+
 .tabs {
   display: flex;
   align-items: stretch;
@@ -238,7 +243,6 @@ pre {
 }
 
 .statusbar-linear {
-  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -373,12 +377,222 @@ button.icon {
   flex: 1;
 }
 
-.sidebar-project {
+.sidebar-project,
+.sidebar-section {
+  flex: none;
   border-top: 1px solid var(--border);
   padding: 10px 12px 12px 16px;
 }
 
-.sidebar-project-head {
+.sidebar-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sidebar-note.error {
+  color: var(--red);
+}
+
+.sidebar-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-section-actions button:not(.icon) {
+  height: 24px;
+  padding: 0 9px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* One command per line: what it is, whether it runs, the way to start or stop it. */
+.launch-list {
+  max-height: 132px;
+  overflow-y: auto;
+  margin: 8px -4px 0 -8px;
+}
+
+.launch-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 2px 4px 2px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+}
+
+.launch-item:hover,
+.launch-item:focus-visible {
+  background: var(--raised);
+}
+
+.launch-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.launch-state {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.launch-toggle {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--green);
+}
+
+.launch-toggle.stop {
+  color: var(--red);
+}
+
+.terminal-row-glyph {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--green);
+}
+
+.launch-name,
+.terminal-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-rows {
+  max-height: 132px;
+  overflow-y: auto;
+  margin: 8px 0 0 -8px;
+}
+
+.terminal-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  outline: none;
+}
+
+.terminal-row:hover,
+.terminal-row:focus-visible {
+  color: var(--text);
+}
+
+.terminal-row.selected {
+  background: var(--raised);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.terminal-row-name {
+  flex: 1;
+}
+
+.launch-auto {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.launch-auto .hint {
+  margin-top: 4px;
+}
+
+.launch-auto button {
+  flex: none;
+  white-space: nowrap;
+}
+
+.launch-proposal {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.launch-proposal-notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 2px solid var(--amber);
+  background: var(--raised);
+  font-size: 12px;
+}
+
+.launch-proposal-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.launch-proposal-item code {
+  padding: 7px 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  /* Shown in full, however long: it is read before it is kept. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.launch-proposal .dialog-actions {
+  margin-top: 14px;
+}
+
+.launch-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.launch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.launch-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.launch-row input.launch-row-name {
+  flex: none;
+  width: 150px;
+}
+
+.sidebar-project-head,
+.sidebar-section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -443,6 +657,11 @@ button.link:hover:not(:disabled) {
 
 .dot.limited {
   background: var(--purple);
+}
+
+.dot.queued {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--blue);
 }
 
 @keyframes pulse {
@@ -816,16 +1035,50 @@ button.link:hover:not(:disabled) {
 
 .composer {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
   gap: 8px;
-  padding: 12px 20px 16px;
+  padding: 12px 20px 12px;
   max-width: 820px;
   width: 100%;
   margin: 0 auto;
 }
 
-.composer button {
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.composer-row button {
   padding: 9px 16px;
+}
+
+.composer-modes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.composer-modes > span {
+  margin-right: 4px;
+}
+
+.composer-modes > .composer-modes-sep {
+  margin-left: 12px;
+}
+
+.feature-meta .num.heavy {
+  color: var(--amber);
+}
+
+/* Bypass is the one mode that runs anything unattended: it must not look like the others. */
+.filter.bypassPermissions.selected,
+.filter.bypassPermissions.selected:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
 }
 
 .composer textarea {
@@ -833,6 +1086,106 @@ button.link:hover:not(:disabled) {
   padding: 11px 14px;
   border-radius: var(--radius);
   border-color: var(--border-strong);
+}
+
+/* Attachments */
+
+.composer-row button.attach,
+button.attach {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  color: var(--muted);
+}
+
+button.attach:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attachment {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.attachment img {
+  display: block;
+  height: 64px;
+  max-width: 160px;
+  object-fit: cover;
+}
+
+.attachment.file {
+  display: flex;
+  align-items: center;
+  height: 66px;
+  max-width: 200px;
+  padding: 0 26px 0 10px;
+}
+
+.attachment-name {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment > button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  line-height: 1;
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+.attachments.sent {
+  margin-bottom: 6px;
+  justify-content: flex-end;
+}
+
+.attachments.sent:last-child {
+  margin-bottom: 0;
+}
+
+.attachments.sent .attachment img {
+  height: auto;
+  max-height: 220px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* A sent document is a button of its own: it opens the file. */
+.attachments.sent .attachment.file {
+  height: auto;
+  padding: 5px 10px;
+}
+
+.attachment.missing {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dialog-attach {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 /* Dialog */
@@ -1078,6 +1431,16 @@ input.mono {
 
 /* Language switch */
 
+.statusbar-warning {
+  color: var(--amber);
+}
+
+.max-running {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .lang-switch {
   display: inline-flex;
   border: 1px solid var(--border);
@@ -1224,19 +1587,6 @@ input.mono {
   text-overflow: ellipsis;
 }
 
-.linear-repo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.linear-repo select {
-  width: 180px;
-  padding: 4px 8px;
-}
-
 .linear-tools {
   padding: 12px 20px 4px;
 }
@@ -1358,4 +1708,519 @@ button.danger-fill {
 button.danger-fill:hover:not(:disabled) {
   background: #ee9590;
   border-color: #ee9590;
+}
+
+/* Version and updates */
+
+.statusbar-right {
+  margin-left: auto;
+}
+
+.statusbar-update {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 0 9px;
+  font: inherit;
+}
+
+.update-notes,
+.update-command {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.update-notes {
+  max-height: 220px;
+  overflow-y: auto;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.button-link {
+  color: var(--accent);
+  text-decoration: none;
+  align-self: center;
+}
+
+.button-link:hover {
+  text-decoration: underline;
+}
+
+.dialog-actions .spacer {
+  flex: 1;
+}
+
+/* Workspace: conversation, editor and terminal panel */
+
+.project-view {
+  display: contents;
+}
+
+.project-view[hidden] {
+  display: none;
+}
+
+.workspace {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.workspace > .feature {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Next to an open editor the header runs out of room: the actions drop under the title. */
+.feature-head {
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+
+.feature-head-main {
+  flex-basis: 220px;
+}
+
+.feature-meta {
+  overflow: hidden;
+}
+
+.feature-actions button {
+  white-space: nowrap;
+}
+
+button.toggled,
+button.toggled:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.resizer {
+  flex: none;
+  position: relative;
+  z-index: 2;
+  background: var(--border);
+  transition: background 0.12s;
+}
+
+.resizer.vertical {
+  width: 1px;
+  cursor: col-resize;
+}
+
+.resizer.horizontal {
+  height: 1px;
+  cursor: row-resize;
+}
+
+/* The line stays hairline-thin; this is what the pointer grabs. */
+.resizer::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+}
+
+.resizer:hover,
+.resizer.dragging {
+  background: var(--accent);
+}
+
+/* Editor */
+
+.editor {
+  flex: none;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor[hidden],
+.editor-code[hidden] {
+  display: none;
+}
+
+.editor-tree {
+  flex: none;
+  width: 210px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+
+.editor-tree-head {
+  padding: 11px 12px 8px;
+}
+
+.editor-tree-list {
+  flex: 1;
+  overflow: auto;
+  padding-bottom: 10px;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 2px 10px;
+  text-align: left;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tree-row.selected,
+.tree-row.selected:hover:not(:disabled) {
+  background: var(--raised);
+}
+
+.tree-arrow {
+  flex: none;
+  width: 10px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-name.dir {
+  color: var(--muted);
+}
+
+.editor-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor-tabs,
+.terminal-tabs {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding-right: 8px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-tablist,
+.terminal-tablist {
+  flex: 1;
+  display: flex;
+  align-self: stretch;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.editor-tab,
+.terminal-tab {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 200px;
+  padding: 0 6px 0 12px;
+  border-right: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+.editor-tab:hover,
+.terminal-tab:hover,
+.editor-tab:focus-visible,
+.terminal-tab:focus-visible {
+  color: var(--text);
+}
+
+.editor-tab.selected,
+.terminal-tab.selected {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.editor-tab-name,
+.terminal-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-tab-dirty {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.editor-tab-close,
+.terminal-tab-close {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.editor-save,
+.terminal-action {
+  flex: none;
+  padding: 2px 9px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.editor-notice,
+.terminal-error {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--amber) 10%, var(--panel));
+  color: var(--amber);
+  font-size: 12px;
+}
+
+.editor-notice.error,
+.terminal-error {
+  background: color-mix(in srgb, var(--red) 10%, var(--panel));
+  color: var(--red);
+}
+
+.editor-notice button {
+  padding: 1px 8px;
+  color: var(--text);
+}
+
+.editor-code {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor-empty {
+  margin: auto;
+  padding: 20px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Terminal panel */
+
+.terminal-panel {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.terminal-host {
+  flex: 1;
+  min-height: 0;
+  padding: 6px 0 4px 10px;
+  background: var(--bg);
+}
+
+.terminal-screen {
+  width: 100%;
+  height: 100%;
+}
+
+/* Git */
+
+.branch-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 6px;
+  background: transparent;
+  color: inherit;
+}
+
+.branch-button code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.branch-caret {
+  flex: none;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.branch-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 320px;
+  max-height: 380px;
+}
+
+.branch-list {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.branch-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* The branch already checked out reads as a mark, not as something unavailable. */
+.branch-item.current:disabled {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.branch-check {
+  flex: none;
+  width: 12px;
+}
+
+.branch-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.branch-tag {
+  flex: none;
+  max-width: 130px;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.branch-note {
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.branch-note.error {
+  color: var(--red);
+}
+
+.editor-tree-head {
+  display: flex;
+  gap: 12px;
+}
+
+.tree-tab {
+  padding: 0 0 3px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  opacity: 0.6;
+}
+
+.tree-tab:hover:not(:disabled) {
+  background: transparent;
+  opacity: 1;
+}
+
+.tree-tab.selected {
+  border-bottom-color: var(--accent);
+  opacity: 1;
+}
+
+.tree-empty {
+  margin: 0;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.change-mark {
+  flex: none;
+  width: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.change-dir {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* A changed file shows its name whole as long as it can; its folder gives way first. */
+.change-mark + .tree-name {
+  flex: none;
+  max-width: 75%;
+}
+
+.tree-name.inside,
+.tree-name.modified,
+.tree-name.renamed,
+.change-mark.modified,
+.change-mark.renamed {
+  color: var(--amber);
+}
+
+.tree-name.dir.inside {
+  color: color-mix(in srgb, var(--amber) 55%, var(--muted));
+}
+
+.tree-name.added,
+.tree-name.untracked,
+.change-mark.added,
+.change-mark.untracked {
+  color: var(--green);
+}
+
+.tree-name.deleted,
+.tree-name.conflicted,
+.change-mark.deleted,
+.change-mark.conflicted {
+  color: var(--red);
+}
+
+.tree-name.deleted {
+  text-decoration: line-through;
 }

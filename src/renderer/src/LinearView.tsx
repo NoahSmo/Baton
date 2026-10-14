@@ -10,12 +10,12 @@ interface Props {
   projects: Project[]
   features: Feature[]
   onConnect(): void
-  onStart(project: Project, issue: LinearIssue): void
+  /** `repos` are the repositories the issue's labels point at; with none or several, the user picks. */
+  onStart(issue: LinearIssue, repos: Project[]): void
   onOpenFeature(feature: Feature): void
-  onProjectChanged(project: Project): void
 }
 
-export function LinearView({ linear, projects, features, onConnect, onStart, onOpenFeature, onProjectChanged }: Props) {
+export function LinearView({ linear, projects, features, onConnect, onStart, onOpenFeature }: Props) {
   const t = useT()
   const [linearProjects, setLinearProjects] = useState<LinearProject[] | null>(null)
   /** Selected Linear project; null shows the issues assigned to the user. */
@@ -71,29 +71,12 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
     )
   }
 
-  const repoFor = (linearProjectId: string | null) =>
-    linearProjectId ? projects.find((p) => p.linearProject?.id === linearProjectId) : undefined
-  const selectedProject = linearProjects?.find((p) => p.id === selectedId) ?? null
-  const selectedRepo = repoFor(selectedId)
-
-  async function linkRepo(repoId: string) {
-    if (!selectedProject) return
-    setError('')
-    try {
-      // One repository per Linear project: starting a feature must know where to go.
-      if (selectedRepo && selectedRepo.id !== repoId) {
-        const { name, color } = selectedRepo
-        onProjectChanged(await window.api.updateProject(selectedRepo.id, { name, color, linearProject: null }))
-      }
-      const repo = projects.find((p) => p.id === repoId)
-      if (repo) {
-        const { name, color } = repo
-        onProjectChanged(await window.api.updateProject(repo.id, { name, color, linearProject: selectedProject }))
-      }
-    } catch (err) {
-      setError(cleanError(err))
-    }
+  /** Repositories linked to one of the labels the Linear project carries. */
+  const reposFor = (linearProjectId: string | null) => {
+    const labels = linearProjects?.find((p) => p.id === linearProjectId)?.labels ?? []
+    return projects.filter((p) => labels.some((l) => l.id === p.linearLabel?.id))
   }
+  const selectedProject = linearProjects?.find((p) => p.id === selectedId) ?? null
 
   async function changeState(issue: LinearIssue, stateId: string) {
     const state = teamStates[issue.teamId]?.find((s) => s.id === stateId)
@@ -121,7 +104,7 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
         <h2 className="sidebar-title">{t.linearView.projects}</h2>
         {!linearProjects && <p className="hint">{t.project.loading}</p>}
         {linearProjects?.map((p) => {
-          const repo = repoFor(p.id)
+          const repos = reposFor(p.id)
           return (
             <button
               key={p.id}
@@ -132,11 +115,15 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
               }}
             >
               <span className="linear-project-name">{p.name}</span>
-              {repo && (
-                <span className="linear-project-repo" style={{ '--tab-color': repo.color } as React.CSSProperties}>
+              {repos.map((repo) => (
+                <span
+                  key={repo.id}
+                  className="linear-project-repo"
+                  style={{ '--tab-color': repo.color } as React.CSSProperties}
+                >
                   <span className="swatch" /> {repo.name}
                 </span>
-              )}
+              ))}
             </button>
           )
         })}
@@ -146,21 +133,13 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
         <header className="linear-head">
           <div className="linear-head-main">
             <h1>{selectedProject?.name ?? t.linearView.myIssues}</h1>
-            <p className="feature-meta">{issues ? t.linearView.issues(issues.length) : t.project.loading}</p>
+            <p className="feature-meta">
+              {[
+                issues ? t.linearView.issues(issues.length) : t.project.loading,
+                ...(selectedProject?.labels.map((l) => l.name) ?? [])
+              ].join(' · ')}
+            </p>
           </div>
-          {selectedProject && (
-            <label className="linear-repo">
-              {t.linearView.repository}
-              <select value={selectedRepo?.id ?? ''} onChange={(e) => void linkRepo(e.target.value)}>
-                <option value="">{t.linearView.noRepository}</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           <button onClick={() => setReload((n) => n + 1)}>{t.linearView.refresh}</button>
         </header>
 
@@ -170,12 +149,14 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
         </div>
 
         {error && <p className="form-error linear-error">{error}</p>}
-        {selectedProject && !selectedRepo && <p className="hint linear-hint">{t.linearView.needRepository}</p>}
+        {selectedProject && !reposFor(selectedId).length && projects.length > 1 && (
+          <p className="hint linear-hint">{t.linearView.needRepository}</p>
+        )}
 
         <div className="linear-list">
           {shown.map((issue) => {
             const feature = features.find((f) => f.linear?.issueId === issue.id)
-            const repo = repoFor(selectedId ?? issue.linearProjectId)
+            const repos = reposFor(issue.linearProjectId)
             const states = teamStates[issue.teamId]
             return (
               <div
@@ -212,9 +193,9 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
                 ) : (
                   <button
                     className="linear-action primary"
-                    disabled={!repo}
-                    title={repo ? repo.name : t.linearView.needRepository}
-                    onClick={() => repo && onStart(repo, issue)}
+                    disabled={!projects.length}
+                    title={projects.length ? repos.map((r) => r.name).join(', ') || undefined : t.linearView.needProject}
+                    onClick={() => onStart(issue, repos)}
                   >
                     {t.linearView.startFeature}
                   </button>

@@ -15,8 +15,8 @@ describe('dictionaries', () => {
   it('agree in French on singular and plural', () => {
     expect(DICTS.fr.project.gitDetected('main', 1)).toBe('Dépôt git détecté · branche main · 1 fichier modifié')
     expect(DICTS.fr.project.gitDetected(null, 5)).toBe('Dépôt git détecté · 5 fichiers modifiés')
-    expect(DICTS.fr.statusbar.done(0)).toBe('0 terminée')
-    expect(DICTS.fr.statusbar.done(2)).toBe('2 terminées')
+    expect(DICTS.fr.statusbar.done(0)).toBe('0 terminé')
+    expect(DICTS.fr.statusbar.done(2)).toBe('2 terminés')
   })
 })
 

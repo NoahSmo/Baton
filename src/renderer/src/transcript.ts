@@ -1,8 +1,8 @@
 import type { Dict, Lang } from '../../shared/i18n'
-import type { Notice, Question, StoredEvent } from '../../shared/types'
+import type { FileRef, ImageRef, Notice, Question, StoredEvent } from '../../shared/types'
 
 export type Item =
-  | { type: 'user'; seq: number; text: string }
+  | { type: 'user'; seq: number; text: string; images: ImageRef[]; files: FileRef[] }
   | { type: 'assistant'; seq: number; text: string }
   | {
       type: 'tool'
@@ -51,6 +51,10 @@ function noticeText(notice: Notice, t: Dict): string {
       return t.notice.linearMoved(notice.identifier, notice.state)
     case 'linear_failed':
       return t.notice.linearFailed(notice.identifier, notice.reason)
+    case 'context_compacted':
+      return t.notice.contextCompacted(notice.preTokens, notice.postTokens)
+    case 'queued':
+      return t.notice.queued(notice.maxRunning)
   }
 }
 
@@ -60,6 +64,8 @@ export function buildTranscript(events: StoredEvent[], t: Dict, lang: Lang): Tra
   const tools = new Map<string, Extract<Item, { type: 'tool' }>>()
   const permissions = new Map<string, Extract<Item, { type: 'permission' }>>()
   let todos: Todo[] = []
+  /** Reset time of the usage window already warned about, to warn once per window. */
+  let warnedReset: number | undefined | null = null
   const orphanOpenTools = () => {
     for (const tool of tools.values()) if (!tool.result) tool.orphaned = true
   }
@@ -67,7 +73,7 @@ export function buildTranscript(events: StoredEvent[], t: Dict, lang: Lang): Tra
   for (const { seq, event: ev } of events) {
     switch (ev.kind) {
       case 'user':
-        items.push({ type: 'user', seq, text: ev.text })
+        items.push({ type: 'user', seq, text: ev.text, images: ev.images ?? [], files: ev.files ?? [] })
         break
       case 'assistant_text':
         items.push({ type: 'assistant', seq, text: ev.text })
@@ -121,7 +127,8 @@ export function buildTranscript(events: StoredEvent[], t: Dict, lang: Lang): Tra
       case 'rate_limit':
         if (ev.status === 'rejected') {
           items.push({ type: 'note', seq, tone: 'error', text: t.notice.limitReached(formatTime(ev.resetsAt, lang)) })
-        } else if (ev.status === 'allowed_warning') {
+        } else if (ev.status === 'allowed_warning' && warnedReset !== ev.resetsAt) {
+          warnedReset = ev.resetsAt
           items.push({ type: 'note', seq, tone: 'warn', text: t.notice.limitNear(formatTime(ev.resetsAt, lang)) })
         }
         break

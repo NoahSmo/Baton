@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite'
-import { PROJECT_COLORS, type Feature, type Project, type StoredEvent, type UiEvent } from '../shared/types'
+import { AGENT_MODELS, DEFAULT_AGENT_MODEL, PROJECT_COLORS, type AgentModel, type Feature, type LaunchCommand, type Project, type StoredEvent, type UiEvent } from '../shared/types'
 
 type Row = Record<string, unknown>
 
@@ -9,9 +9,8 @@ function toProject(r: Row): Project {
     name: r.name as string,
     path: r.path as string,
     color: (r.color as string | null) ?? PROJECT_COLORS[0],
-    linearProject: r.linear_project_id
-      ? { id: r.linear_project_id as string, name: r.linear_project_name as string }
-      : null
+    linearLabel: r.linear_label_id ? { id: r.linear_label_id as string, name: r.linear_label_name as string } : null,
+    commands: r.commands ? (JSON.parse(r.commands as string) as LaunchCommand[]) : []
   }
 }
 
@@ -31,9 +30,11 @@ function toFeature(r: Row): Feature {
     worktreePath: r.worktree_path as string,
     status: r.status as Feature['status'],
     permissionMode: r.permission_mode as Feature['permissionMode'],
+    agentModel: AGENT_MODELS.includes(r.agent_model as AgentModel) ? (r.agent_model as AgentModel) : DEFAULT_AGENT_MODEL,
     sessionId: (r.session_id as string | null) ?? null,
     model: (r.model as string | null) ?? null,
     costUsd: r.cost_usd as number,
+    contextTokens: (r.context_tokens as number | null) ?? 0,
     limitResetsAt: (r.limit_resets_at as number | null) ?? null,
     createdAt: r.created_at as number,
     updatedAt: r.updated_at as number
@@ -75,8 +76,14 @@ export class Store {
       );
       CREATE INDEX IF NOT EXISTS events_feature ON events(feature_id, seq);
     `)
-    this.addColumns('features', ['linear_issue_id TEXT', 'linear_identifier TEXT', 'linear_url TEXT'])
-    this.addColumns('projects', ['color TEXT', 'linear_project_id TEXT', 'linear_project_name TEXT'])
+    this.addColumns('features', [
+      'linear_issue_id TEXT',
+      'linear_identifier TEXT',
+      'linear_url TEXT',
+      'agent_model TEXT',
+      'context_tokens INTEGER'
+    ])
+    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'commands TEXT'])
   }
 
   /** Columns added after the first release; databases created before them are upgraded in place. */
@@ -103,14 +110,14 @@ export class Store {
 
   insertProject(p: Project): void {
     this.db
-      .prepare('INSERT INTO projects (id, name, path, color, linear_project_id, linear_project_name) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(p.id, p.name, p.path, p.color, p.linearProject?.id ?? null, p.linearProject?.name ?? null)
+      .prepare('INSERT INTO projects (id, name, path, color, linear_label_id, linear_label_name) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(p.id, p.name, p.path, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null)
   }
 
   updateProject(p: Project): void {
     this.db
-      .prepare('UPDATE projects SET name = ?, color = ?, linear_project_id = ?, linear_project_name = ? WHERE id = ?')
-      .run(p.name, p.color, p.linearProject?.id ?? null, p.linearProject?.name ?? null, p.id)
+      .prepare('UPDATE projects SET name = ?, color = ?, linear_label_id = ?, linear_label_name = ?, commands = ? WHERE id = ?')
+      .run(p.name, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null, JSON.stringify(p.commands), p.id)
   }
 
   deleteProject(id: string): void {
@@ -131,8 +138,8 @@ export class Store {
       .prepare(
         `INSERT INTO features (id, project_id, title, branch, worktree_path, status, permission_mode,
            session_id, model, cost_usd, limit_resets_at, created_at, updated_at,
-           linear_issue_id, linear_identifier, linear_url)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           linear_issue_id, linear_identifier, linear_url, agent_model, context_tokens)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         f.id,
@@ -150,17 +157,37 @@ export class Store {
         f.updatedAt,
         f.linear?.issueId ?? null,
         f.linear?.identifier ?? null,
-        f.linear?.url ?? null
+        f.linear?.url ?? null,
+        f.agentModel,
+        f.contextTokens
       )
   }
 
   updateFeature(f: Feature): void {
     this.db
       .prepare(
-        `UPDATE features SET title = ?, status = ?, session_id = ?, model = ?, cost_usd = ?, limit_resets_at = ?, updated_at = ?
+        `UPDATE features SET title = ?, branch = ?, status = ?, permission_mode = ?, session_id = ?, model = ?, cost_usd = ?,
+           limit_resets_at = ?, updated_at = ?, linear_issue_id = ?, linear_identifier = ?, linear_url = ?,
+           agent_model = ?, context_tokens = ?
          WHERE id = ?`
       )
-      .run(f.title, f.status, f.sessionId, f.model, f.costUsd, f.limitResetsAt, f.updatedAt, f.id)
+      .run(
+        f.title,
+        f.branch,
+        f.status,
+        f.permissionMode,
+        f.sessionId,
+        f.model,
+        f.costUsd,
+        f.limitResetsAt,
+        f.updatedAt,
+        f.linear?.issueId ?? null,
+        f.linear?.identifier ?? null,
+        f.linear?.url ?? null,
+        f.agentModel,
+        f.contextTokens,
+        f.id
+      )
   }
 
   deleteFeature(id: string): void {
@@ -174,6 +201,14 @@ export class Store {
       .prepare('INSERT INTO events (feature_id, at, payload) VALUES (?, ?, ?)')
       .run(featureId, at, JSON.stringify(event))
     return { seq: Number(res.lastInsertRowid), featureId, at, event }
+  }
+
+  /** When the agent or the user last did anything, in epoch milliseconds. App notices do not count: no request went out. */
+  lastEventAt(featureId: string): number | null {
+    const row = this.db
+      .prepare(`SELECT MAX(at) AS at FROM events WHERE feature_id = ? AND json_extract(payload, '$.kind') != 'notice'`)
+      .get(featureId) as Row | undefined
+    return (row?.at as number | null) ?? null
   }
 
   listEvents(featureId: string): StoredEvent[] {

@@ -1,13 +1,24 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { issuePrompt } from '../../shared/linear'
-import type { Feature, LinearIssue, PermissionMode, Project } from '../../shared/types'
+import {
+  AGENT_MODELS,
+  DEFAULT_AGENT_MODEL,
+  PERMISSION_MODES,
+  type AgentModel,
+  type Feature,
+  type LinearIssue,
+  type PermissionMode,
+  type Project
+} from '../../shared/types'
+import { AttachButton, DraftAttachments } from './Attachments'
 import { useT } from './i18n'
 import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
-
-const MODES: PermissionMode[] = ['default', 'acceptEdits', 'plan', 'bypassPermissions']
+import { toMessageAttachments, useAttachments } from './useAttachments'
 
 interface Props {
   project: Project
+  /** Repositories to choose from, when the issue does not point at one. */
+  repositories?: Project[]
   linearConnected: boolean
   /** Issue to start from, when the dialog is opened from the Linear tab. */
   initialIssue?: LinearIssue
@@ -15,11 +26,21 @@ interface Props {
   onCreated(feature: Feature): void
 }
 
-export function NewFeatureDialog({ project, linearConnected, initialIssue, onClose, onCreated }: Props) {
+export function NewFeatureDialog({
+  project: initialProject,
+  repositories = [],
+  linearConnected,
+  initialIssue,
+  onClose,
+  onCreated
+}: Props) {
   const t = useT()
+  const [project, setProject] = useState(initialProject)
   const [title, setTitle] = useState(initialIssue ? `${initialIssue.identifier} ${initialIssue.title}` : '')
   const [prompt, setPrompt] = useState(initialIssue ? issuePrompt(initialIssue) : '')
+  const attachments = useAttachments()
   const [mode, setMode] = useState<PermissionMode>('default')
+  const [model, setModel] = useState<AgentModel>(DEFAULT_AGENT_MODEL)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [issues, setIssues] = useState<LinearIssue[] | null>(null)
@@ -28,12 +49,23 @@ export function NewFeatureDialog({ project, linearConnected, initialIssue, onClo
   const [stateFilter, setStateFilter] = useState<string[]>([])
   const [issue, setIssue] = useState<LinearIssue | null>(initialIssue ?? null)
 
-  const linearProject = project.linearProject
+  const linearLabel = project.linearLabel
 
   useEffect(() => {
-    if (!linearConnected) return
-    window.api.linearIssues(linearProject?.id).then(setIssues, (err) => setIssuesError(cleanError(err)))
-  }, [linearConnected, linearProject?.id])
+    // A repository linked to a Linear label starts its agents from the issues of that label;
+    // any other gets a title and a prompt written by hand.
+    if (!linearConnected || !linearLabel) return
+    let stale = false
+    setIssues(null)
+    setIssuesError('')
+    window.api.linearLabelIssues(linearLabel.id).then(
+      (list) => !stale && setIssues(list),
+      (err) => !stale && setIssuesError(cleanError(err))
+    )
+    return () => {
+      stale = true
+    }
+  }, [linearConnected, linearLabel?.id])
 
   function pickIssue(picked: LinearIssue) {
     setIssue(picked)
@@ -53,7 +85,9 @@ export function NewFeatureDialog({ project, linearConnected, initialIssue, onClo
         projectId: project.id,
         title,
         prompt,
+        attachments: toMessageAttachments(attachments.drafts),
         permissionMode: mode,
+        agentModel: model,
         ...(issue ? { linearIssue: issue } : {})
       }
       onCreated(await window.api.createFeature(input))
@@ -70,9 +104,26 @@ export function NewFeatureDialog({ project, linearConnected, initialIssue, onClo
           {t.newFeature.title} <span className="dialog-context">{t.newFeature.inProject(project.name)}</span>
         </h2>
 
-        {linearConnected && (
+        {repositories.length > 1 && (
           <>
-            <label>{linearProject ? t.newFeature.issueOf(linearProject.name) : t.newFeature.issueMine}</label>
+            <label htmlFor="nf-repo">{t.linearView.repository}</label>
+            <select
+              id="nf-repo"
+              value={project.id}
+              onChange={(e) => setProject(repositories.find((p) => p.id === e.target.value) ?? project)}
+            >
+              {repositories.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
+        {linearConnected && (linearLabel || issue) && (
+          <>
+            <label>{linearLabel ? t.newFeature.issueOf(linearLabel.name) : t.newFeature.linearIssue}</label>
             {issue ? (
               <div className="issue-picked">
                 <span className="issue-id">{issue.identifier}</span>
@@ -101,10 +152,8 @@ export function NewFeatureDialog({ project, linearConnected, initialIssue, onClo
                       <span className="issue-state">{i.stateName}</span>
                     </button>
                   ))}
-                  {!shownIssues.length && (
-                    <p className="hint">
-                      {linearProject ? t.newFeature.noIssueIn(linearProject.name) : t.newFeature.noIssueMine}
-                    </p>
+                  {!shownIssues.length && linearLabel && (
+                    <p className="hint">{t.newFeature.noIssueIn(linearLabel.name)}</p>
                   )}
                 </div>
               </>
@@ -127,12 +176,19 @@ export function NewFeatureDialog({ project, linearConnected, initialIssue, onClo
           rows={6}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
+          onPaste={attachments.onPaste}
+          onDragOver={attachments.onDragOver}
+          onDrop={attachments.onDrop}
           placeholder={t.newFeature.promptPlaceholder}
         />
+        <div className="dialog-attach">
+          <AttachButton onPick={(files) => void attachments.add(files)} />
+          <DraftAttachments drafts={attachments.drafts} rejected={attachments.rejected} onRemove={attachments.remove} />
+        </div>
 
         <label>{t.newFeature.permissions}</label>
         <div className="modes">
-          {MODES.map((m) => (
+          {PERMISSION_MODES.map((m) => (
             <button
               type="button"
               key={m}
@@ -145,6 +201,22 @@ export function NewFeatureDialog({ project, linearConnected, initialIssue, onClo
           ))}
         </div>
         <p className="hint">{t.modes[mode].hint}</p>
+
+        <label>{t.newFeature.model}</label>
+        <div className="modes">
+          {AGENT_MODELS.map((m) => (
+            <button
+              type="button"
+              key={m}
+              className={`mode${model === m ? ' selected' : ''}`}
+              onClick={() => setModel(m)}
+              title={t.models[m].hint}
+            >
+              {t.models[m].label}
+            </button>
+          ))}
+        </div>
+        <p className="hint">{t.models[model].hint}</p>
 
         {error && <p className="form-error">{error}</p>}
 

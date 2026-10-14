@@ -15,29 +15,33 @@ const feature = (over: Partial<Feature> = {}): Feature => ({
   worktreePath: '/tmp/wt',
   status: 'idle',
   permissionMode: 'default',
+  agentModel: 'sonnet',
   sessionId: null,
   model: null,
   costUsd: 0,
+  contextTokens: 0,
   limitResetsAt: null,
   createdAt: 0,
   updatedAt: 0,
   ...over
 })
 
-function context(state: AppState, lang: 'en' | 'fr' = 'en') {
+function context(state: AppState, lang: 'en' | 'fr' = 'en', linearConnected = false) {
   const chosen: MenuAction[] = []
+  const unlinked: string[] = []
   const removed: string[] = []
   const ctx: MenuContext = {
     t: DICTS[lang],
-    manager: { getState: () => state, interrupt: vi.fn() } as unknown as MenuContext['manager'],
+    manager: { getState: () => state, interrupt: vi.fn(), linkIssue: (id: string) => unlinked.push(id) } as unknown as MenuContext['manager'],
+    linearConnected,
     removeFeature: (id) => removed.push(`feature:${id}`),
     removeProject: (id) => removed.push(`project:${id}`),
     choose: (action) => chosen.push(action)
   }
-  return { ctx, chosen, removed }
+  return { ctx, chosen, removed, unlinked }
 }
 
-const project = { id: 'p1', name: 'App', path: '/repo', color: '#fff', linearProject: null }
+const project = { id: 'p1', name: 'App', path: '/repo', color: '#fff', linearLabel: null }
 const labels = (items: { label?: string; type?: string }[]) => items.filter((i) => i.type !== 'separator').map((i) => i.label)
 const item = (items: { label?: string }[], label: string) => items.find((i) => i.label === label) as any
 
@@ -55,6 +59,19 @@ describe('feature menu', () => {
     const without = contextMenuTemplate({ kind: 'feature', featureId: 'f1' }, context({ projects: [project], features: [feature()] }).ctx)
     expect(labels(withIssue)).toContain('Open ENG-1 in Linear')
     expect(labels(without).some((l) => l?.includes('Linear'))).toBe(false)
+  })
+
+  it('offers to link an agent to an issue once Linear is connected, and to unlink a linked one', () => {
+    const free = context({ projects: [project], features: [feature()] }, 'en', true)
+    item(contextMenuTemplate({ kind: 'feature', featureId: 'f1' }, free.ctx), 'Link to a Linear issue…').click()
+    expect(free.chosen).toEqual(['link-feature'])
+
+    const linked = feature({ linear: { issueId: 'i1', identifier: 'ENG-1', url: 'https://linear.app/x' } })
+    const tied = context({ projects: [project], features: [linked] }, 'en', true)
+    const items = contextMenuTemplate({ kind: 'feature', featureId: 'f1' }, tied.ctx)
+    expect(labels(items)).not.toContain('Link to a Linear issue…')
+    item(items, 'Unlink from ENG-1').click()
+    expect(tied.unlinked).toEqual(['f1'])
   })
 
   it('hands rename back to the renderer and routes delete through confirmation', () => {
@@ -82,7 +99,7 @@ describe('project menu', () => {
 
   it('is translated', () => {
     const items = contextMenuTemplate({ kind: 'project', projectId: 'p1' }, context({ projects: [project], features: [] }, 'fr').ctx)
-    expect(labels(items)).toEqual(expect.arrayContaining(['Nouvelle feature', 'Réglages du projet…', 'Copier le chemin', 'Retirer le projet…']))
+    expect(labels(items)).toEqual(expect.arrayContaining(['Nouvel agent', 'Réglages du projet…', 'Copier le chemin', 'Retirer le projet…']))
   })
 })
 

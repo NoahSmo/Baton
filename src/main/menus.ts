@@ -7,6 +7,8 @@ import type { Manager } from './manager'
 export interface MenuContext {
   t: Dict
   manager: Manager
+  /** Issues can only be picked while Linear is connected. */
+  linearConnected: boolean
   /** Ask for confirmation, then delete. */
   removeFeature(featureId: string): void
   removeProject(projectId: string): void
@@ -53,8 +55,13 @@ export function contextMenuTemplate(spec: ContextMenuSpec, ctx: MenuContext): Me
         { label: t.feature.openFolder, click: () => void shell.openPath(feature.worktreePath) },
         ...(isMac ? [{ label: t.menu.openTerminal, click: () => openInTerminal(feature.worktreePath) }] : []),
         ...(linear
-          ? [{ label: t.menu.openIssue(linear.identifier), click: () => void shell.openExternal(linear.url) }]
-          : []),
+          ? [
+              { label: t.menu.openIssue(linear.identifier), click: () => void shell.openExternal(linear.url) },
+              { label: t.menu.unlinkIssue(linear.identifier), click: () => manager.linkIssue(feature.id, null) }
+            ]
+          : ctx.linearConnected
+            ? [{ label: t.menu.linkIssue, click: () => ctx.choose('link-feature') }]
+            : []),
         separator,
         { label: t.menu.copyBranch, click: () => clipboard.writeText(feature.branch) },
         { label: t.menu.copyPath, click: () => clipboard.writeText(feature.worktreePath) },

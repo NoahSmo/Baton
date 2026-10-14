@@ -23,6 +23,19 @@ describe('buildTranscript', () => {
     expect(items[1]).toMatchObject({ type: 'tool', name: 'Read', result: { content: 'file', isError: false } })
   })
 
+  it('keeps the attachments of a user message', () => {
+    const image = { name: 'a.png', mediaType: 'image/png' as const }
+    const file = { name: 'b-spec.xlsx', label: 'spec.xlsx', size: 3 }
+    const { items } = build(
+      journal([
+        { kind: 'user', text: 'look', images: [image], files: [file] },
+        { kind: 'user', text: 'plain' }
+      ])
+    )
+    expect(items[0]).toMatchObject({ type: 'user', text: 'look', images: [image], files: [file] })
+    expect(items[1]).toMatchObject({ type: 'user', text: 'plain', images: [], files: [] })
+  })
+
   it('flags calls left without a result when their turn ends', () => {
     const { items } = build(
       journal([
@@ -76,6 +89,17 @@ describe('buildTranscript', () => {
     expect(items[1]).not.toHaveProperty('error')
   })
 
+  it('warns once per usage window', () => {
+    const { items } = build(
+      journal([
+        { kind: 'rate_limit', status: 'allowed_warning', resetsAt: 100 },
+        { kind: 'rate_limit', status: 'allowed_warning', resetsAt: 100 },
+        { kind: 'rate_limit', status: 'allowed_warning', resetsAt: 200 }
+      ])
+    )
+    expect(items).toHaveLength(2)
+  })
+
   it('surfaces usage-limit rejections only', () => {
     const { items } = build(
       journal([
@@ -88,6 +112,21 @@ describe('buildTranscript', () => {
 })
 
 describe('notices', () => {
+  it('explains a compaction and a queued message', () => {
+    const { items } = build(
+      journal([
+        { kind: 'notice', notice: { code: 'context_compacted', preTokens: 152_340, postTokens: 9_800 } },
+        { kind: 'notice', notice: { code: 'queued', maxRunning: 2 } }
+      ]),
+      'fr'
+    )
+    expect(items.map((i) => i.type === 'note' && i.text)).toEqual([
+      'Reprise après une longue pause : conversation résumée (152k → 10k tokens) au lieu d\'être repayée en entier.',
+      "En file : 2 agents tournent déjà. Démarre dès qu'un a fini."
+    ])
+  })
+
+
   const events = journal([
     { kind: 'notice', notice: { code: 'linear_moved', identifier: 'ENG-1', state: 'In Progress' } },
     { kind: 'notice', text: 'Sentence stored by an older version.' },

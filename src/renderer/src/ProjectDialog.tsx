@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import {
   PROJECT_COLORS,
-  type LinearProject,
+  type LinearLabel,
   type LinearStatus,
   type Project,
   type RepoInfo
@@ -24,15 +24,15 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
   const [repo, setRepo] = useState<RepoInfo | null>(null)
   const [name, setName] = useState(project?.name ?? '')
   const [color, setColor] = useState<string>(project?.color ?? PROJECT_COLORS[0])
-  const [linearProject, setLinearProject] = useState<LinearProject | null>(project?.linearProject ?? null)
-  const [linearProjects, setLinearProjects] = useState<LinearProject[] | null>(null)
+  const [linearLabel, setLinearLabel] = useState<LinearLabel | null>(project?.linearLabel ?? null)
+  const [linearLabels, setLinearLabels] = useState<LinearLabel[] | null>(null)
   const [linearError, setLinearError] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (!linear.connected) return
-    window.api.linearProjects().then(setLinearProjects, (err) => setLinearError(cleanError(err)))
+    window.api.linearProjectLabels().then(setLinearLabels, (err) => setLinearError(cleanError(err)))
   }, [linear.connected])
 
   async function browse() {
@@ -53,7 +53,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
     setBusy(true)
     setError('')
     try {
-      const patch = { name, color, linearProject }
+      const patch = { name, color, linearLabel }
       onSaved(
         project
           ? await window.api.updateProject(project.id, patch)
@@ -65,10 +65,10 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
     }
   }
 
-  // A linked project that no longer shows up in Linear still has to stay selectable.
+  // A linked label that no longer shows up in Linear still has to stay selectable.
   const options = [
-    ...(linearProject && !linearProjects?.some((p) => p.id === linearProject.id) ? [linearProject] : []),
-    ...(linearProjects ?? [])
+    ...(linearLabel && !linearLabels?.some((l) => l.id === linearLabel.id) ? [linearLabel] : []),
+    ...(linearLabels ?? [])
   ]
 
   return (
@@ -124,23 +124,22 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
           ))}
         </div>
 
-        <label htmlFor="pd-linear">{t.project.linearProject}</label>
-        {!linear.connected ? (
-          <p className="hint">{t.project.linearNotConnected}</p>
-        ) : linearError ? (
+        {/* Linear is optional: the section only exists for those who connected it. */}
+        {linear.connected && <label htmlFor="pd-linear">{t.project.linearLabel}</label>}
+        {!linear.connected ? null : linearError ? (
           <p className="form-error">{linearError}</p>
         ) : (
           <>
             <select
               id="pd-linear"
-              value={linearProject?.id ?? ''}
-              disabled={!linearProjects}
-              onChange={(e) => setLinearProject(options.find((p) => p.id === e.target.value) ?? null)}
+              value={linearLabel?.id ?? ''}
+              disabled={!linearLabels}
+              onChange={(e) => setLinearLabel(options.find((l) => l.id === e.target.value) ?? null)}
             >
-              <option value="">{linearProjects ? t.project.linearNone : t.project.loading}</option>
-              {options.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
+              <option value="">{linearLabels ? t.project.linearNone : t.project.loading}</option>
+              {options.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
                 </option>
               ))}
             </select>

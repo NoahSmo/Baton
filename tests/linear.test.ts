@@ -92,9 +92,27 @@ describe('LinearClient', () => {
     expect(calls[0].body.query).toContain('project: { id: { eq: $projectId } }')
   })
 
-  it('lists workspace projects', async () => {
-    const { client } = fakeLinear({ body: { data: { projects: { nodes: [{ id: 'p1', name: 'Mobile app' }] } } } })
-    expect(await client.projects()).toEqual([{ id: 'p1', name: 'Mobile app' }])
+  it('lists workspace projects with their labels', async () => {
+    const labels = [{ id: 'l1', name: 'Infra' }]
+    const { client } = fakeLinear({
+      body: { data: { projects: { nodes: [{ id: 'p1', name: 'Mobile app', labels: { nodes: labels } }] } } }
+    })
+    expect(await client.projects()).toEqual([{ id: 'p1', name: 'Mobile app', labels }])
+  })
+
+  it('lists project labels by name, without groups', async () => {
+    const { client, calls } = fakeLinear({
+      body: { data: { projectLabels: { nodes: [{ id: 'l2', name: 'Infra' }, { id: 'l1', name: 'Comparateur' }] } } }
+    })
+    expect((await client.projectLabels()).map((l) => l.name)).toEqual(['Comparateur', 'Infra'])
+    expect(calls[0].body.query).toContain('isGroup: { eq: false }')
+  })
+
+  it('asks for the open issues of the projects carrying a label', async () => {
+    const { client, calls } = fakeLinear({ body: { data: { issues: { nodes: [rawIssue] } } } })
+    expect(await client.labelIssues('l1')).toEqual([issue])
+    expect(calls[0].body.variables).toEqual({ labelId: 'l1' })
+    expect(calls[0].body.query).toContain('labels: { some: { id: { eq: $labelId } } }')
   })
 
   it('returns team states in workflow order', async () => {

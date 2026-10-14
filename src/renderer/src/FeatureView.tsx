@@ -1,23 +1,64 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import Markdown from 'react-markdown'
-import type { Feature, PermissionDecision, Project, StoredEvent } from '../../shared/types'
+import { kTokens } from '../../shared/i18n'
+import { issuePrompt } from '../../shared/linear'
+import {
+  AGENT_MODELS,
+  PERMISSION_MODES,
+  type Feature,
+  type GitStatus,
+  type PermissionDecision,
+  type Project,
+  type StoredEvent
+} from '../../shared/types'
+import { AttachButton, DraftAttachments, SentAttachments } from './Attachments'
+import { BranchPicker } from './BranchPicker'
 import { openContextMenu } from './contextMenu'
 import { useLang, useT } from './i18n'
+import { LinkIssueDialog } from './LinkIssueDialog'
 import { PermissionCard } from './PermissionCard'
 import { buildTranscript, toolSummary, type Item, type Todo } from './transcript'
+import { toMessageAttachments, useAttachments } from './useAttachments'
 
 interface Props {
   feature: Feature
   project: Project | undefined
   events: StoredEvent[]
   stream: string
+  /** Null until the worktree's status has been read. */
+  git: GitStatus | null
+  editorOpen: boolean
+  terminalOpen: boolean
+  onToggleEditor(): void
+  onToggleTerminal(): void
+  /** Opens the editor on the list of changed files. */
+  onShowChanges(): void
+  linearConnected: boolean
+  /** The dialog linking this agent to an issue is open. */
+  linking: boolean
+  onLinking(open: boolean): void
 }
 
-export function FeatureView({ feature, project, events, stream }: Props) {
+export function FeatureView({
+  feature,
+  project,
+  events,
+  stream,
+  git,
+  editorOpen,
+  terminalOpen,
+  onToggleEditor,
+  onToggleTerminal,
+  onShowChanges,
+  linearConnected,
+  linking,
+  onLinking
+}: Props) {
   const t = useT()
   const lang = useLang()
   const { items, todos } = useMemo(() => buildTranscript(events, t, lang), [events, t, lang])
   const [draft, setDraft] = useState('')
+  const attachments = useAttachments()
   const scroller = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
 
@@ -27,14 +68,15 @@ export function FeatureView({ feature, project, events, stream }: Props) {
     if (el && pinned.current) el.scrollTop = el.scrollHeight
   }, [items, stream])
 
-  const busy = feature.status === 'working' || feature.status === 'waiting'
+  const busy = feature.status === 'working' || feature.status === 'waiting' || feature.status === 'queued'
 
   function submit() {
     const text = draft.trim()
-    if (!text) return
+    if (!text && !attachments.drafts.length) return
     setDraft('')
+    attachments.clear()
     pinned.current = true
-    void window.api.send(feature.id, text)
+    void window.api.send(feature.id, text, toMessageAttachments(attachments.drafts))
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -58,14 +100,41 @@ export function FeatureView({ feature, project, events, stream }: Props) {
             <span className="sep">·</span>
             {project?.name}
             <span className="sep">·</span>
-            <code>{feature.branch}</code>
-            {feature.linear && (
+            <BranchPicker feature={feature} git={git} />
+            {git && git.ahead > 0 && (
+              <span className="num" title={t.git.ahead(git.ahead, git.upstream ?? '')}>
+                ↑{git.ahead}
+              </span>
+            )}
+            {git && git.behind > 0 && (
+              <span className="num" title={t.git.behind(git.behind, git.upstream ?? '')}>
+                ↓{git.behind}
+              </span>
+            )}
+            {git && git.changes.length > 0 && (
+              <>
+                <span className="sep">·</span>
+                <button className="link" onClick={onShowChanges}>
+                  {t.git.changed(git.changes.length)}
+                </button>
+              </>
+            )}
+            {feature.linear ? (
               <>
                 <span className="sep">·</span>
                 <a href={feature.linear.url} target="_blank" rel="noreferrer">
                   {feature.linear.identifier}
                 </a>
               </>
+            ) : (
+              linearConnected && (
+                <>
+                  <span className="sep">·</span>
+                  <button className="link" onClick={() => onLinking(true)}>
+                    {t.feature.linkIssue}
+                  </button>
+                </>
+              )
             )}
             {feature.costUsd > 0 && (
               <>
@@ -73,10 +142,35 @@ export function FeatureView({ feature, project, events, stream }: Props) {
                 <span className="num">${feature.costUsd.toFixed(2)}</span>
               </>
             )}
+            {feature.contextTokens > 0 && (
+              <>
+                <span className="sep">·</span>
+                <span className={`num${feature.contextTokens > 100_000 ? ' heavy' : ''}`} title={t.feature.contextSize}>
+                  {kTokens(feature.contextTokens)} ctx
+                </span>
+              </>
+            )}
           </p>
         </div>
         <div className="feature-actions">
           {busy && <button onClick={() => void window.api.interrupt(feature.id)}>{t.feature.stop}</button>}
+          <button
+            className={editorOpen ? 'toggled' : ''}
+            aria-pressed={editorOpen}
+            title={t.feature.editor}
+            aria-label={t.feature.editor}
+            onClick={onToggleEditor}
+          >
+            {'</>'}
+          </button>
+          <button
+            className={terminalOpen ? 'toggled' : ''}
+            aria-pressed={terminalOpen}
+            title={t.feature.toggleTerminalHint}
+            onClick={onToggleTerminal}
+          >
+            {t.feature.terminal}
+          </button>
           <button onClick={() => void window.api.reveal(feature.id)}>{t.feature.openFolder}</button>
           <button className="danger" onClick={() => void window.api.removeFeature(feature.id)}>
             {t.common.delete}
@@ -97,7 +191,7 @@ export function FeatureView({ feature, project, events, stream }: Props) {
         <div className="transcript-inner">
           {items.length === 0 && !stream && <p className="transcript-empty">{t.feature.sendFirst}</p>}
           {items.map((item) => (
-            <TranscriptItem key={item.seq} item={item} onRespond={respond} />
+            <TranscriptItem key={item.seq} item={item} featureId={feature.id} onRespond={respond} />
           ))}
           {stream && (
             <div className="msg assistant">
@@ -108,18 +202,63 @@ export function FeatureView({ feature, project, events, stream }: Props) {
         </div>
       </div>
 
-      <footer className="composer">
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={onKeyDown}
-          rows={Math.min(8, Math.max(1, draft.split('\n').length))}
-          placeholder={busy ? t.feature.queuePlaceholder : t.feature.messagePlaceholder}
-        />
-        <button className="primary" onClick={submit} disabled={!draft.trim()}>
-          {t.feature.send}
-        </button>
+      <footer className="composer" onDragOver={attachments.onDragOver} onDrop={attachments.onDrop}>
+        <DraftAttachments drafts={attachments.drafts} rejected={attachments.rejected} onRemove={attachments.remove} />
+        <div className="composer-row">
+          <AttachButton onPick={(files) => void attachments.add(files)} />
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={onKeyDown}
+            onPaste={attachments.onPaste}
+            rows={Math.min(8, Math.max(1, draft.split('\n').length))}
+            placeholder={busy ? t.feature.queuePlaceholder : t.feature.messagePlaceholder}
+          />
+          <button className="primary" onClick={submit} disabled={!draft.trim() && !attachments.drafts.length}>
+            {t.feature.send}
+          </button>
+        </div>
+        {/* Applies at once, to the turn in progress too. */}
+        <div className="composer-modes" role="group" aria-label={t.newFeature.permissions}>
+          <span>{t.newFeature.permissions}</span>
+          {PERMISSION_MODES.map((mode) => (
+            <button
+              key={mode}
+              className={`filter ${mode}${feature.permissionMode === mode ? ' selected' : ''}`}
+              aria-pressed={feature.permissionMode === mode}
+              title={t.modes[mode].hint}
+              onClick={() => void window.api.setPermissionMode(feature.id, mode)}
+            >
+              {t.modes[mode].label}
+            </button>
+          ))}
+          <span className="composer-modes-sep">{t.newFeature.model}</span>
+          {AGENT_MODELS.map((model) => (
+            <button
+              key={model}
+              className={`filter${feature.agentModel === model ? ' selected' : ''}`}
+              aria-pressed={feature.agentModel === model}
+              title={t.models[model].hint}
+              onClick={() => void window.api.setAgentModel(feature.id, model)}
+            >
+              {t.models[model].label}
+            </button>
+          ))}
+        </div>
       </footer>
+
+      {linking && project && (
+        <LinkIssueDialog
+          feature={feature}
+          project={project}
+          onClose={() => onLinking(false)}
+          onLinked={(issue) => {
+            onLinking(false)
+            // The agent knows nothing of the issue yet: its text is ready to send, never sent for the user.
+            setDraft((current) => current || issuePrompt(issue))
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -158,9 +297,11 @@ function copyMenu(e: MouseEvent, entries: { label: 'message' | 'input' | 'output
 
 function TranscriptItem({
   item,
+  featureId,
   onRespond
 }: {
   item: Item
+  featureId: string
   onRespond(requestId: string, decision: PermissionDecision): void
 }) {
   const t = useT()
@@ -168,6 +309,7 @@ function TranscriptItem({
     case 'user':
       return (
         <div className="msg user" onContextMenu={(e) => copyMenu(e, [{ label: 'message', text: item.text }])}>
+          <SentAttachments featureId={featureId} images={item.images} files={item.files} />
           {item.text}
         </div>
       )

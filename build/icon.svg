@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a312a"/>
+      <stop offset="1" stop-color="#1d1a17"/>
+    </linearGradient>
+  </defs>
+  <!-- macOS icon grid: 824px rounded square centred on a 1024px canvas. -->
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)"/>
+  <rect x="103" y="103" width="818" height="818" rx="183" fill="none" stroke="#5a4838" stroke-width="6"/>
+  <!-- One conductor, three agents: each line is a feature on its own branch. -->
+  <g fill="none" stroke-width="40" stroke-linecap="round">
+    <path d="M300 512 C 500 512 500 316 716 316" stroke="#b392e6"/>
+    <path d="M300 512 C 500 512 500 708 716 708" stroke="#12b8bf"/>
+    <path d="M300 512 H 716" stroke="#e08e62"/>
+  </g>
+  <circle cx="724" cy="316" r="58" fill="#b392e6"/>
+  <circle cx="724" cy="708" r="58" fill="#12b8bf"/>
+  <circle cx="724" cy="512" r="58" fill="#e08e62"/>
+  <circle cx="300" cy="512" r="74" fill="#ece6df"/>
+  <circle cx="300" cy="512" r="30" fill="#1d1a17"/>
+</svg>

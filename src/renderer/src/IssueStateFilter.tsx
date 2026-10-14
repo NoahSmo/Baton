@@ -30,7 +30,7 @@ export function IssueStateFilter({ issues, selected, onChange }: Props) {
   return (
     <div className="filters issue-states" role="group" aria-label={t.sidebar.filterByStatus}>
       <button type="button" className={`filter${selected.length ? '' : ' selected'}`} onClick={() => onChange([])}>
-        {t.sidebar.all} <span className="num">{issues.length}</span>
+        {t.linearView.allIssues} <span className="num">{issues.length}</span>
       </button>
       {states.map((s) => (
         <button

@@ -1,8 +1,24 @@
 import type { Lang } from './i18n'
 
 // Single place to rename the app.
-export const APP_NAME = 'OrchestraClaude'
-export const APP_SLUG = 'orchestra-claude'
+export const APP_NAME = 'Baton'
+export const APP_SLUG = 'baton'
+/** Where releases are published and how Homebrew knows the app. */
+export const GITHUB_REPO = 'NoahSmo/Baton'
+export const BREW_CASK = 'noahsmo/tap/baton'
+/** Installs or upgrades the app on Linux. */
+export const LINUX_INSTALL_COMMAND = `curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh | sh`
+
+export interface UpdateInfo {
+  version: string
+  /** Release page. */
+  url: string
+  notes: string
+  /** Installed through Homebrew, so the app can upgrade itself. */
+  canAutoInstall: boolean
+  /** What the user runs to update by hand otherwise. */
+  command: string
+}
 
 export type FeatureStatus =
   | 'idle' // no turn running, nothing to report
@@ -11,8 +27,31 @@ export type FeatureStatus =
   | 'done' // last turn finished successfully
   | 'error' // last turn failed
   | 'limited' // usage limit reached
+  | 'queued' // message waiting for a free agent slot
 
 export type PermissionMode = 'default' | 'acceptEdits' | 'plan' | 'bypassPermissions'
+
+export const PERMISSION_MODES: PermissionMode[] = ['default', 'acceptEdits', 'plan', 'bypassPermissions']
+
+/** Model an agent runs on, as Claude Code aliases it. */
+export type AgentModel = 'sonnet' | 'opus'
+
+export const AGENT_MODELS: AgentModel[] = ['sonnet', 'opus']
+
+/** Opus spends the usage limit several times faster: it is picked per agent, never by default. */
+export const DEFAULT_AGENT_MODEL: AgentModel = 'sonnet'
+
+/** How many agents may run a turn at once by default; the others wait their turn. */
+export const DEFAULT_MAX_RUNNING = 2
+
+/** A usage window close to its limit, as last reported by an agent. */
+export interface UsageWarning {
+  limitType?: string
+  /** Epoch seconds. */
+  resetsAt?: number
+  /** Share of the window used, from 0 to 1, when reported. */
+  utilization?: number
+}
 
 export const PROJECT_COLORS = [
   '#e08e62',
@@ -31,18 +70,37 @@ export const PROJECT_COLORS = [
   '#c9bcae'
 ] as const
 
-export interface LinearProject {
+/** A Linear project label. Repositories are linked to one. */
+export interface LinearLabel {
   id: string
   name: string
 }
+
+export interface LinearProject {
+  id: string
+  name: string
+  labels: LinearLabel[]
+}
+
+/** A shell command of a project the user starts with one click, e.g. its dev server. */
+export interface LaunchCommand {
+  id: string
+  /** What the button reads; the command itself when left empty. */
+  name: string
+  command: string
+}
+
+/** A launch command Claude proposes after reading the project; the user decides whether it is kept. */
+export type LaunchSuggestion = Omit<LaunchCommand, 'id'>
 
 export interface Project {
   id: string
   name: string
   path: string
   color: string
-  /** When set, only issues of this Linear project are offered for the repo. */
-  linearProject: LinearProject | null
+  /** When set, the issues of every Linear project carrying this label belong to the repo. */
+  linearLabel: LinearLabel | null
+  commands: LaunchCommand[]
 }
 
 /** What the folder picker found, shown before a project is created. */
@@ -60,7 +118,7 @@ export interface ProjectInput {
   path: string
   name: string
   color: string
-  linearProject: LinearProject | null
+  linearLabel: LinearLabel | null
 }
 
 export type ProjectPatch = Omit<ProjectInput, 'path'>
@@ -110,9 +168,13 @@ export interface Feature {
   worktreePath: string
   status: FeatureStatus
   permissionMode: PermissionMode
+  agentModel: AgentModel
   sessionId: string | null
+  /** Model the session actually reported, e.g. "claude-sonnet-5". */
   model: string | null
   costUsd: number
+  /** Size of the conversation at the last request, in tokens; every request sends all of it again. */
+  contextTokens: number
   /** Epoch seconds at which the usage limit resets, when status is 'limited'. */
   limitResetsAt: number | null
   createdAt: number
@@ -131,9 +193,44 @@ export interface Question {
   multiSelect?: boolean
 }
 
+/** Image formats the model reads. */
+export const IMAGE_MEDIA_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const
+export type ImageMediaType = (typeof IMAGE_MEDIA_TYPES)[number]
+
+/** An image on its way to the agent, base64-encoded. */
+export interface ImageInput {
+  mediaType: ImageMediaType
+  data: string
+}
+
+/** An image of the journal, named after its file among the feature's attachments. */
+export interface ImageRef {
+  name: string
+  mediaType: ImageMediaType
+}
+
+/** Heaviest document copied next to a feature. */
+export const MAX_ATTACHED_FILE_BYTES = 100 * 1024 * 1024
+
+/** A document of the journal: the agent is given its path and reads it with its own tools. */
+export interface FileRef {
+  /** File among the feature's attachments. */
+  name: string
+  /** Name the user knows it by. */
+  label: string
+  size: number
+}
+
+/** What goes with a message besides its text. */
+export interface MessageAttachments {
+  images?: ImageInput[]
+  /** Paths of documents to hand over to the agent. */
+  files?: string[]
+}
+
 /** Persisted, ordered transcript entries for a feature. */
 export type UiEvent =
-  | { kind: 'user'; text: string }
+  | { kind: 'user'; text: string; images?: ImageRef[]; files?: FileRef[] }
   | { kind: 'assistant_text'; text: string }
   | { kind: 'tool_use'; toolUseId: string; name: string; input: Record<string, unknown> }
   | { kind: 'tool_result'; toolUseId: string; content: string; isError: boolean }
@@ -147,7 +244,13 @@ export type UiEvent =
     }
   | { kind: 'permission_resolved'; requestId: string; behavior: 'allow' | 'deny' }
   | { kind: 'result'; isError: boolean; interrupted: boolean; text: string; turnCostUsd: number }
-  | { kind: 'rate_limit'; status: 'allowed' | 'allowed_warning' | 'rejected'; resetsAt?: number; limitType?: string }
+  | {
+      kind: 'rate_limit'
+      status: 'allowed' | 'allowed_warning' | 'rejected'
+      resetsAt?: number
+      limitType?: string
+      utilization?: number
+    }
   | { kind: 'error'; message: string }
   | { kind: 'notice'; notice?: Notice; /** Sentence stored by versions predating translations. */ text?: string }
 
@@ -156,6 +259,8 @@ export type Notice =
   | { code: 'app_closed' }
   | { code: 'linear_moved'; identifier: string; state: string }
   | { code: 'linear_failed'; identifier: string; reason: string }
+  | { code: 'context_compacted'; preTokens: number; postTokens?: number }
+  | { code: 'queued'; maxRunning: number }
 
 export interface StoredEvent {
   seq: number
@@ -172,7 +277,10 @@ export interface CreateFeatureInput {
   projectId: string
   title: string
   prompt: string
+  /** Images and documents sent along with the prompt. */
+  attachments?: MessageAttachments
   permissionMode: PermissionMode
+  agentModel: AgentModel
   linearIssue?: LinearIssue
 }
 
@@ -199,11 +307,70 @@ export interface ConfirmRequest {
 }
 
 /** Menu choices handed back to the renderer because they need its UI. */
-export type MenuAction = 'rename-feature' | 'new-feature' | 'project-settings'
+export type MenuAction = 'rename-feature' | 'link-feature' | 'new-feature' | 'project-settings'
 
 export interface AppState {
   projects: Project[]
   features: Feature[]
+}
+
+/** An entry of a feature's worktree. Paths are relative to the worktree, with forward slashes. */
+export interface FileEntry {
+  name: string
+  path: string
+  isDirectory: boolean
+}
+
+export type FileContent =
+  | { kind: 'text'; content: string; mtimeMs: number }
+  | { kind: 'binary' }
+  | { kind: 'too_large'; size: number }
+
+export type GitChangeKind = 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'conflicted'
+
+/** A file of a worktree that differs from its last commit. */
+export interface GitChange {
+  /** Relative to the worktree, with forward slashes. */
+  path: string
+  kind: GitChangeKind
+}
+
+export interface GitStatus {
+  /** Null on a detached HEAD. */
+  branch: string | null
+  /** Short id of the commit checked out. */
+  head: string
+  upstream: string | null
+  /** Commits not pushed to the upstream, and commits of the upstream not pulled. */
+  ahead: number
+  behind: number
+  changes: GitChange[]
+}
+
+export interface GitBranch {
+  name: string
+  current: boolean
+  /** Exists on a remote only; switching to it creates the local branch. */
+  remote: boolean
+  /** Who has the branch checked out already: git allows a branch in one worktree at a time. */
+  heldBy: string | null
+}
+
+/** Where a terminal starts: the project's folder, or the worktree of one of its features. */
+export type TerminalTarget = { projectId: string } | { featureId: string }
+
+export interface TerminalInfo {
+  id: string
+  projectId: string
+  /** Set when the terminal was opened in a feature's worktree. */
+  featureId: string | null
+  cwd: string
+  /** Name of the shell, e.g. "zsh". */
+  shell: string
+  /** Name of the launch command the terminal was started for, if any. */
+  command: string | null
+  /** Id of that launch command, which tells the sidebar what is running. */
+  commandId: string | null
 }
 
 /** Surface exposed to the renderer through the preload bridge. */
@@ -212,14 +379,38 @@ export interface Api {
   pickProjectFolder(): Promise<RepoInfo | null>
   createProject(input: ProjectInput): Promise<Project>
   updateProject(projectId: string, patch: ProjectPatch): Promise<Project>
+  /** Replaces the launch commands of a project; those without a command are dropped. */
+  setProjectCommands(projectId: string, commands: LaunchCommand[]): Promise<Project>
+  /** Has Claude read the project, without changing it, and propose its launch commands. */
+  suggestCommands(projectId: string): Promise<LaunchSuggestion[]>
+  /** Stops the reading under way; its promise rejects. */
+  cancelSuggestCommands(projectId: string): void
   createFeature(input: CreateFeatureInput): Promise<Feature>
   getEvents(featureId: string): Promise<StoredEvent[]>
-  send(featureId: string, text: string): Promise<void>
+  send(featureId: string, text: string, attachments?: MessageAttachments): Promise<void>
+  /** Path on disk of a file picked, dropped or pasted; empty when there is none behind it. */
+  pathForFile(file: File): string
+  /** Data URL of an image sent earlier, null once its file is gone. */
+  attachmentUrl(featureId: string, name: string): Promise<string | null>
+  /** Opens a document sent earlier in the app the system uses for it. */
+  openAttachment(featureId: string, name: string): Promise<void>
   respondPermission(featureId: string, requestId: string, decision: PermissionDecision): Promise<void>
   interrupt(featureId: string): Promise<void>
   removeFeature(featureId: string): Promise<boolean>
   reveal(featureId: string): Promise<void>
   renameFeature(featureId: string, title: string): Promise<void>
+  /** Ties an agent to a Linear issue once it exists; null unties it. */
+  linkIssue(featureId: string, issue: LinearIssue | null): Promise<void>
+  /** Changes how much the agent may do on its own, mid-turn included. */
+  setPermissionMode(featureId: string, mode: PermissionMode): Promise<void>
+  /** Applies from the agent's next request. */
+  setAgentModel(featureId: string, model: AgentModel): Promise<void>
+  getMaxRunning(): Promise<number>
+  /** 0 lifts the limit. */
+  setMaxRunning(max: number): Promise<void>
+  /** The last warning that a usage window is nearly used up, if any. */
+  getUsageWarning(): Promise<UsageWarning | null>
+  onUsageWarning(cb: (warning: UsageWarning) => void): () => void
   /** Builds the context menu for a target; the renderer draws it. */
   menuOpen(spec: ContextMenuSpec): Promise<MenuModel>
   /** Runs an item of the menu last opened. */
@@ -229,6 +420,12 @@ export interface Api {
   onConfirm(cb: (request: ConfirmRequest) => void): () => void
   answerConfirm(id: number, confirmed: boolean): Promise<void>
   onProjectRemoved(cb: (projectId: string) => void): () => void
+  getVersion(): Promise<string>
+  /** The newer release found by the last check, if any. */
+  getUpdate(): Promise<UpdateInfo | null>
+  /** Starts the Homebrew upgrade; the app is replaced and reopened. */
+  installUpdate(): Promise<void>
+  onUpdate(cb: (update: UpdateInfo) => void): () => void
   getLanguage(): Promise<Lang>
   setLanguage(lang: Lang): Promise<void>
   linearStatus(): Promise<LinearStatus>
@@ -236,6 +433,9 @@ export interface Api {
   linearConnect(apiKey: string): Promise<LinearStatus>
   linearDisconnect(): Promise<void>
   linearProjects(): Promise<LinearProject[]>
+  linearProjectLabels(): Promise<LinearLabel[]>
+  /** Open issues of every Linear project carrying a label. */
+  linearLabelIssues(labelId: string): Promise<LinearIssue[]>
   /** Open issues of a Linear project, or the user's assigned issues when none is given. */
   linearIssues(linearProjectId?: string): Promise<LinearIssue[]>
   /** Workflow states an issue of this team can be moved to, in workflow order. */
@@ -248,4 +448,35 @@ export interface Api {
   onStream(cb: (featureId: string, text: string) => void): () => void
   /** Fired when the user clicks a notification for a feature. */
   onFocusFeature(cb: (featureId: string) => void): () => void
+  /** Entries of a directory of the feature's worktree; '' is its root. */
+  filesList(featureId: string, dir: string): Promise<FileEntry[]>
+  fileRead(featureId: string, path: string): Promise<FileContent>
+  /**
+   * Saves a file. `mtimeMs` is the version the editor loaded: when the file changed
+   * on disk since, the user is asked first. Resolves with the new mtime, or null when kept.
+   */
+  fileWrite(featureId: string, path: string, content: string, mtimeMs: number): Promise<number | null>
+  /** Asks before throwing away unsaved changes. */
+  confirmDiscard(name: string): Promise<boolean>
+  filesWatch(featureId: string): Promise<void>
+  filesUnwatch(featureId: string): Promise<void>
+  /** Paths that changed in a watched worktree; an empty list means too many to name. */
+  onFilesChanged(cb: (featureId: string, paths: string[]) => void): () => void
+  /** Branch and changed files of the feature's worktree. */
+  gitStatus(featureId: string): Promise<GitStatus>
+  gitBranches(featureId: string): Promise<GitBranch[]>
+  /** Checks another branch out in the feature's worktree. Rejects with git's own explanation. */
+  gitSwitch(featureId: string, branch: string): Promise<void>
+  gitWatch(featureId: string): Promise<void>
+  gitUnwatch(featureId: string): Promise<void>
+  /** The status of a watched worktree may have changed. */
+  onGitChanged(cb: (featureId: string) => void): () => void
+  /** Starts a shell; with `commandId`, it runs that launch command of the project right away. */
+  terminalOpen(target: TerminalTarget, commandId?: string): Promise<TerminalInfo>
+  terminalWrite(id: string, data: string): void
+  terminalResize(id: string, cols: number, rows: number): void
+  terminalClose(id: string): Promise<void>
+  onTerminalData(cb: (id: string, data: string) => void): () => void
+  /** The shell ended, or its feature or project was removed. */
+  onTerminalExit(cb: (id: string) => void): () => void
 }

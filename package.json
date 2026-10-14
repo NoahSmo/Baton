@@ -1,28 +1,32 @@
 {
-  "name": "orchestra-claude",
+  "name": "baton",
   "version": "0.1.0",
   "private": true,
   "description": "Feature-first orchestrator for Claude Code agents",
   "license": "MIT",
   "author": "NoahSmo",
-  "homepage": "https://github.com/NoahSmo/OrchestraClaude",
+  "homepage": "https://github.com/NoahSmo/Baton",
   "repository": {
     "type": "git",
-    "url": "https://github.com/NoahSmo/OrchestraClaude.git"
+    "url": "https://github.com/NoahSmo/Baton.git"
   },
   "main": "./out/main/index.js",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/brand-dev.mjs",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
-    "dist": "electron-vite build && electron-builder --mac zip --arm64 --publish never"
+    "dist": "electron-vite build && electron-builder --mac zip --arm64 --publish never",
+    "release": "node scripts/release.mjs",
+    "icon": "electron scripts/make-icon.mjs",
+    "dist:linux": "electron-vite build && electron-builder --linux deb rpm tar.gz --publish never"
   },
   "build": {
-    "appId": "com.noahsmo.orchestraclaude",
-    "productName": "OrchestraClaude",
+    "appId": "com.noahsmo.baton",
+    "productName": "Baton",
     "directories": {
       "output": "dist"
     },
@@ -43,18 +47,74 @@
           ]
         }
       ],
-      "hardenedRuntime": false
+      "hardenedRuntime": false,
+      "icon": "build/icon.icns"
+    },
+    "linux": {
+      "target": [
+        "deb",
+        "rpm",
+        "tar.gz"
+      ],
+      "category": "Development",
+      "icon": "build/icon.png",
+      "executableName": "baton",
+      "maintainer": "NoahSmo <NoahSmo@users.noreply.github.com>",
+      "synopsis": "Feature-first orchestrator for Claude Code agents",
+      "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "libasound2 | libasound2t64",
+        "libgbm1",
+        "git"
+      ]
+    },
+    "rpm": {
+      "depends": [
+        "gtk3",
+        "libnotify",
+        "nss",
+        "libXScrnSaver",
+        "libXtst",
+        "xdg-utils",
+        "at-spi2-core",
+        "libuuid",
+        "libsecret",
+        "alsa-lib",
+        "mesa-libgbm",
+        "git"
+      ]
     }
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.296",
+    "node-pty": "^1.1.0",
     "zod": "^4.6.6"
   },
   "devDependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/language-data": "^6.5.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.14",
+    "@lezer/highlight": "^1.2.5",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "codemirror": "^6.0.2",
     "electron": "^44.7.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",

@@ -2,22 +2,53 @@ import { randomUUID } from 'node:crypto'
 import { basename, join } from 'node:path'
 import type { Dict } from '../shared/i18n'
 import { needsAttention, nextStatus, slugify } from '../shared/status'
-import type {
-  AppState,
-  CreateFeatureInput,
-  Feature,
-  PermissionDecision,
-  Project,
-  ProjectInput,
-  ProjectPatch,
-  RepoInfo,
-  StoredEvent,
-  UiEvent
+import {
+  DEFAULT_AGENT_MODEL,
+  type AgentModel,
+  type AppState,
+  type CreateFeatureInput,
+  type Feature,
+  type GitBranch,
+  type GitStatus,
+  type ImageInput,
+  type LaunchCommand,
+  type LinearIssue,
+  type MessageAttachments,
+  type PermissionDecision,
+  type PermissionMode,
+  type Project,
+  type ProjectInput,
+  type ProjectPatch,
+  type RepoInfo,
+  type StoredEvent,
+  type UiEvent,
+  type UsageWarning
 } from '../shared/types'
 import { AgentSession, type AgentOutput } from './agent'
+import { removeAttachments, saveFiles, saveImages, withFiles } from './attachments'
+import { gitStatus, hasLanded, lastGitActivity, listBranches, strayWorktrees, switchBranch } from './git'
 import type { LinearClient } from './linear'
 import type { Store } from './store'
-import { createWorktree, removeWorktree, repoState } from './worktree'
+import { createWorktree, fetchRemotes, removeWorktree, repoState } from './worktree'
+
+/** A merge is often followed by a last word with the agent: a feature just touched is left alone. */
+const MERGED_GRACE_MS = 60 * 60 * 1000
+
+/** The prompt cache lives an hour: past that, the next request pays for the whole conversation again. */
+const CACHE_TTL_MS = 60 * 60 * 1000
+
+/** Below this, a summary would cost about as much as it saves. */
+const COMPACT_MIN_TOKENS = 60_000
+
+/** A message held back until an agent slot frees up. */
+interface PendingMessage {
+  text: string
+  images: ImageInput[]
+  /** When the agent last did anything, to tell at dispatch time whether its cache is gone. */
+  idleSince: number | null
+}
+
+const isActive = (f: Feature) => f.status === 'working' || f.status === 'waiting'
 
 export interface ManagerSink {
   event(ev: StoredEvent): void
@@ -27,22 +58,34 @@ export interface ManagerSink {
   stream(featureId: string, text: string): void
   /** Called when a feature moves to a status worth notifying about. */
   attention(feature: Feature): void
+  /** A usage window is nearly used up; called once per window. */
+  usageWarning(warning: UsageWarning): void
 }
 
 export class Manager {
   private sessions = new Map<string, AgentSession>()
+  /** Messages of agents waiting for a slot, oldest agent first. */
+  private queue = new Map<string, PendingMessage[]>()
+  private warnedWindows = new Set<string>()
+  /** Epoch milliseconds until which the usage limit refuses requests: queued agents wait it out. */
+  private limitedUntil = 0
+  private limitTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(
     private readonly store: Store,
     private readonly worktreesRoot: string,
+    /** Images sent to the agents, one folder per feature. */
+    private readonly attachmentsRoot: string,
     private readonly linear: LinearClient,
     /** Messages in the language currently selected in the app. */
     private readonly t: () => Dict,
+    /** Agents allowed to run a turn at once; 0 for no limit. */
+    private readonly maxRunning: () => number,
     private readonly sink: ManagerSink
   ) {
     // No agent process survives an app restart: anything left mid-turn is idle now.
     for (const f of store.listFeatures()) {
-      if (f.status === 'working' || f.status === 'waiting') {
+      if (isActive(f) || f.status === 'queued') {
         // Nobody is left to receive an answer to the questions that turn was asking.
         for (const requestId of this.openPermissionRequests(f.id)) {
           this.record(f.id, { kind: 'permission_resolved', requestId, behavior: 'deny' })
@@ -74,7 +117,8 @@ export class Manager {
       name: input.name.trim() || basename(input.path),
       path: input.path,
       color: input.color,
-      linearProject: input.linearProject
+      linearLabel: input.linearLabel,
+      commands: []
     }
     this.store.insertProject(project)
     return project
@@ -87,7 +131,20 @@ export class Manager {
       ...project,
       name: patch.name.trim() || project.name,
       color: patch.color,
-      linearProject: patch.linearProject
+      linearLabel: patch.linearLabel
+    }
+    this.store.updateProject(updated)
+    return updated
+  }
+
+  setProjectCommands(projectId: string, commands: LaunchCommand[]): Project {
+    const project = this.store.getProject(projectId)
+    if (!project) throw new Error(this.t().errors.unknownProject)
+    const updated: Project = {
+      ...project,
+      commands: commands
+        .map((c) => ({ id: c.id || randomUUID(), name: c.name.trim(), command: c.command.trim() }))
+        .filter((c) => c.command)
     }
     this.store.updateProject(updated)
     return updated
@@ -106,6 +163,61 @@ export class Manager {
     this.mustGet(featureId)
     if (!title.trim()) throw new Error(this.t().errors.needTitle)
     this.patch(featureId, { title: title.trim() })
+  }
+
+  /** Ties an agent to an issue after the fact, or unties it. The branch keeps its name. */
+  linkIssue(featureId: string, issue: LinearIssue | null): void {
+    const feature = this.mustGet(featureId)
+    this.patch(featureId, {
+      linear: issue ? { issueId: issue.id, identifier: issue.identifier, url: issue.url } : null
+    })
+    // An agent already at work means the issue has started; otherwise its first message says so.
+    if (issue && feature.sessionId) void this.startLinearIssue(this.mustGet(featureId))
+  }
+
+  /** Takes effect at once, in the middle of a turn included. */
+  async setPermissionMode(featureId: string, mode: PermissionMode): Promise<void> {
+    this.mustGet(featureId)
+    this.patch(featureId, { permissionMode: mode })
+    await this.sessions.get(featureId)?.setPermissionMode(mode)
+  }
+
+  /** Takes effect from the agent's next request. */
+  async setAgentModel(featureId: string, model: AgentModel): Promise<void> {
+    this.mustGet(featureId)
+    this.patch(featureId, { agentModel: model })
+    await this.sessions.get(featureId)?.setModel(model)
+  }
+
+  /** Folder a terminal or the editor works in. */
+  featureRoot(featureId: string): string {
+    return this.mustGet(featureId).worktreePath
+  }
+
+  /** The branch is read back each time: the agent and the terminal switch it without telling. */
+  async gitStatus(featureId: string): Promise<GitStatus> {
+    const status = await gitStatus(this.featureRoot(featureId))
+    if (status.branch && status.branch !== this.store.getFeature(featureId)?.branch) {
+      this.patch(featureId, { branch: status.branch })
+    }
+    return status
+  }
+
+  /** Branches of the feature's worktree, those in use elsewhere named after their feature or project. */
+  async gitBranches(featureId: string): Promise<GitBranch[]> {
+    const { projects, features } = this.getState()
+    const owner = (path: string) =>
+      features.find((f) => f.worktreePath === path)?.title ?? projects.find((p) => p.path === path)?.name ?? basename(path)
+    const branches = await listBranches(this.featureRoot(featureId))
+    return branches.map((b) => (b.heldBy ? { ...b, heldBy: owner(b.heldBy) } : b))
+  }
+
+  async switchBranch(featureId: string, branch: string): Promise<void> {
+    const feature = this.mustGet(featureId)
+    // Files changing under a running turn would leave the agent working on a tree it never read.
+    if (feature.status === 'working' || feature.status === 'waiting') throw new Error(this.t().errors.agentBusy)
+    await switchBranch(feature.worktreePath, branch)
+    this.patch(featureId, { branch })
   }
 
   async createFeature(input: CreateFeatureInput): Promise<Feature> {
@@ -132,16 +244,21 @@ export class Manager {
       worktreePath: worktree.path,
       status: 'idle',
       permissionMode: input.permissionMode,
+      agentModel: input.agentModel ?? DEFAULT_AGENT_MODEL,
       sessionId: null,
       model: null,
       costUsd: 0,
+      contextTokens: 0,
       limitResetsAt: null,
       createdAt: now,
       updatedAt: now
     }
     this.store.insertFeature(feature)
     this.sink.feature(feature)
-    if (input.prompt.trim()) this.send(feature.id, input.prompt.trim())
+    const { images = [], files = [] } = input.attachments ?? {}
+    if (input.prompt.trim() || images.length || files.length) {
+      this.send(feature.id, input.prompt.trim(), input.attachments)
+    }
     return this.store.getFeature(feature.id)!
   }
 
@@ -149,12 +266,75 @@ export class Manager {
     return this.store.listEvents(featureId)
   }
 
-  send(featureId: string, text: string): void {
+  /** Folder holding the images and documents sent to a feature's agent. */
+  attachmentsDir(featureId: string): string {
+    return join(this.attachmentsRoot, this.mustGet(featureId).id)
+  }
+
+  send(featureId: string, text: string, { images = [], files = [] }: MessageAttachments = {}): void {
     const feature = this.mustGet(featureId)
+    const dir = this.attachmentsDir(featureId)
+    // Documents first: they are the ones that can be refused, and nothing should be left behind then.
+    const fileRefs = saveFiles(dir, files)
+    // Kept on disk so the journal stays small and the transcript can show them again.
+    const imageRefs = saveImages(dir, images)
+    // Read before this message joins the journal.
+    const idleSince = this.store.lastEventAt(featureId)
+    // An agent already in a turn takes the message along; another one needs a free slot.
+    const runNow = isActive(feature) || (feature.status !== 'queued' && this.hasFreeSlot())
     // The first message is when work on the issue actually begins.
     if (feature.linear && !feature.sessionId) void this.startLinearIssue(feature)
-    this.record(featureId, { kind: 'user', text })
-    this.sessionFor(feature).send(text)
+    this.record(featureId, {
+      kind: 'user',
+      text,
+      ...(imageRefs.length ? { images: imageRefs } : {}),
+      ...(fileRefs.length ? { files: fileRefs } : {})
+    })
+    const message: PendingMessage = { text: withFiles(text, dir, fileRefs), images, idleSince }
+    if (runNow) {
+      this.dispatch(feature, [message])
+      return
+    }
+    const waiting = this.queue.get(featureId)
+    if (waiting) waiting.push(message)
+    else {
+      this.queue.set(featureId, [message])
+      this.record(featureId, { kind: 'notice', notice: { code: 'queued', maxRunning: this.maxRunning() } })
+    }
+    this.patch(featureId, { status: 'queued' })
+  }
+
+  /** Starts queued agents while slots are free; called whenever one may have freed up. */
+  startQueued(): void {
+    if (Date.now() < this.limitedUntil) return
+    for (const [featureId, messages] of this.queue) {
+      if (!this.hasFreeSlot()) return
+      this.queue.delete(featureId)
+      const feature = this.store.getFeature(featureId)
+      if (!feature) continue
+      this.patch(featureId, { status: 'working' })
+      this.dispatch(feature, messages)
+    }
+  }
+
+  private hasFreeSlot(): boolean {
+    const max = this.maxRunning()
+    return max <= 0 || this.store.listFeatures().filter(isActive).length < max
+  }
+
+  private dispatch(feature: Feature, messages: PendingMessage[]): void {
+    const session = this.sessionFor(feature)
+    messages.forEach((m, i) => session.send(m.text, m.images, i === 0 && this.isCold(feature, m.idleSince)))
+  }
+
+  /** Whether the agent's prompt cache has expired on a conversation big enough to be worth summarising first. */
+  private isCold(feature: Feature, idleSince: number | null): boolean {
+    return (
+      Boolean(feature.sessionId) &&
+      feature.contextTokens >= COMPACT_MIN_TOKENS &&
+      idleSince !== null &&
+      Date.now() - idleSince >= CACHE_TTL_MS
+    )
   }
 
   private async startLinearIssue(feature: Feature): Promise<void> {
@@ -176,6 +356,11 @@ export class Manager {
   }
 
   async interrupt(featureId: string): Promise<void> {
+    if (this.queue.delete(featureId)) {
+      // Never sent: the agent knows nothing of these messages.
+      this.record(featureId, { kind: 'result', isError: false, interrupted: true, text: '', turnCostUsd: 0 })
+      return
+    }
     await this.sessions.get(featureId)?.interrupt()
   }
 
@@ -184,12 +369,56 @@ export class Manager {
     const project = this.store.getProject(feature.projectId)
     this.sessions.get(featureId)?.close()
     this.sessions.delete(featureId)
+    this.queue.delete(featureId)
     if (project) await removeWorktree(project.path, feature.worktreePath)
+    removeAttachments(this.attachmentsDir(featureId))
     this.store.deleteFeature(featureId)
     this.sink.featureRemoved(featureId)
   }
 
+  /** Looks up what has been merged on the remotes since the last time. */
+  async refreshRemotes(): Promise<void> {
+    await Promise.all(this.store.listProjects().map((p) => fetchRemotes(p.path)))
+  }
+
+  /**
+   * Whether a feature is over: its branch has landed, its worktree holds nothing
+   * uncommitted, and nobody has worked in it for a while.
+   */
+  async isMerged(featureId: string): Promise<boolean> {
+    const feature = this.store.getFeature(featureId)
+    if (!feature || feature.status === 'working' || feature.status === 'waiting') return false
+    if (Date.now() - feature.updatedAt < MERGED_GRACE_MS) return false
+    // A worktree that is gone or unreadable is not one to decide about.
+    return hasLanded(feature.worktreePath).catch(() => false)
+  }
+
+  /**
+   * Removes the worktrees agents added on their own under the app's folder, which
+   * outlive the feature that made them. Only those with a branch, nothing
+   * uncommitted and no recent activity go: the branch keeps every commit.
+   */
+  async removeStrayWorktrees(): Promise<string[]> {
+    const known = new Set(this.store.listFeatures().map((f) => f.worktreePath))
+    const removed: string[] = []
+    for (const project of this.store.listProjects()) {
+      const strays = await strayWorktrees(project.path, this.worktreesRoot, known).catch(() => [])
+      for (const { path, branch } of strays) {
+        if (!branch || Date.now() - lastGitActivity(path) < MERGED_GRACE_MS) continue
+        try {
+          if ((await gitStatus(path)).changes.length) continue
+          await removeWorktree(project.path, path)
+          removed.push(branch)
+        } catch {
+          // Unreadable, or removed meanwhile: not one to decide about.
+        }
+      }
+    }
+    return removed
+  }
+
   shutdown(): void {
+    if (this.limitTimer) clearTimeout(this.limitTimer)
     for (const session of this.sessions.values()) session.close()
     this.sessions.clear()
   }
@@ -214,7 +443,9 @@ export class Manager {
     if (!session) {
       session = new AgentSession({
         cwd: feature.worktreePath,
+        attachmentsDir: this.attachmentsDir(feature.id),
         permissionMode: feature.permissionMode,
+        model: feature.agentModel,
         sessionId: feature.sessionId,
         emit: (out) => this.onAgentOutput(feature.id, out)
       })
@@ -238,6 +469,23 @@ export class Manager {
       case 'stream':
         this.sink.stream(featureId, out.text)
         return
+      case 'context':
+        this.patch(featureId, { contextTokens: out.tokens })
+        return
+      case 'compacted': {
+        if (out.ok) {
+          this.record(featureId, {
+            kind: 'notice',
+            notice: { code: 'context_compacted', preTokens: out.preTokens ?? 0, postTokens: out.postTokens }
+          })
+        }
+        const now = this.store.getFeature(featureId)!
+        this.patch(featureId, {
+          costUsd: now.costUsd + out.costUsd,
+          ...(out.postTokens ? { contextTokens: out.postTokens } : {})
+        })
+        return
+      }
       case 'closed':
         // A process that dies mid-turn leaves no result event behind.
         if (feature.status === 'working' || feature.status === 'waiting') this.patch(featureId, { status: 'idle' })
@@ -257,9 +505,28 @@ export class Manager {
       patch.status = 'waiting'
     }
     if (event.kind === 'result') patch.costUsd = feature.costUsd + event.turnCostUsd
-    if (event.kind === 'rate_limit' && event.status === 'rejected') patch.limitResetsAt = event.resetsAt ?? null
+    if (event.kind === 'rate_limit' && event.status === 'rejected') {
+      patch.limitResetsAt = event.resetsAt ?? null
+      if (event.resetsAt) this.holdQueueUntil(event.resetsAt * 1000)
+    }
+    if (event.kind === 'rate_limit' && event.status === 'allowed_warning') this.warnUsage(event)
     if (event.kind === 'user') patch.limitResetsAt = null
     this.patch(featureId, patch)
+  }
+
+  /** Queued agents would only be refused until the limit resets. */
+  private holdQueueUntil(at: number): void {
+    if (at <= this.limitedUntil) return
+    this.limitedUntil = at
+    if (this.limitTimer) clearTimeout(this.limitTimer)
+    this.limitTimer = setTimeout(() => this.startQueued(), at - Date.now() + 5000)
+  }
+
+  private warnUsage(event: Extract<UiEvent, { kind: 'rate_limit' }>): void {
+    const window = `${event.limitType}:${event.resetsAt}`
+    if (this.warnedWindows.has(window)) return
+    this.warnedWindows.add(window)
+    this.sink.usageWarning({ limitType: event.limitType, resetsAt: event.resetsAt, utilization: event.utilization })
   }
 
   private patch(featureId: string, patch: Partial<Feature>): void {
@@ -269,5 +536,7 @@ export class Manager {
     this.store.updateFeature(after)
     this.sink.feature(after)
     if (after.status !== before.status && needsAttention(after.status)) this.sink.attention(after)
+    // Deferred: the turn that just ended may still be recording its own events.
+    if (isActive(before) && !isActive(after) && this.queue.size) queueMicrotask(() => this.startQueued())
   }
 }

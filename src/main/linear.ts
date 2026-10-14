@@ -1,8 +1,8 @@
 import { DICTS, type Dict } from '../shared/i18n'
-import type { LinearIssue, LinearProject, LinearState } from '../shared/types'
+import type { LinearIssue, LinearLabel, LinearProject, LinearState } from '../shared/types'
 
 // Overridable so the app can be exercised against a local stand-in for Linear.
-const ENDPOINT = process.env.ORCHESTRA_LINEAR_URL ?? 'https://api.linear.app/graphql'
+const ENDPOINT = process.env.BATON_LINEAR_URL ?? 'https://api.linear.app/graphql'
 
 /** Linear's workflow categories, in the order work moves through them. */
 const STATE_TYPE_ORDER = ['triage', 'backlog', 'unstarted', 'started', 'completed', 'canceled']
@@ -69,10 +69,36 @@ export class LinearClient {
 
   /** Projects of the workspace, most recently updated first. */
   async projects(): Promise<LinearProject[]> {
-    const data = await this.request<{ projects: { nodes: LinearProject[] } }>(
-      'query { projects(first: 100, orderBy: updatedAt) { nodes { id name } } }'
+    const data = await this.request<{
+      projects: { nodes: { id: string; name: string; labels: { nodes: LinearLabel[] } }[] }
+    }>('query { projects(first: 100, orderBy: updatedAt) { nodes { id name labels { nodes { id name } } } } }')
+    return data.projects.nodes.map(({ labels, ...project }) => ({ ...project, labels: labels.nodes }))
+  }
+
+  /** Project labels of the workspace, by name. Groups are left out: they cannot be put on a project. */
+  async projectLabels(): Promise<LinearLabel[]> {
+    const data = await this.request<{ projectLabels: { nodes: LinearLabel[] } }>(
+      'query { projectLabels(first: 250, filter: { isGroup: { eq: false } }) { nodes { id name } } }'
     )
-    return data.projects.nodes
+    return data.projectLabels.nodes.sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  /** Open issues of every project carrying a label, most recently updated first. */
+  async labelIssues(labelId: string): Promise<LinearIssue[]> {
+    const data = await this.request<{ issues: { nodes: RawIssue[] } }>(
+      `query($labelId: ID!) {
+        issues(
+          first: 100
+          orderBy: updatedAt
+          filter: {
+            project: { labels: { some: { id: { eq: $labelId } } } }
+            state: { type: { nin: ["completed", "canceled"] } }
+          }
+        ) { nodes { ${ISSUE_FIELDS} } }
+      }`,
+      { labelId }
+    )
+    return data.issues.nodes.map(toIssue)
   }
 
   /** Open issues of one project, whoever they are assigned to, most recently updated first. */
