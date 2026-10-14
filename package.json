@@ -20,7 +20,6 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "dist": "electron-vite build && electron-builder --mac zip --arm64 --publish never",
-    "release": "node scripts/release.mjs",
     "icon": "electron scripts/make-icon.mjs",
     "dist:linux": "electron-vite build && electron-builder --linux deb rpm tar.gz --publish never"
   },

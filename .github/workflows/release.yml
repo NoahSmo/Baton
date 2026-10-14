@@ -1,0 +1,126 @@
+name: Release
+
+# Every push or merge to main publishes a release: macOS zip, Linux packages,
+# GitHub release and Homebrew cask. The version comes from scripts/ci-version.mjs.
+on:
+  push:
+    branches: [main]
+
+# One release at a time, so two quick merges never pick the same version.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  # Quieter, faster installs.
+  npm_config_audit: 'false'
+  npm_config_fund: 'false'
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - id: version
+        run: echo "version=$(node scripts/ci-version.mjs)" >> "$GITHUB_OUTPUT"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  macos:
+    needs: version
+    runs-on: macos-latest # Apple Silicon
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
+      - run: npm ci
+      - run: npm run dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/Baton-${{ needs.version.outputs.version }}.zip
+          if-no-files-found: error
+
+  linux:
+    needs: version
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install rpm tooling
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq rpm
+      - run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
+      - run: npm ci
+      - run: npm run dist:linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: [version, macos, linux]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Check the artifacts
+        run: |
+          ls -l artifacts
+          test "$(ls artifacts/Baton-"$VERSION"-linux-* | wc -l)" -eq 6
+          test -f "artifacts/Baton-$VERSION.zip"
+      - name: Create the GitHub release
+        run: |
+          gh release create "v$VERSION" artifacts/* \
+            --target "$GITHUB_SHA" --title "v$VERSION" --generate-notes
+      - name: Update the Homebrew cask
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::error::secret HOMEBREW_TAP_TOKEN is missing: the release is published but the cask was not updated"
+            exit 1
+          fi
+          sha256=$(sha256sum "artifacts/Baton-$VERSION.zip" | cut -d' ' -f1)
+          git clone "https://x-access-token:$TAP_TOKEN@github.com/NoahSmo/homebrew-tap.git" tap
+          node scripts/bump-cask.mjs tap/Casks/baton.rb "$VERSION" "$sha256"
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "baton $VERSION"
+          git push
