@@ -44,7 +44,8 @@ export function App() {
   /** Features whose editor was opened; false once hidden again, which keeps its open files. */
   const [editors, setEditors] = useState<Record<string, boolean>>({})
   const [editorPanel, setEditorPanel] = useState<EditorPanel>('files')
-  const [terminalOpen, setTerminalOpen] = useState(false)
+  /** Whether each agent's terminal panel is up, keyed by feature, or by project when it has none. */
+  const [terminalPanels, setTerminalPanels] = useState<Record<string, boolean>>({})
   /** Agent being linked to an issue. */
   const [linkingId, setLinkingId] = useState<string | null>(null)
   const [editorWidth, startEditorResize] = useResize({
@@ -152,6 +153,11 @@ export function App() {
     void window.api.getEvents(id).then((list) => setEvents((all) => ({ ...all, [id]: list })))
   }, [feature, events])
 
+  const terminalKey = feature?.id ?? project?.id ?? ''
+  const terminalOpen = Boolean(terminalPanels[terminalKey])
+  const setTerminalOpen = (open: boolean | ((open: boolean) => boolean)) =>
+    setTerminalPanels((all) => ({ ...all, [terminalKey]: typeof open === 'function' ? open(Boolean(all[terminalKey])) : open }))
+
   const git = useGitStatus(feature?.id ?? null)
 
   const toggleEditor = (id: string) => setEditors((all) => ({ ...all, [id]: !all[id] }))
@@ -167,7 +173,7 @@ export function App() {
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [project?.id, linearShown])
+  }, [terminalKey, linearShown])
 
   function upsertProject(saved: Project) {
     setProjects((list) => (list.some((p) => p.id === saved.id) ? list.map((p) => (p.id === saved.id ? saved : p)) : [...list, saved]))
