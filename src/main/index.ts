@@ -45,6 +45,7 @@ import {
   currentEnv,
   detectInstallMode,
   downloadAsset,
+  fetchWithBrew,
   findOwningBrew,
   installScript,
   macAppPath,
@@ -318,9 +319,17 @@ async function confirmRemoveProject(id: string): Promise<void> {
 const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
 let update: UpdateInfo | null = null
 
-async function refreshUpdate(): Promise<void> {
+/** Looks for a newer release; `manual` checks also re-offer a version the user declined. */
+async function refreshUpdate(manual = false): Promise<UpdateInfo | null> {
   const found = await checkForUpdate(app.getVersion())
-  if (!found || found.version === update?.version) return
+  if (!found) return null
+  if (found.version === update?.version) {
+    if (manual && update.dismissed) {
+      update = { ...update, dismissed: false }
+      send('update:available', update)
+    }
+    return update
+  }
   const env = currentEnv()
   const { mode, packager } = app.isPackaged ? detectInstallMode(env) : { mode: 'manual' as const, packager: 'deb' as const }
   const asset = pickAsset(found.assets, found.version, mode, process.arch, packager) ?? undefined
@@ -332,10 +341,11 @@ async function refreshUpdate(): Promise<void> {
     installMode,
     asset,
     canAutoInstall: installMode !== 'manual',
-    dismissed: readSettings().skippedUpdate === found.version,
+    dismissed: !manual && readSettings().skippedUpdate === found.version,
     command: manualUpdateCommand()
   }
   send('update:available', update)
+  return update
 }
 
 /** Quits, and forces the exit if shutdown hangs: the installer is waiting on us. */
@@ -351,6 +361,8 @@ async function installUpdate(): Promise<void> {
     if (update.installMode === 'brew') {
       const brew = findOwningBrew()
       if (!brew) throw new Error('Homebrew not found')
+      send('update:progress', { phase: 'downloading' })
+      await fetchWithBrew(brew)
       send('update:progress', { phase: 'installing' })
       upgradeWithBrew(brew, log, process.pid, macAppPath(process.execPath))
       quitForUpdate()
@@ -370,6 +382,7 @@ async function installUpdate(): Promise<void> {
 function registerIpc(): void {
   ipcMain.handle('app:version', () => app.getVersion())
   ipcMain.handle('update:get', () => update)
+  ipcMain.handle('update:check', async () => ({ update: await refreshUpdate(true), version: app.getVersion() }))
   ipcMain.handle('update:install', () => installUpdate())
   ipcMain.handle('update:dismiss', (_e, version: string) => {
     writeSettings({ skippedUpdate: version })

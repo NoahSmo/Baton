@@ -36,6 +36,7 @@ const api: Api = {
   onProjectRemoved: (cb) => subscribe('project:removed', cb),
   getVersion: () => ipcRenderer.invoke('app:version'),
   getUpdate: () => ipcRenderer.invoke('update:get'),
+  checkUpdate: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
   dismissUpdate: (version) => ipcRenderer.invoke('update:dismiss', version),
   onUpdate: (cb) => subscribe('update:available', cb),
