@@ -122,10 +122,10 @@ export function buildTranscript(events: StoredEvent[], t: Dict, lang: Lang): Tra
         break
       case 'rate_limit':
         if (ev.status === 'rejected') {
-          items.push({ type: 'note', seq, tone: 'error', text: t.notice.limitReached(formatReset(ev.resetsAt, lang)) })
+          items.push({ type: 'note', seq, tone: 'error', text: t.notice.limitReached(formatReset(ev.resetsAt, lang), ev.limitType) })
         } else if (ev.status === 'allowed_warning' && warnedReset !== ev.resetsAt) {
           warnedReset = ev.resetsAt
-          items.push({ type: 'note', seq, tone: 'warn', text: t.notice.limitNear(formatReset(ev.resetsAt, lang)) })
+          items.push({ type: 'note', seq, tone: 'warn', text: t.notice.limitNear(formatReset(ev.resetsAt, lang), ev.limitType) })
         }
         break
       case 'error':

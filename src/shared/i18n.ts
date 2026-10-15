@@ -9,6 +9,13 @@ export function langFromLocale(locale: string | undefined): Lang {
   return locale?.toLowerCase().startsWith('fr') ? 'fr' : 'en'
 }
 
+/** Which usage window a rate-limit type belongs to; undefined for types we cannot place. */
+export function limitWindow(type?: string): 'daily' | 'weekly' | undefined {
+  if (type === 'five_hour') return 'daily'
+  if (type?.startsWith('seven_day')) return 'weekly'
+  return undefined
+}
+
 /** 152340 → "152k". */
 export function kTokens(tokens: number): string {
   return tokens >= 1000 ? `${Math.round(tokens / 1000)}k` : String(tokens)
@@ -90,8 +97,8 @@ const en = {
     queued: (n: number) => `${n} queued`,
     maxRunning: 'At once',
     maxRunningHint: 'Agents allowed to run at the same time; the others wait in line. ∞ for no limit.',
-    usageNear: (time?: string, used?: number) =>
-      `Usage limit near${used !== undefined ? ` (${Math.round(used * 100)}%)` : ''}${time ? ` · resets ${time}` : ''}`,
+    usageNear: (time?: string, used?: number, type?: string) =>
+      `${limitWindow(type) === 'weekly' ? 'Weekly' : limitWindow(type) === 'daily' ? 'Daily' : 'Usage'} limit near${used !== undefined ? ` (${Math.round(used * 100)}%)` : ''}${time ? ` · resets ${time}` : ''}`,
     total: 'Total',
     connectLinear: 'Connect Linear',
     linearConnected: 'connected',
@@ -201,8 +208,10 @@ const en = {
     appClosed: 'The app was closed during this turn. Send a message to resume.',
     linearMoved: (identifier: string, state: string) => `Linear: ${identifier} moved to ${state}.`,
     linearFailed: (identifier: string, reason: string) => `Linear: could not update ${identifier} (${reason}).`,
-    limitReached: (time?: string) => `Usage limit reached.${time ? ` Resets at ${time}.` : ''}`,
-    limitNear: (time?: string) => `Approaching the usage limit.${time ? ` Resets at ${time}.` : ''}`,
+    limitReached: (time?: string, type?: string) =>
+      `${limitWindow(type) === 'weekly' ? 'Weekly' : limitWindow(type) === 'daily' ? 'Daily (5 h)' : 'Usage'} limit reached.${time ? ` Resets at ${time}.` : ''}`,
+    limitNear: (time?: string, type?: string) =>
+      `Approaching the ${limitWindow(type) === 'weekly' ? 'weekly' : limitWindow(type) === 'daily' ? 'daily (5 h)' : 'usage'} limit.${time ? ` Resets at ${time}.` : ''}`,
     contextCompacted: (pre: number, post?: number) =>
       `Picked up after a long pause: conversation summarised (${kTokens(pre)}${post ? ` → ${kTokens(post)}` : ''} tokens) rather than paid for again in full.`,
     queued: (max: number) => `Queued: ${max} ${max === 1 ? 'agent is' : 'agents are'} already running. Starts as soon as one finishes.`
@@ -451,8 +460,8 @@ const fr: Dict = {
     queued: (n) => `${n} en file`,
     maxRunning: 'En parallèle',
     maxRunningHint: "Agents autorisés à tourner en même temps ; les autres attendent leur tour. ∞ pour aucune limite.",
-    usageNear: (time, used) =>
-      `Limite bientôt atteinte${used !== undefined ? ` (${Math.round(used * 100)} %)` : ''}${time ? ` · reset à ${time}` : ''}`,
+    usageNear: (time, used, type) =>
+      `Limite ${limitWindow(type) === 'weekly' ? 'hebdo ' : limitWindow(type) === 'daily' ? 'journalière ' : ''}bientôt atteinte${used !== undefined ? ` (${Math.round(used * 100)} %)` : ''}${time ? ` · reset à ${time}` : ''}`,
     total: 'Total',
     connectLinear: 'Connecter Linear',
     linearConnected: 'connecté',
@@ -561,8 +570,10 @@ const fr: Dict = {
     appClosed: "L'app a été fermée pendant ce tour. Envoie un message pour reprendre.",
     linearMoved: (identifier, state) => `Linear : ${identifier} passée en ${state}.`,
     linearFailed: (identifier, reason) => `Linear : impossible de mettre à jour ${identifier} (${reason}).`,
-    limitReached: (time) => `Limite d'utilisation atteinte.${time ? ` Réinitialisation à ${time}.` : ''}`,
-    limitNear: (time) => `Limite d'utilisation bientôt atteinte.${time ? ` Réinitialisation à ${time}.` : ''}`,
+    limitReached: (time, type) =>
+      `Limite ${limitWindow(type) === 'weekly' ? 'hebdomadaire' : limitWindow(type) === 'daily' ? 'journalière (5 h)' : "d'utilisation"} atteinte.${time ? ` Réinitialisation à ${time}.` : ''}`,
+    limitNear: (time, type) =>
+      `Limite ${limitWindow(type) === 'weekly' ? 'hebdomadaire' : limitWindow(type) === 'daily' ? 'journalière (5 h)' : "d'utilisation"} bientôt atteinte.${time ? ` Réinitialisation à ${time}.` : ''}`,
     contextCompacted: (pre, post) =>
       `Reprise après une longue pause : conversation résumée (${kTokens(pre)}${post ? ` → ${kTokens(post)}` : ''} tokens) au lieu d'être repayée en entier.`,
     queued: (max) => `En file : ${max} ${max > 1 ? 'agents tournent' : 'agent tourne'} déjà. Démarre dès qu'un a fini.`
