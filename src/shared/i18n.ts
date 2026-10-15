@@ -351,12 +351,19 @@ const en = {
 
   update: {
     available: (version: string) => `Update to ${version}`,
+    settings: 'Settings',
+    settingsOpen: 'Settings',
+    checkNow: 'Check for updates',
+    checking: 'Checking…',
+    upToDate: (version: string) => `You are up to date (${version}).`,
+    checkFailed: 'No newer version found, or GitHub is unreachable.',
+    close: 'Close',
     title: (version: string) => `Version ${version} is available`,
     current: (version: string) => `You are on ${version}.`,
     notes: 'Release notes',
     install: 'Update and restart',
     installHint:
-      'Homebrew upgrades the app in the background, then reopens it. Running agents are stopped; their conversations resume when you message them again.',
+      'Homebrew downloads the update here, then upgrades the app and reopens it. Running agents are stopped; their conversations resume when you message them again.',
     manualHint: 'Update it from a terminal:',
     copy: 'Copy command',
     later: 'Later',
@@ -739,12 +746,19 @@ const fr: Dict = {
 
   update: {
     available: (version) => `Mettre à jour vers ${version}`,
+    settings: 'Paramètres',
+    settingsOpen: 'Paramètres',
+    checkNow: 'Rechercher une mise à jour',
+    checking: 'Recherche…',
+    upToDate: (version) => `Tu es à jour (${version}).`,
+    checkFailed: 'Aucune version plus récente, ou GitHub est injoignable.',
+    close: 'Fermer',
     title: (version) => `La version ${version} est disponible`,
     current: (version) => `Tu as la ${version}.`,
     notes: 'Notes de version',
     install: 'Mettre à jour et relancer',
     installHint:
-      "Homebrew met l'app à jour en arrière-plan, puis la rouvre. Les agents en cours sont arrêtés ; leurs conversations reprennent au prochain message.",
+      "Homebrew télécharge la mise à jour ici, puis met l'app à jour et la rouvre. Les agents en cours sont arrêtés ; leurs conversations reprennent au prochain message.",
     manualHint: 'Mets-la à jour depuis un terminal :',
     copy: 'Copier la commande',
     later: 'Plus tard',

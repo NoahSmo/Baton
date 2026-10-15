@@ -15,6 +15,7 @@ import { Sidebar } from './Sidebar'
 import { StatusBar } from './StatusBar'
 import { TerminalPanel } from './TerminalPanel'
 import { TopBar } from './TopBar'
+import { SettingsDialog } from './SettingsDialog'
 import { UpdateDialog } from './UpdateDialog'
 import { useGitStatus } from './useGitStatus'
 import { useResize } from './useResize'
@@ -28,6 +29,7 @@ const MIN_CHAT_WIDTH = 340
 type Dialog =
   | { kind: 'feature'; project?: Project; issue?: LinearIssue; repositories?: Project[] }
   | { kind: 'update' }
+  | { kind: 'settings' }
   | { kind: 'launch'; project: Project }
   | { kind: 'project'; project?: Project } | { kind: 'linear' } | null
 
@@ -324,6 +326,7 @@ export function App() {
         version={version}
         update={update}
         onOpenUpdate={() => setDialog({ kind: 'update' })}
+        onOpenSettings={() => setDialog({ kind: 'settings' })}
         terminal={
           project && !linearShown ? { open: terminalOpen, toggle: () => setTerminalOpen((open) => !open) } : undefined
         }
@@ -365,6 +368,9 @@ export function App() {
         />
       )}
       {dialog?.kind === 'linear' && <LinearDialog status={linear} onChange={setLinear} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'settings' && (
+        <SettingsDialog version={version} onUpdateFound={() => setDialog({ kind: 'update' })} onClose={() => setDialog(null)} />
+      )}
       {dialog?.kind === 'update' && update && (
         <UpdateDialog update={update} currentVersion={version} onClose={() => setDialog(null)} />
       )}

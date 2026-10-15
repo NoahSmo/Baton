@@ -96,6 +96,22 @@ export function upgradeWithBrew(brew: string, logFile: string, pid: number, bund
   runDetached(brewScript(brew, pid, bundle), logFile)
 }
 
+/** Downloads the cask into Homebrew's cache while the app is still open, so the later upgrade has nothing left to fetch. */
+export function fetchWithBrew(brew: string, onOutput: () => void = () => {}): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(brew, ['fetch', '--cask', BREW_CASK], { stdio: ['ignore', 'pipe', 'pipe'] })
+    let tail = ''
+    const keep = (chunk: Buffer) => {
+      tail = (tail + chunk.toString()).slice(-400)
+      onOutput()
+    }
+    child.stdout.on('data', keep)
+    child.stderr.on('data', keep)
+    child.on('error', reject)
+    child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(tail.trim().split('\n').pop() || `brew exited with ${code}`))))
+  })
+}
+
 export function brewScript(brew: string, pid: number, bundle: string): string {
   return [
     stopOldApp(pid, bundle),

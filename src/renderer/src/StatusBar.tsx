@@ -14,11 +14,12 @@ interface Props {
   version: string
   update: UpdateInfo | null
   onOpenUpdate(): void
+  onOpenSettings(): void
   /** Absent when no project is showing: a terminal belongs to one. */
   terminal?: { open: boolean; toggle(): void }
 }
 
-export function StatusBar({ features, linear, onOpenLinear, onLanguage, version, update, onOpenUpdate, terminal }: Props) {
+export function StatusBar({ features, linear, onOpenLinear, onLanguage, version, update, onOpenUpdate, onOpenSettings, terminal }: Props) {
   const t = useT()
   const lang = useLang()
   const count = (...statuses: Feature['status'][]) => features.filter((f) => statuses.includes(f.status)).length
@@ -110,6 +111,9 @@ export function StatusBar({ features, linear, onOpenLinear, onLanguage, version,
           version && <span>v{version}</span>
         )}
       </span>
+      <button className="statusbar-linear" title={t.update.settingsOpen} onClick={onOpenSettings}>
+        ⚙ {t.update.settings}
+      </button>
       {terminal && (
         <button
           className={`statusbar-linear${terminal.open ? ' strong' : ''}`}

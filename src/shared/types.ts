@@ -467,6 +467,8 @@ export interface Api {
   getVersion(): Promise<string>
   /** The newer release found by the last check, if any. */
   getUpdate(): Promise<UpdateInfo | null>
+  /** Looks for a release now; `update` is null when the app is up to date or GitHub is unreachable. */
+  checkUpdate(): Promise<{ update: UpdateInfo | null; version: string }>
   /** Downloads and installs the update; the app quits, is replaced and reopens. */
   installUpdate(): Promise<void>
   /** Remembers that this version was declined, so it is not offered again on its own. */
