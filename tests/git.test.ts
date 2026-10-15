@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
+  commitChanges,
   gitDirOf,
   gitStatus,
   headContent,
@@ -13,6 +14,7 @@ import {
   listBranches,
   parseStatus,
   parseWorktrees,
+  push,
   strayWorktrees,
   switchBranch
 } from '../src/main/git'
@@ -39,7 +41,7 @@ describe('parseStatus', () => {
       ''
     ].join('\0')
     expect(parseStatus(out).changes).toEqual([
-      { path: 'after.ts', kind: 'renamed' },
+      { path: 'after.ts', kind: 'renamed', from: 'before.ts' },
       { path: 'clash.ts', kind: 'conflicted' },
       { path: 'gone.ts', kind: 'deleted' },
       { path: 'notes.txt', kind: 'untracked' },
@@ -205,5 +207,47 @@ describe('hasLanded', () => {
 
   it('never takes a trunk itself for a merged branch', async () => {
     expect(await hasLanded(repo)).toBe(false)
+  })
+})
+
+describe('commitChanges', () => {
+  let dir: string
+  const run = (...args: string[]) => execFileSync('git', args, { cwd: dir, encoding: 'utf8' }).trim()
+
+  beforeAll(() => {
+    dir = realpathSync(mkdtempSync(join(tmpdir(), 'baton-commit-')))
+    for (const args of [['init', '-b', 'main'], ['config', 'user.email', 't@t'], ['config', 'user.name', 't']]) run(...args)
+    writeFileSync(join(dir, 'a.txt'), 'one\n')
+    writeFileSync(join(dir, 'b.txt'), 'one\n')
+    run('add', '.')
+    run('commit', '-m', 'first')
+  })
+
+  afterAll(() => rmSync(dir, { recursive: true, force: true }))
+
+  it('commits the chosen files only, new ones included', async () => {
+    writeFileSync(join(dir, 'a.txt'), 'two\n')
+    writeFileSync(join(dir, 'b.txt'), 'two\n')
+    writeFileSync(join(dir, 'c.txt'), 'new\n')
+    run('add', 'b.txt') // staged beforehand, not chosen: must stay out
+    await commitChanges(dir, 'pick', ['a.txt', 'c.txt', 'unknown.txt'])
+    expect(run('show', '--name-only', '--format=%s', 'HEAD').split('\n').filter(Boolean)).toEqual(['pick', 'a.txt', 'c.txt'])
+    expect((await gitStatus(dir)).changes.map((c) => c.path)).toEqual(['b.txt'])
+  })
+
+  it('refuses an empty message or an empty selection', async () => {
+    await expect(commitChanges(dir, '  ', ['b.txt'])).rejects.toThrow()
+    await expect(commitChanges(dir, 'x', ['unknown.txt'])).rejects.toThrow()
+  })
+
+  it('commits both sides of a rename', async () => {
+    run('mv', 'a.txt', 'z.txt')
+    await commitChanges(dir, 'rename', ['z.txt'])
+    expect(run('show', '--name-status', '--format=', 'HEAD')).toMatch(/^R\d+\ta\.txt\tz\.txt$/)
+  })
+
+  it('rejects a push of a detached HEAD', async () => {
+    run('checkout', '--detach')
+    await expect(push(dir)).rejects.toThrow()
   })
 })

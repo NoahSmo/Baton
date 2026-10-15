@@ -535,6 +535,18 @@ function registerIpc(): void {
     await manager.switchBranch(id, branch)
     send('git:changed', id)
   })
+  ipcMain.handle('git:commit', async (_e, id: string, message: string, paths: string[]) => {
+    await manager.commitChanges(id, message, paths)
+    send('git:changed', id)
+  })
+  ipcMain.handle('git:pull', async (_e, id: string) => {
+    await manager.pull(id)
+    send('git:changed', id)
+  })
+  ipcMain.handle('git:push', async (_e, id: string) => {
+    await manager.push(id)
+    send('git:changed', id)
+  })
   ipcMain.handle('git:watch', (_e, id: string) => {
     const root = manager.featureRoot(id)
     const gitDir = gitDirOf(root)

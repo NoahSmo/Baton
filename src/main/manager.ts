@@ -26,7 +26,7 @@ import {
 } from '../shared/types'
 import { AgentSession, type AgentOutput } from './agent'
 import { removeAttachments, saveFiles, saveImages, withFiles } from './attachments'
-import { gitStatus, hasLanded, lastGitActivity, listBranches, strayWorktrees, switchBranch } from './git'
+import { commitChanges, gitStatus, hasLanded, lastGitActivity, listBranches, pull, push, strayWorktrees, switchBranch } from './git'
 import type { LinearClient } from './linear'
 import type { Store } from './store'
 import { createWorktree, fetchRemotes, removeWorktree, repoState } from './worktree'
@@ -221,12 +221,31 @@ export class Manager {
     return branches.map((b) => (b.heldBy ? { ...b, heldBy: owner(b.heldBy) } : b))
   }
 
+  private isBusy(featureId: string): boolean {
+    const { status } = this.mustGet(featureId)
+    return status === 'working' || status === 'waiting'
+  }
+
   async switchBranch(featureId: string, branch: string): Promise<void> {
     const feature = this.mustGet(featureId)
     // Files changing under a running turn would leave the agent working on a tree it never read.
-    if (feature.status === 'working' || feature.status === 'waiting') throw new Error(this.t().errors.agentBusy)
+    if (this.isBusy(featureId)) throw new Error(this.t().errors.agentBusy)
     await switchBranch(feature.worktreePath, branch)
     this.patch(featureId, { branch })
+  }
+
+  async commitChanges(featureId: string, message: string, paths: string[]): Promise<void> {
+    await commitChanges(this.featureRoot(featureId), message, paths)
+  }
+
+  async pull(featureId: string): Promise<void> {
+    // Like a checkout, a pull rewrites files under a running turn.
+    if (this.isBusy(featureId)) throw new Error(this.t().errors.agentBusyPull)
+    await pull(this.featureRoot(featureId))
+  }
+
+  async push(featureId: string): Promise<void> {
+    await push(this.featureRoot(featureId))
   }
 
   async createFeature(input: CreateFeatureInput): Promise<Feature> {

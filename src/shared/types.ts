@@ -354,6 +354,8 @@ export interface GitChange {
   /** Relative to the worktree, with forward slashes. */
   path: string
   kind: GitChangeKind
+  /** Where a renamed file came from. */
+  from?: string
 }
 
 export interface GitStatus {
@@ -496,6 +498,11 @@ export interface Api {
   gitBranches(featureId: string): Promise<GitBranch[]>
   /** Checks another branch out in the feature's worktree. Rejects with git's own explanation. */
   gitSwitch(featureId: string, branch: string): Promise<void>
+  /** Commits the given changes, and only those. Rejects with git's own explanation. */
+  gitCommit(featureId: string, message: string, paths: string[]): Promise<void>
+  gitPull(featureId: string): Promise<void>
+  /** Publishes the branch when it has no upstream yet. */
+  gitPush(featureId: string): Promise<void>
   gitWatch(featureId: string): Promise<void>
   gitUnwatch(featureId: string): Promise<void>
   /** The status of a watched worktree may have changed. */
