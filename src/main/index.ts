@@ -33,7 +33,7 @@ import {
 } from '../shared/types'
 import { readImageUrl, storedFilePath } from './attachments'
 import { fileMtime, FileWatchers, listDir, readTextFile, writeTextFile } from './files'
-import { gitDirOf } from './git'
+import { gitDirOf, headContent } from './git'
 import { LinearClient } from './linear'
 import { Manager } from './manager'
 import { suggestCommands } from './suggest'
@@ -183,7 +183,7 @@ function createWindow(): void {
     // Elsewhere the system draws its own title bar.
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 13 } } : {}),
     // Linux has no bundle to take the window icon from.
-    ...(process.platform === 'linux' ? { icon: app.isPackaged ? join(process.resourcesPath, 'icon.png') : join(app.getAppPath(), 'build/icon.png') } : {}),
+    ...(process.platform === 'linux' ? { icon: app.isPackaged ? join(process.resourcesPath, 'icon.png') : join(app.getAppPath(), 'build/icons/512x512.png') } : {}),
     backgroundColor: theme.colors.bg,
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
@@ -529,6 +529,7 @@ function registerIpc(): void {
   ipcMain.handle('files:unwatch', (_e, id: string) => watchers.unwatch(id))
 
   ipcMain.handle('git:status', (_e, id: string) => manager.gitStatus(id))
+  ipcMain.handle('git:head', (_e, id: string, path: string) => headContent(manager.featureRoot(id), path))
   ipcMain.handle('git:branches', (_e, id: string) => manager.gitBranches(id))
   ipcMain.handle('git:switch', async (_e, id: string, branch: string) => {
     await manager.switchBranch(id, branch)

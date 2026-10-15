@@ -73,18 +73,23 @@ case "$mode" in
     mkdir -p "$dest" "$HOME/.local/bin" "$HOME/.local/share/applications" "$HOME/.local/share/icons/hicolor/512x512/apps"
     tar -xzf "$tmp/$file" -C "$dest" --strip-components=1
     ln -sf "$dest/baton" "$HOME/.local/bin/baton"
-    curl -fsSL -o "$HOME/.local/share/icons/hicolor/512x512/apps/baton.png" \
-      "https://raw.githubusercontent.com/$REPO/v$version/build/icon.png" || true
+    # The icon ships inside the archive, so no second download that could fail.
+    icon="$HOME/.local/share/icons/hicolor/512x512/apps/baton.png"
+    cp "$dest/resources/icon.png" "$icon"
+    command -v gtk-update-icon-cache >/dev/null 2>&1 &&
+      gtk-update-icon-cache -q -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
     cat >"$HOME/.local/share/applications/baton.desktop" <<DESKTOP
 [Desktop Entry]
 Name=Baton
 Comment=Feature-first orchestrator for Claude Code agents
 Exec=$dest/baton %U
-Icon=baton
+Icon=$icon
 Type=Application
 Categories=Development;
-StartupWMClass=Baton
+StartupWMClass=baton
 DESKTOP
+    command -v update-desktop-database >/dev/null 2>&1 &&
+      update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
     # Chromium's sandbox helper must belong to root to work.
     if [ -n "$sudo" ] && command -v sudo >/dev/null 2>&1; then
       say "setting up Chromium's sandbox helper (sudo)"
