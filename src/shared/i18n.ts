@@ -217,6 +217,12 @@ const en = {
     loadingIssues: 'Loading issues…',
     filterIssues: 'Filter issues…',
     noIssueIn: (label: string) => `No matching open issue in ${label}.`,
+    newIssue: 'Or create a new issue from the title and message below',
+    newIssueProject: 'Linear project',
+    newIssueTeam: 'Team',
+    newIssueNoTeam: 'This Linear project has no team to create an issue in.',
+    newIssueCreate: 'Create Linear issue',
+    newIssueCreating: 'Creating issue…',
     titleLabel: 'Title',
     titlePlaceholder: 'Dark mode toggle',
     promptLabel: 'What should the agent do?',
@@ -370,7 +376,8 @@ const en = {
     projectHasFeatures: 'Delete the agents of this project first.',
     agentBusy: 'Stop the agent before switching branch.',
     linearNotConnected: 'Linear is not connected.',
-    linearHttp: (status: number) => `Linear answered with HTTP ${status}.`
+    linearHttp: (status: number) => `Linear answered with HTTP ${status}.`,
+    linearCreateFailed: 'Linear did not create the issue.'
   }
 }
 
@@ -577,6 +584,12 @@ const fr: Dict = {
     loadingIssues: 'Chargement des issues…',
     filterIssues: 'Filtrer les issues…',
     noIssueIn: (label) => `Aucune issue ouverte correspondante dans ${label}.`,
+    newIssue: "Ou créer une nouvelle issue à partir du titre et du message ci-dessous",
+    newIssueProject: 'Projet Linear',
+    newIssueTeam: 'Équipe',
+    newIssueNoTeam: "Ce projet Linear n'a aucune équipe où créer une issue.",
+    newIssueCreate: 'Créer une issue Linear',
+    newIssueCreating: "Création de l'issue…",
     titleLabel: 'Titre',
     titlePlaceholder: 'Bouton mode sombre',
     promptLabel: "Que doit faire l'agent ?",
@@ -729,7 +742,8 @@ const fr: Dict = {
     projectHasFeatures: "Supprime d'abord les agents de ce projet.",
     agentBusy: "Arrête l'agent avant de changer de branche.",
     linearNotConnected: "Linear n'est pas connecté.",
-    linearHttp: (status) => `Linear a répondu avec HTTP ${status}.`
+    linearHttp: (status) => `Linear a répondu avec HTTP ${status}.`,
+    linearCreateFailed: "Linear n'a pas créé l'issue."
   }
 }
 

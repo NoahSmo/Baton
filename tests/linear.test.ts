@@ -95,9 +95,42 @@ describe('LinearClient', () => {
   it('lists workspace projects with their labels', async () => {
     const labels = [{ id: 'l1', name: 'Infra' }]
     const { client } = fakeLinear({
-      body: { data: { projects: { nodes: [{ id: 'p1', name: 'Mobile app', labels: { nodes: labels } }] } } }
+      body: {
+        data: {
+          projects: {
+            nodes: [{ id: 'p1', name: 'Mobile app', labels: { nodes: labels }, teams: { nodes: [{ id: 't1', name: 'Eng' }] } }]
+          }
+        }
+      }
     })
-    expect(await client.projects()).toEqual([{ id: 'p1', name: 'Mobile app', labels }])
+    expect(await client.projects()).toEqual([
+      { id: 'p1', name: 'Mobile app', labels, teams: [{ id: 't1', name: 'Eng' }] }
+    ])
+  })
+
+  it('creates an issue in a team and project', async () => {
+    const { client, calls } = fakeLinear({
+      body: { data: { issueCreate: { success: true, issue: rawIssue } } }
+    })
+    const input = { title: 'Dark mode', description: 'Add a toggle.', teamId: 't1', projectId: 'p1' }
+    expect(await client.createIssue(input)).toEqual(issue)
+    expect(calls[0].body.query).toContain('issueCreate')
+    expect(calls[0].body.variables).toEqual({ input })
+  })
+
+  it('leaves the description out when it is empty', async () => {
+    const { client, calls } = fakeLinear({
+      body: { data: { issueCreate: { success: true, issue: rawIssue } } }
+    })
+    await client.createIssue({ title: 'Dark mode', description: '', teamId: 't1', projectId: 'p1' })
+    expect((calls[0].body.variables as { input: { description?: string } }).input.description).toBeUndefined()
+  })
+
+  it('fails when Linear does not create the issue', async () => {
+    const { client } = fakeLinear({ body: { data: { issueCreate: { success: false, issue: null } } } })
+    await expect(
+      client.createIssue({ title: 'x', description: '', teamId: 't1', projectId: 'p1' })
+    ).rejects.toThrow('Linear did not create the issue.')
   })
 
   it('lists project labels by name, without groups', async () => {

@@ -129,6 +129,7 @@ To connect, click **Connect Linear** in the status bar and paste a personal API 
 Once connected:
 
 - **Link a repository to a Linear project label**, from the project settings. Every Linear project carrying that label then belongs to the repository, so one repository can serve many Linear projects. New features in that repository can start from their open issues. Repositories you do not link never show any issue.
+- **Create an issue from the new agent dialog.** For a ticket that does not exist yet, write the title and message, then click **Create Linear issue**: it is created in a Linear project carrying the repository's label (you pick the project and team when there are several) and linked to the new agent.
 - **Start a feature from an issue.** In the Linear tab, any issue can start a feature: it goes to the repository linked to a label of its Linear project, or asks which one when there is none or several. The feature takes the issue's title, description and link as its first prompt, and the branch name Linear suggests, so Linear attaches the pull request to the issue.
 - **The issue moves to its team's first started state** when the agent begins.
 - **The Linear tab** lists projects and their open issues. Filter by state, change an issue's state, and start or reopen its feature.

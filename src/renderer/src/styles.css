@@ -1320,6 +1320,18 @@ button.attach:hover:not(:disabled) {
   padding: 4px 4px 4px 10px;
 }
 
+.issue-create {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.issue-create .hint {
+  margin: 0;
+}
+
 .issue-id {
   font-family: var(--mono);
   font-size: 12px;

@@ -14,6 +14,7 @@ import {
   type AgentModel,
   type ContextMenuSpec,
   type CreateFeatureInput,
+  type CreateLinearIssueInput,
   type Feature,
   type LaunchCommand,
   type LinearIssue,
@@ -488,6 +489,7 @@ function registerIpc(): void {
     linearProjectId ? linear.projectIssues(linearProjectId) : linear.myIssues()
   )
 
+  ipcMain.handle('linear:createIssue', (_e, input: CreateLinearIssueInput) => linear.createIssue(input))
   ipcMain.handle('linear:teamStates', (_e, teamId: string) => linear.teamStates(teamId))
   ipcMain.handle('linear:setIssueState', (_e, issueId: string, stateId: string) =>
     linear.setIssueState(issueId, stateId)

@@ -97,10 +97,23 @@ export interface LinearLabel {
   name: string
 }
 
+export interface LinearTeam {
+  id: string
+  name: string
+}
+
 export interface LinearProject {
   id: string
   name: string
   labels: LinearLabel[]
+  teams: LinearTeam[]
+}
+
+export interface CreateLinearIssueInput {
+  title: string
+  description: string
+  teamId: string
+  projectId: string
 }
 
 /** A shell command of a project the user starts with one click, e.g. its dev server. */
@@ -468,6 +481,7 @@ export interface Api {
   /** Workflow states an issue of this team can be moved to, in workflow order. */
   linearTeamStates(teamId: string): Promise<LinearState[]>
   linearSetIssueState(issueId: string, stateId: string): Promise<void>
+  linearCreateIssue(input: CreateLinearIssueInput): Promise<LinearIssue>
   onEvent(cb: (ev: StoredEvent) => void): () => void
   onFeature(cb: (feature: Feature) => void): () => void
   onFeatureRemoved(cb: (featureId: string) => void): () => void
