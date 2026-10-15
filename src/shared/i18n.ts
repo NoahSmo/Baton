@@ -108,6 +108,7 @@ const en = {
 
   feature: {
     stop: 'Stop',
+    stopHint: 'Stop the current message (Esc / Ctrl+C)',
     contextSize: 'Conversation size. Every request of the agent sends all of it again: past 100k, a new agent costs less.',
     openFolder: 'Open folder',
     linkIssue: 'Link to an issue',
@@ -469,6 +470,7 @@ const fr: Dict = {
 
   feature: {
     stop: 'Arrêter',
+    stopHint: 'Annuler le message en cours (Échap / Ctrl+C)',
     contextSize: "Taille de la conversation. Chaque requête de l'agent la renvoie en entier : au-delà de 100k, un nouvel agent coûte moins cher.",
     openFolder: 'Ouvrir le dossier',
     linkIssue: 'Lier à une issue',

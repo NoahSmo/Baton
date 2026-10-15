@@ -79,7 +79,17 @@ export function FeatureView({
     void window.api.send(feature.id, text, toMessageAttachments(attachments.drafts))
   }
 
+  const stop = () => void window.api.interrupt(feature.id)
+
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    // Ctrl+C keeps copying when text is selected.
+    const { selectionStart, selectionEnd } = e.currentTarget
+    const ctrlC = e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'c' && selectionStart === selectionEnd
+    if ((e.key === 'Escape' || ctrlC) && busy) {
+      e.preventDefault()
+      stop()
+      return
+    }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       submit()
@@ -153,7 +163,7 @@ export function FeatureView({
           </p>
         </div>
         <div className="feature-actions">
-          {busy && <button onClick={() => void window.api.interrupt(feature.id)}>{t.feature.stop}</button>}
+          {busy && <button onClick={stop}>{t.feature.stop}</button>}
           <button
             className={editorOpen ? 'toggled' : ''}
             aria-pressed={editorOpen}
@@ -214,6 +224,11 @@ export function FeatureView({
             rows={Math.min(8, Math.max(1, draft.split('\n').length))}
             placeholder={busy ? t.feature.queuePlaceholder : t.feature.messagePlaceholder}
           />
+          {busy && (
+            <button className="danger" onClick={stop} title={t.feature.stopHint}>
+              {t.feature.stop}
+            </button>
+          )}
           <button className="primary" onClick={submit} disabled={!draft.trim() && !attachments.drafts.length}>
             {t.feature.send}
           </button>
