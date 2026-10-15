@@ -139,7 +139,8 @@ const en = {
     noOutput: '(no output)',
     stopped: 'Stopped',
     turnFailed: 'Turn failed',
-    turnFinished: 'Turn finished'
+    turnFinished: 'Turn finished',
+    backgroundRunning: (n: number) => `${n} ${n === 1 ? 'task' : 'tasks'} still running in the background`
   },
 
   editor: {
@@ -527,7 +528,8 @@ const fr: Dict = {
     noOutput: '(aucune sortie)',
     stopped: 'Arrêté',
     turnFailed: 'Tour en échec',
-    turnFinished: 'Tour terminé'
+    turnFinished: 'Tour terminé',
+    backgroundRunning: (n) => `${n} ${n > 1 ? 'tâches' : 'tâche'} encore en cours en arrière-plan`
   },
 
   editor: {

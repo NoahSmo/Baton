@@ -2435,3 +2435,45 @@ button.toggled:hover:not(:disabled) {
   background: var(--raised);
   color: var(--muted);
 }
+
+.background-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+  font-size: 12px;
+}
+
+.background-title {
+  color: var(--muted);
+}
+
+.background-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.background-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.background-kind {
+  flex: none;
+  color: var(--accent);
+}
+
+.background-desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

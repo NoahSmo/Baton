@@ -22,7 +22,8 @@ import {
   type RepoInfo,
   type StoredEvent,
   type UiEvent,
-  type UsageWarning
+  type UsageWarning,
+  type BackgroundTask
 } from '../shared/types'
 import { AgentSession, type AgentOutput } from './agent'
 import { removeAttachments, saveFiles, saveImages, withFiles } from './attachments'
@@ -59,6 +60,7 @@ export interface ManagerSink {
   featureRemoved(featureId: string): void
   projectRemoved(projectId: string): void
   stream(featureId: string, text: string): void
+  backgroundTasks(featureId: string, tasks: BackgroundTask[]): void
   /** Called when a feature moves to a status worth notifying about. */
   attention(feature: Feature): void
   /** A usage window is nearly used up (called once per window), or null once the limit lifted. */
@@ -496,6 +498,9 @@ export class Manager {
         return
       case 'stream':
         this.sink.stream(featureId, out.text)
+        return
+      case 'background':
+        this.sink.backgroundTasks(featureId, out.tasks)
         return
       case 'context':
         this.patch(featureId, { contextTokens: out.tokens })
