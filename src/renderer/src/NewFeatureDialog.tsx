@@ -7,6 +7,7 @@ import {
   type AgentModel,
   type Feature,
   type LinearIssue,
+  type LinearProject,
   type PermissionMode,
   type Project
 } from '../../shared/types'
@@ -48,6 +49,10 @@ export function NewFeatureDialog({
   const [issueFilter, setIssueFilter] = useState('')
   const [stateFilter, setStateFilter] = useState<string[]>([])
   const [issue, setIssue] = useState<LinearIssue | null>(initialIssue ?? null)
+  const [linearProjects, setLinearProjects] = useState<LinearProject[]>([])
+  const [newProjectId, setNewProjectId] = useState('')
+  const [newTeamId, setNewTeamId] = useState('')
+  const [creatingIssue, setCreatingIssue] = useState(false)
 
   const linearLabel = project.linearLabel
 
@@ -66,6 +71,47 @@ export function NewFeatureDialog({
       stale = true
     }
   }, [linearConnected, linearLabel?.id])
+
+  // Linear projects carrying the label are where a new issue can go.
+  useEffect(() => {
+    if (!linearConnected || !linearLabel) return
+    let stale = false
+    window.api.linearProjects().then(
+      (list) => {
+        if (stale) return
+        const matching = list.filter((p) => p.labels.some((l) => l.id === linearLabel.id))
+        setLinearProjects(matching)
+        setNewProjectId((current) => (matching.some((p) => p.id === current) ? current : (matching[0]?.id ?? '')))
+      },
+      () => !stale && setLinearProjects([])
+    )
+    return () => {
+      stale = true
+    }
+  }, [linearConnected, linearLabel?.id])
+
+  const newProject = linearProjects.find((p) => p.id === newProjectId)
+  const newTeam = newProject?.teams.find((tm) => tm.id === newTeamId) ?? newProject?.teams[0]
+
+  async function createIssue() {
+    if (!newProject || !newTeam || !title.trim() || creatingIssue) return
+    setCreatingIssue(true)
+    setError('')
+    try {
+      const created = await window.api.linearCreateIssue({
+        title: title.trim(),
+        description: prompt.trim(),
+        teamId: newTeam.id,
+        projectId: newProject.id
+      })
+      setIssue(created)
+      setTitle(`${created.identifier} ${created.title}`)
+    } catch (err) {
+      setError(cleanError(err))
+    } finally {
+      setCreatingIssue(false)
+    }
+  }
 
   function pickIssue(picked: LinearIssue) {
     setIssue(picked)
@@ -157,6 +203,41 @@ export function NewFeatureDialog({
                   )}
                 </div>
               </>
+            )}
+            {!issue && linearLabel && newProject && (
+              <div className="issue-create">
+                <p className="hint">{t.newFeature.newIssue}</p>
+                {linearProjects.length > 1 && (
+                  <select
+                    aria-label={t.newFeature.newIssueProject}
+                    value={newProject.id}
+                    onChange={(e) => setNewProjectId(e.target.value)}
+                  >
+                    {linearProjects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {newProject.teams.length > 1 && (
+                  <select
+                    aria-label={t.newFeature.newIssueTeam}
+                    value={newTeam?.id}
+                    onChange={(e) => setNewTeamId(e.target.value)}
+                  >
+                    {newProject.teams.map((tm) => (
+                      <option key={tm.id} value={tm.id}>
+                        {tm.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {!newTeam && <p className="hint">{t.newFeature.newIssueNoTeam}</p>}
+                <button type="button" disabled={!title.trim() || !newTeam || creatingIssue} onClick={createIssue}>
+                  {creatingIssue ? t.newFeature.newIssueCreating : t.newFeature.newIssueCreate}
+                </button>
+              </div>
             )}
           </>
         )}

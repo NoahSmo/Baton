@@ -1,5 +1,5 @@
 import { DICTS, type Dict } from '../shared/i18n'
-import type { LinearIssue, LinearLabel, LinearProject, LinearState } from '../shared/types'
+import type { CreateLinearIssueInput, LinearIssue, LinearLabel, LinearProject, LinearState, LinearTeam } from '../shared/types'
 
 // Overridable so the app can be exercised against a local stand-in for Linear.
 const ENDPOINT = process.env.BATON_LINEAR_URL ?? 'https://api.linear.app/graphql'
@@ -70,9 +70,17 @@ export class LinearClient {
   /** Projects of the workspace, most recently updated first. */
   async projects(): Promise<LinearProject[]> {
     const data = await this.request<{
-      projects: { nodes: { id: string; name: string; labels: { nodes: LinearLabel[] } }[] }
-    }>('query { projects(first: 100, orderBy: updatedAt) { nodes { id name labels { nodes { id name } } } } }')
-    return data.projects.nodes.map(({ labels, ...project }) => ({ ...project, labels: labels.nodes }))
+      projects: {
+        nodes: { id: string; name: string; labels: { nodes: LinearLabel[] }; teams: { nodes: LinearTeam[] } }[]
+      }
+    }>(
+      'query { projects(first: 100, orderBy: updatedAt) { nodes { id name labels { nodes { id name } } teams { nodes { id name } } } } }'
+    )
+    return data.projects.nodes.map(({ labels, teams, ...project }) => ({
+      ...project,
+      labels: labels.nodes,
+      teams: teams.nodes
+    }))
   }
 
   /** Project labels of the workspace, by name. Groups are left out: they cannot be put on a project. */
@@ -162,6 +170,18 @@ export class LinearClient {
     return data.team.states.nodes.sort(
       (a, b) => STATE_TYPE_ORDER.indexOf(a.type) - STATE_TYPE_ORDER.indexOf(b.type) || a.position - b.position
     )
+  }
+
+  /** Creates an issue in a team, inside a Linear project. */
+  async createIssue(input: CreateLinearIssueInput): Promise<LinearIssue> {
+    const data = await this.request<{ issueCreate: { success: boolean; issue: RawIssue | null } }>(
+      `mutation($input: IssueCreateInput!) {
+        issueCreate(input: $input) { success issue { ${ISSUE_FIELDS} } }
+      }`,
+      { input: { ...input, description: input.description || undefined } }
+    )
+    if (!data.issueCreate.success || !data.issueCreate.issue) throw new Error(this.t().errors.linearCreateFailed)
+    return toIssue(data.issueCreate.issue)
   }
 
   async setIssueState(issueId: string, stateId: string): Promise<void> {
