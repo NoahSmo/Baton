@@ -47,6 +47,7 @@ import {
   downloadAsset,
   findOwningBrew,
   installScript,
+  macAppPath,
   manualUpdateCommand,
   pickAsset,
   runDetached,
@@ -337,6 +338,12 @@ async function refreshUpdate(): Promise<void> {
   send('update:available', update)
 }
 
+/** Quits, and forces the exit if shutdown hangs: the installer is waiting on us. */
+function quitForUpdate(): void {
+  app.quit()
+  setTimeout(() => app.exit(0), 5000).unref()
+}
+
 async function installUpdate(): Promise<void> {
   if (!update || update.installMode === 'manual') return
   const log = join(dataDir, 'update.log')
@@ -345,7 +352,8 @@ async function installUpdate(): Promise<void> {
       const brew = findOwningBrew()
       if (!brew) throw new Error('Homebrew not found')
       send('update:progress', { phase: 'installing' })
-      upgradeWithBrew(brew, log)
+      upgradeWithBrew(brew, log, process.pid, macAppPath(process.execPath))
+      quitForUpdate()
       return
     }
     if (!update.asset) throw new Error('no package for this platform')
@@ -353,7 +361,7 @@ async function installUpdate(): Promise<void> {
     send('update:progress', { phase: 'installing' })
     const env = currentEnv()
     runDetached(installScript(update.installMode, file, env, detectInstallMode(env).packager), log)
-    app.quit()
+    quitForUpdate()
   } catch (err) {
     send('update:progress', { phase: 'error', message: err instanceof Error ? err.message : String(err) })
   }
