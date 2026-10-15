@@ -80,7 +80,7 @@ export function StatusBar({ features, linear, onOpenLinear, onLanguage, version,
         </span>
       )}
       <span className="statusbar-sep" />
-      {warning && <span className="statusbar-warning">{t.statusbar.usageNear(resetTime, warning.utilization)}</span>}
+      {warning && <span className="statusbar-warning">{t.statusbar.usageNear(resetTime, warning.utilization, warning.limitType)}</span>}
       {maxRunning !== null && (
         <span className="max-running" title={t.statusbar.maxRunningHint}>
           {t.statusbar.maxRunning}

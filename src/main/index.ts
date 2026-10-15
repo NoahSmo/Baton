@@ -127,7 +127,7 @@ function warnUsage(warning: UsageWarning | null): void {
   send('usage:warning', warning)
   // null: the limit lifted, the warning is gone.
   if (!warning) return
-  new Notification({ title: APP_NAME, body: t().notice.limitNear(formatReset(warning.resetsAt, lang)) }).show()
+  new Notification({ title: APP_NAME, body: t().notice.limitNear(formatReset(warning.resetsAt, lang), warning.limitType) }).show()
 }
 
 const linear = new LinearClient(() => linearKey.get(), t)
