@@ -602,6 +602,7 @@ void app.whenReady().then(() => {
     featureRemoved: (id) => send('feature:removed', id),
     projectRemoved: (id) => send('project:removed', id),
     stream: (id, text) => send('stream', id, text),
+    backgroundTasks: (id, tasks) => send('background', id, tasks),
     attention: notify,
     usageWarning: warnUsage
   })

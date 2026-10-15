@@ -50,6 +50,14 @@ export type FeatureStatus =
   | 'limited' // usage limit reached
   | 'queued' // message waiting for a free agent slot
 
+/** A sub-agent, shell command or monitor still running after the turn that started it moved on. */
+export interface BackgroundTask {
+  id: string
+  /** Sub-agent type for agents ("Explore"), the task kind otherwise ("local_bash"). */
+  kind: string
+  description: string
+}
+
 export type PermissionMode = 'default' | 'acceptEdits' | 'plan' | 'bypassPermissions'
 
 export const PERMISSION_MODES: PermissionMode[] = ['default', 'acceptEdits', 'plan', 'bypassPermissions']
@@ -489,6 +497,8 @@ export interface Api {
   onFeatureRemoved(cb: (featureId: string) => void): () => void
   /** Live text of the assistant message being streamed; empty string clears it. */
   onStream(cb: (featureId: string, text: string) => void): () => void
+  /** Full set of background tasks the agent still has running; replaces the previous one. */
+  onBackgroundTasks(cb: (featureId: string, tasks: BackgroundTask[]) => void): () => void
   /** Fired when the user clicks a notification for a feature. */
   onFocusFeature(cb: (featureId: string) => void): () => void
   /** Entries of a directory of the feature's worktree; '' is its root. */

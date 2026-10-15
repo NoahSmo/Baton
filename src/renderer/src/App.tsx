@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { DICTS, langFromLocale, type Lang } from '../../shared/i18n'
-import type { Feature, LinearIssue, LinearStatus, Project, StoredEvent, UpdateInfo } from '../../shared/types'
+import type { BackgroundTask, Feature, LinearIssue, LinearStatus, Project, StoredEvent, UpdateInfo } from '../../shared/types'
 import { ConfirmHost } from './ConfirmHost'
 import { ContextMenuHost } from './ContextMenuHost'
 import { EditorPane, type EditorPanel } from './EditorPane'
@@ -19,6 +19,8 @@ import { UpdateDialog } from './UpdateDialog'
 import { useGitStatus } from './useGitStatus'
 import { useResize } from './useResize'
 
+/** Stable empty list, so features without background work do not re-render on every update. */
+const NO_TASKS: BackgroundTask[] = []
 const SIDEBAR_WIDTH = 300
 /** Room the conversation keeps when the editor is dragged wide. */
 const MIN_CHAT_WIDTH = 340
@@ -36,6 +38,7 @@ export function App() {
   /** Each project tab remembers the feature it was showing. */
   const [selected, setSelected] = useState<Record<string, string>>({})
   const [events, setEvents] = useState<Record<string, StoredEvent[]>>({})
+  const [background, setBackground] = useState<Record<string, BackgroundTask[]>>({})
   const [streams, setStreams] = useState<Record<string, string>>({})
   const [linear, setLinear] = useState<LinearStatus>({ connected: false })
   const [dialog, setDialog] = useState<Dialog>(null)
@@ -123,7 +126,8 @@ export function App() {
           return { ...all, [ev.featureId]: [...list, ev] }
         })
       ),
-      window.api.onStream((id, text) => setStreams((s) => ({ ...s, [id]: text })))
+      window.api.onStream((id, text) => setStreams((s) => ({ ...s, [id]: text }))),
+      window.api.onBackgroundTasks((id, tasks) => setBackground((b) => ({ ...b, [id]: tasks })))
     ]
     return () => offs.forEach((off) => off())
   }, [])
@@ -246,6 +250,7 @@ export function App() {
                   project={project}
                   events={events[feature.id] ?? []}
                   stream={streams[feature.id] ?? ''}
+                  background={background[feature.id] ?? NO_TASKS}
                   git={git}
                   editorOpen={Boolean(editors[feature.id])}
                   terminalOpen={terminalOpen}

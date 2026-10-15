@@ -8,7 +8,7 @@ import {
   type SDKMessage,
   type SDKUserMessage
 } from '@anthropic-ai/claude-agent-sdk'
-import type { AgentModel, ImageInput, PermissionDecision, PermissionMode, UiEvent } from '../shared/types'
+import type { AgentModel, BackgroundTask, ImageInput, PermissionDecision, PermissionMode, UiEvent } from '../shared/types'
 
 const MAX_TOOL_RESULT_CHARS = 20_000
 
@@ -20,6 +20,8 @@ export type AgentOutput =
   | { type: 'context'; tokens: number }
   /** `ok` is false when the summary failed; the request was paid for all the same. */
   | { type: 'compacted'; ok: boolean; preTokens?: number; postTokens?: number; costUsd: number }
+  /** Everything still running in the background, as a whole. */
+  | { type: 'background'; tasks: BackgroundTask[] }
   | { type: 'closed' }
 
 export interface AgentOptions {
@@ -285,6 +287,7 @@ export class AgentSession {
       }
       this.denyAllPending('The session ended.')
       this.setStream('')
+      this.opts.emit({ type: 'background', tasks: [] })
       this.opts.emit({ type: 'closed' })
     }
   }
@@ -303,6 +306,13 @@ export class AgentSession {
         if (m.subtype === 'init') {
           this.sessionId = m.session_id
           this.opts.emit({ type: 'session', sessionId: m.session_id, model: m.model })
+        } else if (m.subtype === 'background_tasks_changed') {
+          this.opts.emit({
+            type: 'background',
+            tasks: m.tasks
+              .filter((task) => !task.ambient)
+              .map((task) => ({ id: task.task_id, kind: task.subagent_type ?? task.task_type, description: task.description }))
+          })
         } else if (m.subtype === 'compact_boundary') {
           this.compactedFrom = { preTokens: m.compact_metadata.pre_tokens, postTokens: m.compact_metadata.post_tokens }
         }

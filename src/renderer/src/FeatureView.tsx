@@ -5,6 +5,7 @@ import { issuePrompt } from '../../shared/linear'
 import {
   AGENT_MODELS,
   PERMISSION_MODES,
+  type BackgroundTask,
   type Feature,
   type GitStatus,
   type PermissionDecision,
@@ -26,6 +27,8 @@ interface Props {
   project: Project | undefined
   events: StoredEvent[]
   stream: string
+  /** Work still running in the background, which a finished turn does not mean is over. */
+  background: BackgroundTask[]
   /** Null until the worktree's status has been read. */
   git: GitStatus | null
   editorOpen: boolean
@@ -45,6 +48,7 @@ export function FeatureView({
   project,
   events,
   stream,
+  background,
   git,
   editorOpen,
   terminalOpen,
@@ -211,6 +215,18 @@ export function FeatureView({
             </div>
           )}
           {feature.status === 'working' && !stream && <div className="thinking">{t.feature.working}</div>}
+          {background.length > 0 && (
+            <div className="background-tasks">
+              <div className="background-title">{t.feature.backgroundRunning(background.length)}</div>
+              {background.map((task) => (
+                <div key={task.id} className="background-task">
+                  <span className="background-dot" />
+                  <span className="background-kind">{task.kind}</span>
+                  <span className="background-desc">{task.description}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

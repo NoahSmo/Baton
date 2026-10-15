@@ -41,6 +41,7 @@ function setup(maxRunning = 1) {
     featureRemoved: () => {},
     projectRemoved: () => {},
     stream: () => {},
+    backgroundTasks: () => {},
     attention: () => {},
     usageWarning: (w) => warnings.push(w)
   }
@@ -209,6 +210,7 @@ describe('agent slots', () => {
       featureRemoved: () => {},
       projectRemoved: () => {},
       stream: () => {},
+    backgroundTasks: () => {},
       attention: () => {},
       usageWarning: () => {}
     })

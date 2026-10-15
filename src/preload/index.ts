@@ -58,6 +58,7 @@ const api: Api = {
   onFeature: (cb) => subscribe('feature', cb),
   onFeatureRemoved: (cb) => subscribe('feature:removed', cb),
   onStream: (cb) => subscribe('stream', cb),
+  onBackgroundTasks: (cb) => subscribe('background', cb),
   onFocusFeature: (cb) => subscribe('feature:focus', cb),
   setPermissionMode: (id, mode) => ipcRenderer.invoke('feature:setPermissionMode', id, mode),
   setAgentModel: (id, model) => ipcRenderer.invoke('feature:setAgentModel', id, model),
