@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { checkForUpdate, detectInstallMode, downloadAsset, pickAsset, type InstallEnv } from '../src/main/updater'
+import { brewScript, checkForUpdate, detectInstallMode, downloadAsset, installScript, pickAsset, type InstallEnv } from '../src/main/updater'
 import { isNewer } from '../src/shared/version'
 
 describe('isNewer', () => {
@@ -138,5 +138,32 @@ describe('downloadAsset', () => {
     await expect(
       downloadAsset({ name: 'a.zip', url: 'https://example.test/a.zip', sha256: 'bad' }, dir, () => {}, serve)
     ).rejects.toThrow('checksum')
+  })
+})
+
+describe('install scripts', () => {
+  const env: InstallEnv = {
+    platform: 'darwin',
+    execPath: '/Applications/Baton.app/Contents/MacOS/Baton',
+    home: '/home/u',
+    brew: null,
+    writable: () => true,
+    has: () => true
+  }
+
+  it('kills the old app before replacing it and opens the installed bundle', () => {
+    const script = installScript('mac-zip', '/tmp/u/Baton-1.0.0.zip', env, 'deb')
+    expect(script).toContain('kill -TERM')
+    expect(script).toContain('kill -KILL')
+    expect(script).toContain("pkill -f '/Applications/Baton.app/Contents/'")
+    expect(script.indexOf('kill -KILL')).toBeLessThan(script.indexOf('mv '))
+    expect(script).toContain("open '/Applications/Baton.app'")
+  })
+
+  it('upgrades through brew only once the old app is gone, then opens it by path', () => {
+    const script = brewScript('/opt/homebrew/bin/brew', 42, '/Applications/Baton.app')
+    expect(script.indexOf('kill -KILL 42')).toBeLessThan(script.indexOf('upgrade --cask'))
+    expect(script).toContain("open '/Applications/Baton.app'")
+    expect(script).not.toContain('open -a')
   })
 })

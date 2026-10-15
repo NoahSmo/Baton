@@ -58,6 +58,8 @@ export function manualUpdateCommand(platform: NodeJS.Platform = process.platform
   return platform === 'linux' ? LINUX_INSTALL_COMMAND : `brew upgrade --cask ${BREW_CASK}`
 }
 
+const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
+
 /** Path of the Homebrew that installed this app, if it was installed that way. */
 export function findOwningBrew(pathEnv = process.env.PATH ?? ''): string | null {
   const candidates = [...pathEnv.split(delimiter).map((dir) => join(dir, 'brew')), '/opt/homebrew/bin/brew', '/usr/local/bin/brew']
@@ -70,14 +72,36 @@ export function findOwningBrew(pathEnv = process.env.PATH ?? ''): string | null 
 }
 
 /**
- * Upgrades through Homebrew in a detached process: the cask quits the app to
- * replace it, so the upgrade has to outlive us, and reopens the app at the end.
+ * Shell snippet that makes sure the running app is gone: waits for it to exit,
+ * then escalates to TERM and KILL, and sweeps helper processes left in the bundle.
  */
-export function upgradeWithBrew(brew: string, logFile: string): void {
-  const log = openSync(logFile, 'a')
-  const script = `"${brew}" update; "${brew}" upgrade --cask ${BREW_CASK}; open -a "${APP_NAME}"`
-  spawn('/bin/sh', ['-c', script], { detached: true, stdio: ['ignore', log, log] }).unref()
-  closeSync(log)
+export function stopOldApp(pid: number, bundle?: string): string {
+  const waitFor = (seconds: number) =>
+    `i=0; while kill -0 ${pid} 2>/dev/null && [ $i -lt ${seconds * 2} ]; do sleep 0.5; i=$((i+1)); done`
+  return [
+    waitFor(10),
+    `if kill -0 ${pid} 2>/dev/null; then kill -TERM ${pid}; ${waitFor(5)}; fi`,
+    `if kill -0 ${pid} 2>/dev/null; then kill -KILL ${pid}; fi`,
+    ...(bundle ? [`pkill -f ${quote(`${bundle}/Contents/`)} || true`] : []),
+    'sleep 1'
+  ].join('\n')
+}
+
+/**
+ * Upgrades through Homebrew in a detached process: it waits for this app to be
+ * gone, upgrades the cask, then opens the installed bundle by path (opening by
+ * name would just refocus an old instance that is still running).
+ */
+export function upgradeWithBrew(brew: string, logFile: string, pid: number, bundle: string): void {
+  runDetached(brewScript(brew, pid, bundle), logFile)
+}
+
+export function brewScript(brew: string, pid: number, bundle: string): string {
+  return [
+    stopOldApp(pid, bundle),
+    `${quote(brew)} update; ${quote(brew)} upgrade --cask ${BREW_CASK}`,
+    `open ${quote(bundle)}`
+  ].join('\n')
 }
 
 /** Package names as `scripts/release.mjs` publishes them. */
@@ -184,11 +208,10 @@ export async function downloadAsset(
   }
 }
 
-const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
-
 /** Shell script that waits for this process to exit, installs, then reopens the app. */
 export function installScript(mode: UpdateInstallMode, file: string, env: InstallEnv, packager: 'deb' | 'rpm'): string {
-  const wait = `while kill -0 ${process.pid} 2>/dev/null; do sleep 0.5; done`
+  const bundle = mode === 'mac-zip' ? macAppPath(env.execPath) : undefined
+  const wait = stopOldApp(process.pid, bundle)
   if (mode === 'mac-zip') {
     const app = macAppPath(env.execPath)
     const stage = `${dirname(file)}/stage`
