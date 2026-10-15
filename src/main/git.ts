@@ -32,9 +32,8 @@ export function parseStatus(out: string): GitStatus {
       status.behind = -Number(behind)
     } else if (line.startsWith('1 ')) status.changes.push({ path: afterFields(line, 8), kind: kindOf(line.slice(2, 4)) })
     else if (line.startsWith('2 ')) {
-      status.changes.push({ path: afterFields(line, 9), kind: kindOf(line.slice(2, 4)) })
       // A rename is followed by the path it came from.
-      i++
+      status.changes.push({ path: afterFields(line, 9), kind: kindOf(line.slice(2, 4)), from: records[++i] })
     } else if (line.startsWith('u ')) status.changes.push({ path: afterFields(line, 10), kind: 'conflicted' })
     else if (line.startsWith('? ')) status.changes.push({ path: line.slice(2), kind: 'untracked' })
   }
@@ -100,6 +99,42 @@ export async function switchBranch(root: string, branch: string): Promise<void> 
     const stderr = (err as { stderr?: string }).stderr?.trim()
     throw stderr ? new Error(stderr) : err
   }
+}
+
+/** Runs a git command that may be refused; the rejection carries git's own explanation. */
+async function gitOrExplain(root: string, ...args: string[]): Promise<string> {
+  try {
+    return await git(root, ...args)
+  } catch (err) {
+    const stderr = (err as { stderr?: string }).stderr?.trim()
+    throw stderr ? new Error(stderr) : err
+  }
+}
+
+/** Commits exactly `paths` of the status: whatever was staged beforehand is set aside. */
+export async function commitChanges(root: string, message: string, paths: string[]): Promise<void> {
+  if (!message.trim()) throw new Error('Empty commit message')
+  // Only paths git itself reports reach the command line.
+  const known = new Map((await gitStatus(root)).changes.map((c) => [c.path, c]))
+  const chosen = paths.flatMap((p) => {
+    const change = known.get(p)
+    return change ? [change.path, ...(change.from ? [change.from] : [])] : []
+  })
+  if (!chosen.length) throw new Error('Nothing to commit')
+  await gitOrExplain(root, 'reset', '--quiet')
+  await gitOrExplain(root, 'add', '--all', '--', ...chosen)
+  await gitOrExplain(root, 'commit', '--message', message.trim())
+}
+
+export async function pull(root: string): Promise<void> {
+  // Fast-forward only: a pull never opens a merge the user did not ask for.
+  await gitOrExplain(root, 'pull', '--ff-only')
+}
+
+export async function push(root: string): Promise<void> {
+  const { branch, upstream } = await gitStatus(root)
+  if (!branch) throw new Error('Cannot push a detached HEAD')
+  await gitOrExplain(root, ...(upstream ? ['push'] : ['push', '--set-upstream', 'origin', branch]))
 }
 
 /** Branches work gets merged into: a branch whose commits one of them holds has landed. */

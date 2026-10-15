@@ -2262,3 +2262,87 @@ button.toggled:hover:not(:disabled) {
 .tree-name.deleted {
   text-decoration: line-through;
 }
+
+/* Git actions */
+
+.git-actions {
+  display: inline-flex;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.git-action {
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.git-error {
+  color: var(--red);
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dialog.commit-dialog {
+  width: 560px;
+}
+
+.commit-dialog textarea {
+  resize: vertical;
+}
+
+.commit-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.commit-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.commit-dialog label.commit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 3px 6px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.commit-row input {
+  flex: none;
+  width: auto;
+  margin: 0;
+}
+
+.commit-kind {
+  flex: none;
+  min-width: 64px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.commit-kind.added,
+.commit-kind.untracked {
+  color: var(--green);
+}
+
+.commit-kind.deleted,
+.commit-kind.conflicted {
+  color: var(--red);
+}
+
+.commit-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

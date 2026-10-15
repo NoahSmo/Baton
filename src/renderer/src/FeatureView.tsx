@@ -13,6 +13,7 @@ import {
 } from '../../shared/types'
 import { AttachButton, DraftAttachments, SentAttachments } from './Attachments'
 import { BranchPicker } from './BranchPicker'
+import { GitActions } from './GitActions'
 import { openContextMenu } from './contextMenu'
 import { useLang, useT } from './i18n'
 import { LinkIssueDialog } from './LinkIssueDialog'
@@ -119,6 +120,7 @@ export function FeatureView({
                 </button>
               </>
             )}
+            <GitActions feature={feature} git={git} />
             {feature.linear ? (
               <>
                 <span className="sep">·</span>

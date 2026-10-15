@@ -150,6 +150,20 @@ const en = {
 
   git: {
     changes: 'Changes',
+    commit: 'Commit',
+    commitTitle: 'Commit changes',
+    commitHint: 'Only the checked files go into the commit.',
+    commitMessage: 'Commit message',
+    selectAll: 'Select all',
+    selected: (n: number, total: number) => `${n}/${total} selected`,
+    committing: 'Committing…',
+    pull: 'Pull',
+    pulling: 'Pulling…',
+    push: 'Push',
+    pushing: 'Pushing…',
+    pullHint: (upstream: string) => `Fast-forward from ${upstream}`,
+    pushHint: 'Push the commits to the remote',
+    publishHint: 'Publish this branch on origin',
     noChanges: 'No change since the last commit.',
     changed: (n: number) => `${n} changed ${n === 1 ? 'file' : 'files'}`,
     switchBranch: 'Switch branch',
@@ -369,6 +383,7 @@ const en = {
     notGit: (path: string) => `${path} is not a git repository.`,
     projectHasFeatures: 'Delete the agents of this project first.',
     agentBusy: 'Stop the agent before switching branch.',
+    agentBusyPull: 'Stop the agent before pulling.',
     linearNotConnected: 'Linear is not connected.',
     linearHttp: (status: number) => `Linear answered with HTTP ${status}.`
   }
@@ -511,6 +526,20 @@ const fr: Dict = {
 
   git: {
     changes: 'Changements',
+    commit: 'Commit',
+    commitTitle: 'Commiter les changements',
+    commitHint: 'Seuls les fichiers cochés entrent dans le commit.',
+    commitMessage: 'Message de commit',
+    selectAll: 'Tout sélectionner',
+    selected: (n, total) => `${n}/${total} sélectionnés`,
+    committing: 'Commit en cours…',
+    pull: 'Pull',
+    pulling: 'Pull en cours…',
+    push: 'Push',
+    pushing: 'Push en cours…',
+    pullHint: (upstream) => `Fast-forward depuis ${upstream}`,
+    pushHint: 'Pousser les commits vers le remote',
+    publishHint: 'Publier cette branche sur origin',
     noChanges: 'Aucun changement depuis le dernier commit.',
     changed: (n) => `${n} ${n > 1 ? 'fichiers modifiés' : 'fichier modifié'}`,
     switchBranch: 'Changer de branche',
@@ -728,6 +757,7 @@ const fr: Dict = {
     notGit: (path) => `${path} n'est pas un dépôt git.`,
     projectHasFeatures: "Supprime d'abord les agents de ce projet.",
     agentBusy: "Arrête l'agent avant de changer de branche.",
+    agentBusyPull: "Arrête l'agent avant de faire un pull.",
     linearNotConnected: "Linear n'est pas connecté.",
     linearHttp: (status) => `Linear a répondu avec HTTP ${status}.`
   }
