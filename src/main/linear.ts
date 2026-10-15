@@ -74,7 +74,8 @@ export class LinearClient {
         nodes: { id: string; name: string; labels: { nodes: LinearLabel[] }; teams: { nodes: LinearTeam[] } }[]
       }
     }>(
-      'query { projects(first: 100, orderBy: updatedAt) { nodes { id name labels { nodes { id name } } teams { nodes { id name } } } } }'
+      // Nested connections default to 50 items; left alone they push the query past Linear's complexity cap.
+      'query { projects(first: 100, orderBy: updatedAt) { nodes { id name labels(first: 10) { nodes { id name } } teams(first: 5) { nodes { id name } } } } }'
     )
     return data.projects.nodes.map(({ labels, teams, ...project }) => ({
       ...project,
