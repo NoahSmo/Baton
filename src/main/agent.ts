@@ -262,11 +262,13 @@ export class AgentSession {
   }
 
   private denyAllPending(message: string): void {
-    for (const [requestId, pending] of this.pending) {
+    // Emptied first: the status projection reads hasPendingRequests while handling each event.
+    const denied = [...this.pending]
+    this.pending.clear()
+    for (const [requestId, pending] of denied) {
       pending.resolve({ behavior: 'deny', message })
       this.opts.emit({ type: 'event', event: { kind: 'permission_resolved', requestId, behavior: 'deny' } })
     }
-    this.pending.clear()
   }
 
   private async pump(q: Query): Promise<void> {
