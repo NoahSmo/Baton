@@ -71,6 +71,8 @@ describe('in a repository', () => {
     execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', ...args], { cwd, stdio: 'pipe' })
 
   beforeAll(() => {
+    // Git words its errors in the system language; the assertions expect English.
+    process.env.LC_ALL = 'C'
     base = realpathSync(mkdtempSync(join(tmpdir(), 'baton-git-')))
     repo = join(base, 'repo')
     worktree = join(base, 'worktree')
