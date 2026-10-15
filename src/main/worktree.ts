@@ -17,6 +17,16 @@ export async function fetchRemotes(repo: string): Promise<void> {
   await exec('git', ['fetch', '--all', '--prune', '--quiet'], { cwd: repo, env, timeout: 60_000 }).catch(() => undefined)
 }
 
+/**
+ * Brings the branch checked out in the repo up to date with its upstream, so a new
+ * worktree starts from the latest work. Fast-forward only: nothing is merged or
+ * lost. Offline, without upstream or diverged, the branch is left as it is.
+ */
+export async function pullBase(repo: string): Promise<void> {
+  const env = { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+  await exec('git', ['pull', '--ff-only', '--quiet'], { cwd: repo, env, timeout: 60_000 }).catch(() => undefined)
+}
+
 export async function isGitRepo(path: string): Promise<boolean> {
   try {
     return (await git(path, 'rev-parse', '--is-inside-work-tree')) === 'true'
@@ -65,8 +75,8 @@ export interface Worktree {
 }
 
 /**
- * Creates a worktree on a new branch cut from the repo's current HEAD.
- * The branch is `preferredBranch` when given, `feat/<slug>` otherwise; branch
+ * Creates a worktree on a new branch cut from the repo's current HEAD, pulled
+ * beforehand. The branch is `preferredBranch` when given, `feat/<slug>` otherwise; branch
  * and directory names are suffixed when already taken.
  */
 export async function createWorktree(
@@ -76,6 +86,7 @@ export async function createWorktree(
   preferredBranch?: string
 ): Promise<Worktree> {
   await mkdir(worktreesRoot, { recursive: true })
+  await pullBase(repo)
   const base = preferredBranch ?? `feat/${slug}`
   let branch = base
   let name = slug
