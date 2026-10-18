@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Feature, GitStatus } from '../../shared/types'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
+import { PullRequestDialog } from './PullRequestDialog'
 
 interface Props {
   feature: Feature
@@ -14,6 +15,7 @@ export function GitActions({ feature, git }: Props) {
   const [running, setRunning] = useState<'pull' | 'push' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [committing, setCommitting] = useState(false)
+  const [openingPr, setOpeningPr] = useState(false)
 
   if (!git || !git.branch) return null
 
@@ -27,6 +29,14 @@ export function GitActions({ feature, git }: Props) {
     } finally {
       setRunning(null)
     }
+  }
+
+  /** Checks gh is there before a dialog that would only end in an error. */
+  async function startPr() {
+    setError(null)
+    const support = await window.api.prSupport()
+    if (support.ok) setOpeningPr(true)
+    else setError(support.reason === 'missing' ? t.pr.missing : t.pr.signedOut)
   }
 
   const canPull = Boolean(git.upstream) && !running
@@ -46,6 +56,15 @@ export function GitActions({ feature, git }: Props) {
         <button className="git-action" disabled={!git.changes.length || Boolean(running)} onClick={() => setCommitting(true)}>
           {t.git.commit}
         </button>
+        {feature.prUrl ? (
+          <a className="git-action" href={feature.prUrl} target="_blank" rel="noreferrer" title={t.pr.open}>
+            PR ↗
+          </a>
+        ) : (
+          <button className="git-action" disabled={Boolean(running)} title={t.pr.createHint} onClick={() => void startPr()}>
+            {t.pr.create}
+          </button>
+        )}
       </span>
       {error && (
         <span className="git-error" title={error} role="alert">
@@ -55,6 +74,7 @@ export function GitActions({ feature, git }: Props) {
           </button>
         </span>
       )}
+      {openingPr && <PullRequestDialog feature={feature} onClose={() => setOpeningPr(false)} />}
       {committing && <CommitDialog feature={feature} git={git} onClose={() => setCommitting(false)} />}
     </>
   )

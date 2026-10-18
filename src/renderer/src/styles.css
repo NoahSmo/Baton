@@ -2492,3 +2492,274 @@ button.toggled:hover:not(:disabled) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Sidebar search, sort, pins and archive */
+
+.sidebar-search {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 8px 16px;
+}
+
+.sidebar-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+.sidebar-search select {
+  width: auto;
+  max-width: 96px;
+  padding: 3px 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.feature-row-pin {
+  color: var(--amber);
+  font-size: 11px;
+  flex: none;
+}
+
+.feature-row.archived {
+  opacity: 0.65;
+}
+
+details.archive {
+  margin-top: 8px;
+}
+
+details.archive > summary {
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* Prompt templates */
+
+.template-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.template-chips .filter {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.template-row {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  gap: 6px;
+  align-items: start;
+}
+
+.template-row textarea {
+  resize: vertical;
+}
+
+/* Search in the conversation */
+
+.find-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.find-bar input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 8px;
+}
+
+.find-count {
+  min-width: 64px;
+  text-align: right;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+::highlight(find) {
+  background-color: color-mix(in srgb, var(--amber) 35%, transparent);
+  color: inherit;
+}
+
+::highlight(find-current) {
+  background-color: var(--amber);
+  color: var(--accent-text);
+}
+
+/* Git: pull request link styled as its sibling buttons */
+
+a.git-action {
+  display: inline-flex;
+  align-items: center;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.git-action:hover {
+  background: var(--hover);
+  border-color: var(--border-strong);
+}
+
+/* Settings */
+
+.dialog.settings-dialog {
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+.settings-title {
+  margin: 16px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.dialog label.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.settings-check input {
+  width: auto;
+}
+
+.shortcut-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+}
+
+kbd {
+  font: 11px var(--mono);
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+}
+
+.trash-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.trash-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Usage overview */
+
+.dialog.usage-dialog {
+  width: 560px;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+.usage-total {
+  margin: 4px 0 0;
+}
+
+.usage-title {
+  margin: 14px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.usage-days {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 90px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.usage-day {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.usage-day span {
+  display: block;
+  width: 100%;
+  min-height: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+}
+
+.usage-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 64px;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+}
+
+.usage-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.usage-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.usage-row .num {
+  text-align: right;
+}

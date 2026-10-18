@@ -1,5 +1,9 @@
+import { execFile } from 'node:child_process'
 import { readFileSync, statSync } from 'node:fs'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { isAbsolute, join, resolve, sep } from 'node:path'
+import { promisify } from 'node:util'
 import type { GitBranch, GitChange, GitChangeKind, GitStatus } from '../shared/types'
 import { MAX_FILE_BYTES, resolveInside } from './files'
 import { git, gitRaw } from './worktree'
@@ -51,10 +55,12 @@ export async function gitStatus(root: string): Promise<GitStatus> {
 
 /** Branch checked out in each worktree of a repository, from `git worktree list --porcelain`. */
 /** A file as the last commit has it; null when the commit lacks it, or it is binary or too big to diff. */
-export async function headContent(root: string, rel: string): Promise<string | null> {
+export async function headContent(root: string, rel: string, ref?: string): Promise<string | null> {
   await resolveInside(root, rel)
+  // A tree id from `snapshotTree`; anything else would be a way to read refs the user never named.
+  if (ref !== undefined && !isObjectId(ref)) throw new Error('Invalid revision')
   try {
-    const out = await gitRaw(root, 'show', `HEAD:./${rel}`)
+    const out = await gitRaw(root, 'show', `${ref ?? 'HEAD'}:./${rel}`)
     return out.length > MAX_FILE_BYTES || out.slice(0, 8000).includes('\0') ? null : out
   } catch {
     return null
@@ -218,4 +224,45 @@ export async function strayWorktrees(
 ): Promise<{ path: string; branch: string | null }[]> {
   const worktrees = parseWorktrees(await git(repo, 'worktree', 'list', '--porcelain'))
   return worktrees.filter((w) => w.path.startsWith(root + sep) && !known.has(w.path))
+}
+
+const exec = promisify(execFile)
+
+export const isObjectId = (ref: string) => /^[0-9a-f]{40}([0-9a-f]{24})?$/.test(ref)
+
+/**
+ * Id of a tree holding the worktree as it is now, untracked files included. It is
+ * built in a throwaway index: the real one, the history and the branch are not touched.
+ */
+export async function snapshotTree(root: string): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), 'baton-snapshot-'))
+  const env = { ...process.env, GIT_INDEX_FILE: join(dir, 'index') }
+  const run = async (...args: string[]) => (await exec('git', args, { cwd: root, env, maxBuffer: 16 * 1024 * 1024 })).stdout.trim()
+  try {
+    // A repository without a commit has no HEAD to start the index from.
+    await run('read-tree', 'HEAD').catch(() => undefined)
+    await run('add', '--all', '--force', '.')
+    return await run('write-tree')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+}
+
+/** Reads the output of `git diff --name-status -z --no-renames`. */
+export function parseNameStatus(out: string): GitChange[] {
+  const parts = out.split('\0').filter(Boolean)
+  const changes: GitChange[] = []
+  for (let i = 0; i + 1 < parts.length; i += 2) {
+    const code = parts[i][0]
+    const kind: GitChangeKind = code === 'A' ? 'added' : code === 'D' ? 'deleted' : 'modified'
+    changes.push({ path: parts[i + 1], kind })
+  }
+  return changes.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }))
+}
+
+/** Files that differ between a snapshot and the worktree as it is now. */
+export async function changesSince(root: string, base: string): Promise<GitChange[]> {
+  if (!isObjectId(base)) throw new Error('Invalid revision')
+  const now = await snapshotTree(root)
+  return parseNameStatus(await gitRaw(root, 'diff', '--name-status', '-z', '--no-renames', base, now))
 }

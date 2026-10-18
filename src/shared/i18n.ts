@@ -1,3 +1,4 @@
+import type { SidebarSort } from './features'
 import type { AgentModel, FeatureStatus, GitChangeKind, PermissionMode } from './types'
 
 export type Lang = 'en' | 'fr'
@@ -64,7 +65,16 @@ const en = {
     showCommand: (name: string) => `Show the terminal of “${name}”`,
     stopCommand: (name: string) => `Stop “${name}” and close its terminal`,
     terminals: 'Terminals',
-    newTerminal: 'New terminal'
+    newTerminal: 'New terminal',
+    search: 'Search agents…',
+    searchLabel: 'Search agents',
+    noMatch: 'No agent matches.',
+    sortBy: 'Sort by',
+    sort: { status: 'Status', activity: 'Recent activity', created: 'Creation date' } as Record<SidebarSort, string>,
+    archived: (n: number) => `Archived · ${n}`,
+    queueRank: (n: number) => `#${n} in line`,
+    prompts: 'Prompts',
+    promptsSettings: 'Edit the prompts'
   },
 
   launch: {
@@ -103,7 +113,9 @@ const en = {
     connectLinear: 'Connect Linear',
     linearConnected: 'connected',
     language: 'Language',
-    theme: 'Theme'
+    theme: 'Theme',
+    nextWaiting: (n: number) => `Next waiting (${n})`,
+    usage: 'Usage'
   },
 
   empty: {
@@ -140,7 +152,9 @@ const en = {
     stopped: 'Stopped',
     turnFailed: 'Turn failed',
     turnFinished: 'Turn finished',
-    backgroundRunning: (n: number) => `${n} ${n === 1 ? 'task' : 'tasks'} still running in the background`
+    backgroundRunning: (n: number) => `${n} ${n === 1 ? 'task' : 'tasks'} still running in the background`,
+    approveHint: 'Allow the first pending request',
+    templates: 'Prompts'
   },
 
   editor: {
@@ -187,6 +201,12 @@ const en = {
     remote: 'remote',
     heldBy: (owner: string) => `in ${owner}`,
     heldByHint: (owner: string) => `Checked out in ${owner}: a branch lives in one worktree at a time.`,
+    sinceCommit: 'Since last commit',
+    lastTurn: 'Last turn',
+    lastTurnHint: 'What the agent changed since your last message',
+    noTurnChanges: 'Nothing changed during the last turn.',
+    noTurnSnapshot: 'No snapshot of the last turn yet: send a message first.',
+    beforeTurn: 'Before the turn',
     detached: (head: string) => `detached at ${head}`,
     ahead: (n: number, upstream: string) => `${n} ${n === 1 ? 'commit' : 'commits'} to push to ${upstream}`,
     behind: (n: number, upstream: string) => `${n} ${n === 1 ? 'commit' : 'commits'} to pull from ${upstream}`,
@@ -323,6 +343,12 @@ const en = {
     copyPath: 'Copy path',
     rename: 'Rename…',
     delete: 'Delete…',
+    pin: 'Pin to the top',
+    unpin: 'Unpin',
+    archive: 'Archive',
+    unarchive: 'Restore from the archive',
+    moveFirst: 'Move to the front of the queue',
+    continueNew: 'Continue in a new agent…',
     settings: 'Project settings…',
     removeProject: 'Remove project…',
     cut: 'Cut',
@@ -389,7 +415,7 @@ const en = {
     pickMessage: 'Choose the root folder of a git repository',
     deleteQuestion: (title: string) => `Delete “${title}”?`,
     deleteDetail: (branch: string) =>
-      `The worktree and any uncommitted change in it will be deleted. The branch ${branch} is kept.`,
+      `The worktree will be deleted. Uncommitted changes are kept for 7 days in Settings › Trash. The branch ${branch} is kept.`,
     mergedRemoved: (branch: string) => `Merged: its worktree was removed. The branch ${branch} is kept.`,
     strayRemoved: (branch: string) => `A worktree left behind by an agent was removed. The branch ${branch} is kept.`,
     removeProjectQuestion: (name: string) => `Remove “${name}” from the app?`,
@@ -415,7 +441,107 @@ const en = {
     agentBusyPull: 'Stop the agent before pulling.',
     linearNotConnected: 'Linear is not connected.',
     linearHttp: (status: number) => `Linear answered with HTTP ${status}.`,
-    linearCreateFailed: 'Linear did not create the issue.'
+    linearCreateFailed: 'Linear did not create the issue.',
+    trashGone: 'This backup no longer exists.',
+    detachedHead: 'The worktree is not on a branch.'
+  },
+
+  shortcuts: {
+    title: 'Keyboard shortcuts',
+    actions: {
+      newFeature: 'New agent',
+      nextWaiting: 'Next agent waiting for me',
+      prevFeature: 'Previous agent',
+      nextFeature: 'Next agent',
+      project: 'Go to project',
+      toggleEditor: 'Show or hide the editor',
+      approve: 'Allow the first pending request',
+      searchSidebar: 'Search agents',
+      searchConversation: 'Search the conversation'
+    }
+  },
+
+  search: {
+    placeholder: 'Find in the conversation',
+    count: (at: number, total: number) => (total ? `${at}/${total}` : 'No result'),
+    next: 'Next',
+    previous: 'Previous',
+    close: 'Close'
+  },
+
+  notifications: {
+    title: 'Notifications',
+    events: { waiting: 'Needs an answer', done: 'Finished its turn', error: 'Error', limited: 'Usage limit' },
+    sound: 'Sound',
+    whenFocused: 'Also with the window in front',
+    whenFocusedHint: 'Notifies for the agents you are not looking at, even while the app is in front.'
+  },
+
+  usage: {
+    title: 'Usage',
+    lastDays: (n: number) => `Last ${n} days`,
+    total: 'Total',
+    byDay: 'Per day',
+    byProject: 'Per project',
+    byAgent: 'Per agent',
+    none: 'No cost recorded in this period.',
+    note: 'Adds up the turns kept in the history of the agents that still exist.'
+  },
+
+  templates: {
+    title: 'Prompts',
+    hint: 'Ready-made prompts for this project: one click puts one in the message box.',
+    name: 'Name',
+    text: 'Prompt',
+    namePlaceholder: 'Add tests',
+    textPlaceholder: 'Write tests for the code you just changed.',
+    add: 'Add a prompt',
+    remove: 'Remove this prompt'
+  },
+
+  trash: {
+    title: 'Trash',
+    hint: 'Uncommitted changes of deleted agents are kept for 7 days.',
+    empty: 'Nothing kept.',
+    restore: 'Restore',
+    discard: 'Delete for good',
+    files: (n: number) => `${n} ${n === 1 ? 'file' : 'files'}`,
+    restored: 'Restored as a new agent. Its conversation is not kept.'
+  },
+
+  pr: {
+    create: 'Create PR',
+    createHint: 'Open a pull request for this branch',
+    open: 'Open the pull request',
+    title: 'Create a pull request',
+    hint: 'The branch is pushed first if needed.',
+    titleLabel: 'Title',
+    bodyLabel: 'Description',
+    into: (base: string) => `Into ${base}`,
+    drafting: 'Claude is writing the pull request…',
+    redraft: 'Write again',
+    draftFailed: 'Could not write the pull request.',
+    creating: 'Creating…',
+    submit: 'Create pull request',
+    missing: 'The GitHub CLI (gh) is not installed.',
+    signedOut: 'Sign in with “gh auth login” first.'
+  },
+
+  handoff: {
+    title: (title: string) => `${title} (continued)`,
+    prompt: (title: string, summary: string) =>
+      `You are taking over the work of another agent on “${title}”. Its branch and uncommitted changes are in your worktree. Here is its brief:\n\n${summary}\n\nCheck the state of the repository, then carry on.`,
+    dialogTitle: 'Continue in a new agent',
+    hint: 'A new agent starts on a branch cut from this one, with the changes not yet committed and the summary below as its first message. This agent keeps its own worktree.',
+    name: 'Name of the new agent',
+    summary: 'Summary for the new agent',
+    drafting: 'Claude is summing up the work…',
+    draftFailed: 'Could not write a summary.',
+    redraft: 'Write again',
+    creating: 'Creating…',
+    create: 'Create the agent',
+    heavy: 'This conversation is heavy: a new agent costs less than another “Continue”.',
+    button: 'New agent with a summary'
   }
 }
 
@@ -463,7 +589,16 @@ const fr: Dict = {
     showCommand: (name) => `Afficher le terminal de « ${name} »`,
     stopCommand: (name) => `Arrêter « ${name} » et fermer son terminal`,
     terminals: 'Terminaux',
-    newTerminal: 'Nouveau terminal'
+    newTerminal: 'Nouveau terminal',
+    search: 'Chercher un agent…',
+    searchLabel: 'Chercher un agent',
+    noMatch: 'Aucun agent ne correspond.',
+    sortBy: 'Trier par',
+    sort: { status: 'Statut', activity: 'Activité récente', created: 'Date de création' },
+    archived: (n) => `Archivés · ${n}`,
+    queueRank: (n) => `n° ${n} dans la file`,
+    prompts: 'Prompts',
+    promptsSettings: 'Modifier les prompts'
   },
 
   launch: {
@@ -502,7 +637,9 @@ const fr: Dict = {
     connectLinear: 'Connecter Linear',
     linearConnected: 'connecté',
     language: 'Langue',
-    theme: 'Thème'
+    theme: 'Thème',
+    nextWaiting: (n) => `Prochain en attente (${n})`,
+    usage: 'Usage'
   },
 
   empty: {
@@ -539,7 +676,9 @@ const fr: Dict = {
     stopped: 'Arrêté',
     turnFailed: 'Tour en échec',
     turnFinished: 'Tour terminé',
-    backgroundRunning: (n) => `${n} ${n > 1 ? 'tâches' : 'tâche'} encore en cours en arrière-plan`
+    backgroundRunning: (n) => `${n} ${n > 1 ? 'tâches' : 'tâche'} encore en cours en arrière-plan`,
+    approveHint: 'Autoriser la première demande en attente',
+    templates: 'Prompts'
   },
 
   editor: {
@@ -586,6 +725,12 @@ const fr: Dict = {
     remote: 'distante',
     heldBy: (owner) => `dans ${owner}`,
     heldByHint: (owner) => `Déjà ouverte dans ${owner} : une branche ne vit que dans un worktree à la fois.`,
+    sinceCommit: 'Depuis le dernier commit',
+    lastTurn: 'Dernier tour',
+    lastTurnHint: "Ce que l'agent a modifié depuis ton dernier message",
+    noTurnChanges: "Rien n'a changé pendant le dernier tour.",
+    noTurnSnapshot: "Pas encore d'instantané du dernier tour : envoie d'abord un message.",
+    beforeTurn: 'Avant le tour',
     detached: (head) => `détaché sur ${head}`,
     ahead: (n, upstream) => `${n} ${n > 1 ? 'commits' : 'commit'} à pousser vers ${upstream}`,
     behind: (n, upstream) => `${n} ${n > 1 ? 'commits' : 'commit'} à récupérer depuis ${upstream}`,
@@ -721,6 +866,12 @@ const fr: Dict = {
     copyPath: 'Copier le chemin',
     rename: 'Renommer…',
     delete: 'Supprimer…',
+    pin: 'Épingler en haut',
+    unpin: 'Désépingler',
+    archive: 'Archiver',
+    unarchive: "Sortir de l'archive",
+    moveFirst: 'Passer en tête de la file',
+    continueNew: 'Continuer dans un nouvel agent…',
     settings: 'Réglages du projet…',
     removeProject: 'Retirer le projet…',
     cut: 'Couper',
@@ -786,7 +937,7 @@ const fr: Dict = {
     pickMessage: "Choisis le dossier racine d'un dépôt git",
     deleteQuestion: (title) => `Supprimer « ${title} » ?`,
     deleteDetail: (branch) =>
-      `Le worktree et toutes ses modifications non commitées seront supprimés. La branche ${branch} est conservée.`,
+      `Le worktree sera supprimé. Les modifications non commitées sont gardées 7 jours dans Réglages › Corbeille. La branche ${branch} est conservée.`,
     mergedRemoved: (branch) => `Mergé : son worktree a été supprimé. La branche ${branch} est conservée.`,
     strayRemoved: (branch) => `Un worktree laissé par un agent a été supprimé. La branche ${branch} est conservée.`,
     removeProjectQuestion: (name) => `Retirer « ${name} » de l'app ?`,
@@ -812,7 +963,107 @@ const fr: Dict = {
     agentBusyPull: "Arrête l'agent avant de faire un pull.",
     linearNotConnected: "Linear n'est pas connecté.",
     linearHttp: (status) => `Linear a répondu avec HTTP ${status}.`,
-    linearCreateFailed: "Linear n'a pas créé l'issue."
+    linearCreateFailed: "Linear n'a pas créé l'issue.",
+    trashGone: "Cette sauvegarde n'existe plus.",
+    detachedHead: "Le worktree n'est pas sur une branche."
+  },
+
+  shortcuts: {
+    title: 'Raccourcis clavier',
+    actions: {
+      newFeature: 'Nouvel agent',
+      nextWaiting: "Prochain agent qui m'attend",
+      prevFeature: 'Agent précédent',
+      nextFeature: 'Agent suivant',
+      project: 'Aller au projet',
+      toggleEditor: "Afficher ou masquer l'éditeur",
+      approve: 'Autoriser la première demande en attente',
+      searchSidebar: 'Chercher un agent',
+      searchConversation: 'Chercher dans la conversation'
+    }
+  },
+
+  search: {
+    placeholder: 'Chercher dans la conversation',
+    count: (at, total) => (total ? `${at}/${total}` : 'Aucun résultat'),
+    next: 'Suivant',
+    previous: 'Précédent',
+    close: 'Fermer'
+  },
+
+  notifications: {
+    title: 'Notifications',
+    events: { waiting: 'Attend une réponse', done: 'A terminé son tour', error: 'Erreur', limited: "Limite d'utilisation" },
+    sound: 'Son',
+    whenFocused: 'Aussi quand la fenêtre est au premier plan',
+    whenFocusedHint: "Notifie pour les agents que tu ne regardes pas, même quand l'app est au premier plan."
+  },
+
+  usage: {
+    title: 'Usage',
+    lastDays: (n) => `${n} derniers jours`,
+    total: 'Total',
+    byDay: 'Par jour',
+    byProject: 'Par projet',
+    byAgent: 'Par agent',
+    none: 'Aucun coût enregistré sur cette période.',
+    note: "Additionne les tours gardés dans l'historique des agents qui existent encore."
+  },
+
+  templates: {
+    title: 'Prompts',
+    hint: "Des prompts tout prêts pour ce projet : un clic en met un dans la zone de message.",
+    name: 'Nom',
+    text: 'Prompt',
+    namePlaceholder: 'Ajouter des tests',
+    textPlaceholder: 'Écris des tests pour le code que tu viens de modifier.',
+    add: 'Ajouter un prompt',
+    remove: 'Retirer ce prompt'
+  },
+
+  trash: {
+    title: 'Corbeille',
+    hint: 'Les modifications non commitées des agents supprimés sont gardées 7 jours.',
+    empty: 'Rien de gardé.',
+    restore: 'Restaurer',
+    discard: 'Supprimer définitivement',
+    files: (n) => `${n} ${n > 1 ? 'fichiers' : 'fichier'}`,
+    restored: "Restauré en nouvel agent. Sa conversation n'est pas conservée."
+  },
+
+  pr: {
+    create: 'Créer la PR',
+    createHint: 'Ouvrir une pull request pour cette branche',
+    open: 'Ouvrir la pull request',
+    title: 'Créer une pull request',
+    hint: "La branche est d'abord poussée si besoin.",
+    titleLabel: 'Titre',
+    bodyLabel: 'Description',
+    into: (base) => `Vers ${base}`,
+    drafting: 'Claude rédige la pull request…',
+    redraft: 'Réécrire',
+    draftFailed: 'Impossible de rédiger la pull request.',
+    creating: 'Création…',
+    submit: 'Créer la pull request',
+    missing: "La CLI GitHub (gh) n'est pas installée.",
+    signedOut: "Connecte-toi d'abord avec « gh auth login »."
+  },
+
+  handoff: {
+    title: (title) => `${title} (suite)`,
+    prompt: (title, summary) =>
+      `Tu reprends le travail d'un autre agent sur « ${title} ». Sa branche et ses modifications non commitées sont dans ton worktree. Voici son brief :\n\n${summary}\n\nVérifie l'état du dépôt, puis continue.`,
+    dialogTitle: 'Continuer dans un nouvel agent',
+    hint: "Un nouvel agent démarre sur une branche issue de celle-ci, avec les modifications non commitées et le résumé ci-dessous comme premier message. Cet agent garde son propre worktree.",
+    name: 'Nom du nouvel agent',
+    summary: 'Résumé pour le nouvel agent',
+    drafting: 'Claude résume le travail…',
+    draftFailed: 'Impossible de rédiger un résumé.',
+    redraft: 'Réécrire',
+    creating: 'Création…',
+    create: "Créer l'agent",
+    heavy: "Cette conversation est lourde : un nouvel agent coûte moins cher qu'un autre « Continuer ».",
+    button: 'Nouvel agent avec un résumé'
   }
 }
 

@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DICTS, langFromLocale, type Lang } from '../../shared/i18n'
-import type { BackgroundTask, Feature, LinearIssue, LinearStatus, Project, StoredEvent, UpdateInfo } from '../../shared/types'
+import { arrangeFeatures, neighbour, nextWaiting, SIDEBAR_SORTS, type SidebarSort } from '../../shared/features'
+import { resolveShortcut, shortcutLabel } from '../../shared/shortcuts'
+import type { BackgroundTask, Feature, FeatureStatus, LinearIssue, LinearStatus, Project, StoredEvent, UpdateInfo } from '../../shared/types'
+import { ContinueDialog } from './ContinueDialog'
 import { ConfirmHost } from './ConfirmHost'
 import { ContextMenuHost } from './ContextMenuHost'
 import { EditorPane, type EditorPanel } from './EditorPane'
@@ -10,13 +13,18 @@ import { LangContext } from './i18n'
 import { LinearDialog } from './LinearDialog'
 import { LinearView } from './LinearView'
 import { NewFeatureDialog } from './NewFeatureDialog'
+import { IS_MAC } from './platform'
 import { ProjectDialog } from './ProjectDialog'
 import { Sidebar } from './Sidebar'
 import { StatusBar } from './StatusBar'
+import { TemplatesDialog } from './TemplatesDialog'
 import { TerminalPanel } from './TerminalPanel'
 import { TopBar } from './TopBar'
 import { SettingsDialog } from './SettingsDialog'
+import { pendingRequest } from './transcript'
 import { UpdateDialog } from './UpdateDialog'
+import { UsageDialog } from './UsageDialog'
+import { usePersisted } from './usePersisted'
 import { useGitStatus } from './useGitStatus'
 import { useResize } from './useResize'
 
@@ -31,6 +39,9 @@ type Dialog =
   | { kind: 'update' }
   | { kind: 'settings' }
   | { kind: 'launch'; project: Project }
+  | { kind: 'templates'; project: Project }
+  | { kind: 'usage' }
+  | { kind: 'continue'; feature: Feature }
   | { kind: 'project'; project?: Project } | { kind: 'linear' } | null
 
 export function App() {
@@ -53,6 +64,9 @@ export function App() {
   const [terminalPanels, setTerminalPanels] = useState<Record<string, boolean>>({})
   /** Agent being linked to an issue. */
   const [linkingId, setLinkingId] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<FeatureStatus[]>([])
+  const [sort, setSort] = usePersisted<SidebarSort>('sidebar-sort', 'status', SIDEBAR_SORTS)
   const [editorWidth, startEditorResize] = useResize({
     key: 'editor-width',
     initial: 520,
@@ -168,6 +182,77 @@ export function App() {
 
   const toggleEditor = (id: string) => setEditors((all) => ({ ...all, [id]: !all[id] }))
 
+  // The main process decides whether a notification is worth it, and needs to know what is on screen.
+  const shownId = linearShown ? null : (feature?.id ?? null)
+  useEffect(() => window.api.reportShownFeature(shownId), [shownId])
+
+  /** The agents in the order the sidebar lists them, which is the order ⌘[ and ⌘] walk through. */
+  const listed = arrangeFeatures(projectFeatures, { query, statuses: statusFilter, sort }).shown
+
+  function goToNextWaiting() {
+    const next = nextWaiting(features, shownId)
+    if (next) showFeature(next)
+  }
+
+  // Keyboard shortcuts read the latest state through a ref: the listener is attached once.
+  const shortcutContext = useRef({ dialogOpen: false, linearShown: false, project, feature, listed, projects, events })
+  shortcutContext.current = { dialogOpen: dialog !== null, linearShown, project, feature, listed, projects, events }
+  const actions = useRef({ showFeature, goToProject, goToNextWaiting, toggleEditor, openNewFeature: () => setDialog({ kind: 'feature' }) })
+  actions.current = { showFeature, goToProject, goToNextWaiting, toggleEditor, openNewFeature: () => setDialog({ kind: 'feature' }) }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const action = resolveShortcut(e, IS_MAC)
+      if (!action) return
+      const ctx = shortcutContext.current
+      const target = e.target instanceof Element ? e.target : null
+      // Ctrl combos belong to the shell of a focused terminal, outside macOS; the editor keeps its own bracket and find keys.
+      if (!IS_MAC && target?.closest('.xterm')) return
+      if (target?.closest('.cm-editor') && ['prevFeature', 'nextFeature', 'searchConversation', 'approve'].includes(action)) return
+      if (ctx.dialogOpen) return
+      const run = (fn: () => void) => {
+        e.preventDefault()
+        e.stopPropagation()
+        fn()
+      }
+      if (action.startsWith('project:')) {
+        const target = ctx.projects[Number(action.slice(8)) - 1]
+        if (target) run(() => actions.current.goToProject(target.id))
+        return
+      }
+      switch (action) {
+        case 'newFeature':
+          if (ctx.project && !ctx.linearShown) run(actions.current.openNewFeature)
+          return
+        case 'nextWaiting':
+          return run(actions.current.goToNextWaiting)
+        case 'prevFeature':
+        case 'nextFeature': {
+          const to = neighbour(ctx.listed, ctx.feature?.id ?? null, action === 'nextFeature' ? 1 : -1)
+          if (to && !ctx.linearShown) run(() => actions.current.showFeature(to))
+          return
+        }
+        case 'toggleEditor':
+          if (ctx.feature && !ctx.linearShown) run(() => actions.current.toggleEditor(ctx.feature!.id))
+          return
+        case 'approve': {
+          // Without a request to settle, the key keeps sending the message as before.
+          const pending = ctx.feature && !ctx.linearShown ? pendingRequest(ctx.events[ctx.feature.id] ?? []) : null
+          if (pending && ctx.feature) run(() => void window.api.respondPermission(ctx.feature!.id, pending.requestId, { behavior: 'allow' }))
+          return
+        }
+        case 'searchSidebar':
+          if (ctx.project && !ctx.linearShown) run(() => window.dispatchEvent(new Event('baton:search-sidebar')))
+          return
+        case 'searchConversation':
+          if (ctx.feature && !ctx.linearShown) run(() => window.dispatchEvent(new Event('baton:find')))
+          return
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [])
+
   // Ctrl+` as in most editors. Captured, or a focused terminal would take the key.
   useEffect(() => {
     if (!project || linearShown) return
@@ -240,6 +325,14 @@ export function App() {
             }}
             onEditProject={() => setDialog({ kind: 'project', project })}
             onEditCommands={() => setDialog({ kind: 'launch', project })}
+            onEditTemplates={() => setDialog({ kind: 'templates', project })}
+            onContinue={(f) => setDialog({ kind: 'continue', feature: f })}
+            query={query}
+            onQuery={setQuery}
+            statuses={statusFilter}
+            onStatuses={setStatusFilter}
+            sort={sort}
+            onSort={setSort}
             terminalOpen={terminalOpen}
             onShowTerminal={() => setTerminalOpen(true)}
             linearConnected={linear.connected}
@@ -266,6 +359,7 @@ export function App() {
                   linearConnected={linear.connected}
                   linking={linkingId === feature.id}
                   onLinking={(open) => setLinkingId(open ? feature.id : null)}
+                  onContinue={() => setDialog({ kind: 'continue', feature })}
                 />
               ) : (
                 <div className="empty">
@@ -326,6 +420,9 @@ export function App() {
         version={version}
         update={update}
         onOpenUpdate={() => setDialog({ kind: 'update' })}
+        onNextWaiting={goToNextWaiting}
+        nextWaitingShortcut={shortcutLabel('nextWaiting', IS_MAC)}
+        onOpenUsage={() => setDialog({ kind: 'usage' })}
         terminal={
           project && !linearShown ? { open: terminalOpen, toggle: () => setTerminalOpen((open) => !open) } : undefined
         }
@@ -366,9 +463,39 @@ export function App() {
           }}
         />
       )}
+      {dialog?.kind === 'templates' && (
+        <TemplatesDialog
+          project={dialog.project}
+          onClose={() => setDialog(null)}
+          onSaved={(saved) => {
+            upsertProject(saved)
+            setDialog(null)
+          }}
+        />
+      )}
+      {dialog?.kind === 'usage' && <UsageDialog projects={projects} features={features} onClose={() => setDialog(null)} />}
+      {dialog?.kind === 'continue' && (
+        <ContinueDialog
+          feature={dialog.feature}
+          onClose={() => setDialog(null)}
+          onCreated={(created) => {
+            setDialog(null)
+            showFeature(created)
+          }}
+        />
+      )}
       {dialog?.kind === 'linear' && <LinearDialog status={linear} onChange={setLinear} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'settings' && (
-        <SettingsDialog version={version} onLanguage={changeLanguage} onUpdateFound={() => setDialog({ kind: 'update' })} onClose={() => setDialog(null)} />
+        <SettingsDialog
+          version={version}
+          onLanguage={changeLanguage}
+          onUpdateFound={() => setDialog({ kind: 'update' })}
+          onRestored={(restored) => {
+            setDialog(null)
+            showFeature(restored)
+          }}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog?.kind === 'update' && update && (
         <UpdateDialog update={update} currentVersion={version} onClose={() => setDialog(null)} />

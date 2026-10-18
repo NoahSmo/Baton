@@ -67,7 +67,16 @@ export function contextMenuTemplate(spec: ContextMenuSpec, ctx: MenuContext): Me
         { label: t.menu.copyPath, click: () => clipboard.writeText(feature.worktreePath) },
         separator,
         { label: t.feature.stop, enabled: busy, click: () => void manager.interrupt(feature.id) },
+        ...(feature.status === 'queued' && (feature.queuePosition ?? 1) > 1
+          ? [{ label: t.menu.moveFirst, click: () => manager.promoteQueued(feature.id) }]
+          : []),
         { label: t.menu.rename, click: () => ctx.choose('rename-feature') },
+        { label: feature.pinned ? t.menu.unpin : t.menu.pin, click: () => manager.setPinned(feature.id, !feature.pinned) },
+        {
+          label: feature.archived ? t.menu.unarchive : t.menu.archive,
+          click: () => manager.setArchived(feature.id, !feature.archived)
+        },
+        { label: t.menu.continueNew, enabled: Boolean(feature.sessionId), click: () => ctx.choose('continue-feature') },
         separator,
         { label: t.menu.delete, danger: true, click: () => ctx.removeFeature(feature.id) }
       ]

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTranscript, toolSummary } from '../src/renderer/src/transcript'
+import { buildTranscript, pendingRequest, toolSummary } from '../src/renderer/src/transcript'
 import { DICTS } from '../src/shared/i18n'
 import type { StoredEvent, UiEvent } from '../src/shared/types'
 
@@ -151,5 +151,21 @@ describe('toolSummary', () => {
   it('uses the first line of the most telling field', () => {
     expect(toolSummary({ command: 'npm test\n&& echo done', description: 'Run tests' })).toBe('npm test')
     expect(toolSummary({ foo: 1 })).toBe('')
+  })
+})
+
+describe('pendingRequest', () => {
+  const ask = (requestId: string, toolName: string): UiEvent => ({ kind: 'permission_request', requestId, toolName, input: {}, canAlwaysAllow: false })
+
+  it('finds the oldest request nobody answered', () => {
+    const events = journal([ask('r1', 'Bash'), ask('r2', 'Edit'), { kind: 'permission_resolved', requestId: 'r1', behavior: 'allow' }])
+    expect(pendingRequest(events)).toEqual({ requestId: 'r2' })
+  })
+
+  it('leaves questions to the user, and says so when nothing is left', () => {
+    expect(pendingRequest(journal([ask('q', 'AskUserQuestion')]))).toBeNull()
+    expect(pendingRequest(journal([ask('q', 'AskUserQuestion'), ask('r', 'Bash')]))).toEqual({ requestId: 'r' })
+    expect(pendingRequest(journal([ask('r', 'Bash'), { kind: 'permission_resolved', requestId: 'r', behavior: 'deny' }]))).toBeNull()
+    expect(pendingRequest([])).toBeNull()
   })
 })

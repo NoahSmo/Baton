@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
 import { DICTS, LANGS, langFromLocale, type Lang } from '../shared/i18n'
+import { normalizePrefs, shouldNotify } from '../shared/notifications'
 import { formatReset } from '../shared/time'
 import { DEFAULT_THEME, themeById, type Theme } from '../shared/themes'
 import {
@@ -16,6 +17,7 @@ import {
   type CreateFeatureInput,
   type CreateLinearIssueInput,
   type Feature,
+  type HandoffDraft,
   type LaunchCommand,
   type LinearIssue,
   type LinearStatus,
@@ -23,11 +25,14 @@ import {
   type MenuAction,
   type MenuModel,
   type MessageAttachments,
+  type NotificationPrefs,
   PERMISSION_MODES,
   type PermissionDecision,
   type PermissionMode,
   type ProjectInput,
   type ProjectPatch,
+  type PromptTemplate,
+  type PullRequestDraft,
   type TerminalTarget,
   type UpdateInfo,
   type UsageWarning
@@ -35,6 +40,8 @@ import {
 import { readImageUrl, storedFilePath } from './attachments'
 import { fileMtime, FileWatchers, listDir, readTextFile, writeTextFile } from './files'
 import { gitDirOf, headContent } from './git'
+import { draftHandoff } from './handoff'
+import { draftPullRequest, pullRequestSupport } from './pullRequest'
 import { LinearClient } from './linear'
 import { Manager } from './manager'
 import { draftCommitMessage } from './commitMessage'
@@ -89,6 +96,9 @@ let lang: Lang = 'en'
 const t = () => DICTS[lang]
 let maxRunning = DEFAULT_MAX_RUNNING
 let theme: Theme = DEFAULT_THEME
+let notificationPrefs: NotificationPrefs = normalizePrefs(undefined)
+/** Agent on screen, as the renderer last said. */
+let shownFeatureId: string | null = null
 
 function readSettings(): Record<string, unknown> {
   try {
@@ -165,10 +175,18 @@ function refreshBadge(): void {
 }
 
 function notify(feature: Feature): void {
-  if (win?.isFocused()) return
-  attention.add(feature.id)
-  refreshBadge()
-  const n = new Notification({ title: feature.title, body: t().attention[feature.status] ?? t().status[feature.status] })
+  const focused = Boolean(win?.isFocused())
+  if (!shouldNotify(notificationPrefs, feature.status, { windowFocused: focused, shownFeatureId, featureId: feature.id })) return
+  // The badge counts what the user has not seen: with the window in front, they are looking at it.
+  if (!focused) {
+    attention.add(feature.id)
+    refreshBadge()
+  }
+  const n = new Notification({
+    title: feature.title,
+    body: t().attention[feature.status] ?? t().status[feature.status],
+    silent: !notificationPrefs.sound
+  })
   n.on('click', () => {
     win?.show()
     win?.focus()
@@ -283,6 +301,20 @@ async function removeStrayWorktrees(): Promise<void> {
 /** Projects Claude is reading to propose launch commands, each with the means to stop it. */
 const suggesting = new Map<string, AbortController>()
 const drafting = new Map<string, AbortController>()
+const draftingPrs = new Map<string, AbortController>()
+const draftingHandoffs = new Map<string, AbortController>()
+
+/** Runs a drafting job that a newer request for the same agent, or the user, can cancel. */
+async function cancellable<T>(jobs: Map<string, AbortController>, id: string, run: (abort: AbortController) => Promise<T>): Promise<T> {
+  jobs.get(id)?.abort()
+  const abort = new AbortController()
+  jobs.set(id, abort)
+  try {
+    return await run(abort)
+  } finally {
+    if (jobs.get(id) === abort) jobs.delete(id)
+  }
+}
 
 const MERGED_SWEEP_INTERVAL_MS = 15 * 60 * 1000
 let sweeping = false
@@ -421,6 +453,10 @@ function registerIpc(): void {
   })
   ipcMain.on('project:cancelSuggestCommands', (_e, id: string) => suggesting.get(id)?.abort())
 
+  ipcMain.handle('project:setTemplates', (_e, id: string, templates: PromptTemplate[]) =>
+    manager.setProjectTemplates(id, templates)
+  )
+
   ipcMain.handle('feature:create', (_e, input: CreateFeatureInput) => manager.createFeature(input))
   ipcMain.handle('feature:events', (_e, id: string) => manager.getEvents(id))
   ipcMain.handle('feature:send', (_e, id: string, text: string, attachments?: MessageAttachments) =>
@@ -485,6 +521,21 @@ function registerIpc(): void {
     writeSettings({ maxRunningAgents: max })
     manager.startQueued()
   })
+  ipcMain.handle('settings:notifications', () => notificationPrefs)
+  ipcMain.handle('settings:setNotifications', (_e, prefs: NotificationPrefs) => {
+    notificationPrefs = normalizePrefs(prefs)
+    writeSettings({ notifications: notificationPrefs })
+  })
+  ipcMain.on('ui:shownFeature', (_e, id: string | null) => {
+    shownFeatureId = typeof id === 'string' ? id : null
+  })
+  ipcMain.handle('usage:turnCosts', () => manager.turnCosts())
+  ipcMain.handle('trash:list', () => manager.trashList())
+  ipcMain.handle('trash:restore', (_e, id: string) => manager.trashRestore(id))
+  ipcMain.handle('trash:discard', (_e, id: string) => manager.trashDiscard(id))
+  ipcMain.handle('feature:setPinned', (_e, id: string, pinned: boolean) => manager.setPinned(id, Boolean(pinned)))
+  ipcMain.handle('feature:setArchived', (_e, id: string, archived: boolean) => manager.setArchived(id, Boolean(archived)))
+  ipcMain.handle('feature:promote', (_e, id: string) => manager.promoteQueued(id))
   ipcMain.handle('usage:warning', () =>
     usageWarning?.resetsAt && usageWarning.resetsAt * 1000 < Date.now() ? null : usageWarning
   )
@@ -554,7 +605,8 @@ function registerIpc(): void {
   ipcMain.handle('files:unwatch', (_e, id: string) => watchers.unwatch(id))
 
   ipcMain.handle('git:status', (_e, id: string) => manager.gitStatus(id))
-  ipcMain.handle('git:head', (_e, id: string, path: string) => headContent(manager.featureRoot(id), path))
+  ipcMain.handle('git:head', (_e, id: string, path: string, ref?: string) => headContent(manager.featureRoot(id), path, ref))
+  ipcMain.handle('git:turnChanges', (_e, id: string) => manager.turnChanges(id))
   ipcMain.handle('git:branches', (_e, id: string) => manager.gitBranches(id))
   ipcMain.handle('git:switch', async (_e, id: string, branch: string) => {
     await manager.switchBranch(id, branch)
@@ -576,6 +628,25 @@ function registerIpc(): void {
     }
   })
   ipcMain.on('git:cancelDraftCommit', (_e, id: string) => drafting.get(id)?.abort())
+  ipcMain.handle('pr:support', () => pullRequestSupport())
+  ipcMain.handle('pr:draft', (_e, id: string) =>
+    cancellable(draftingPrs, id, (abort) => draftPullRequest(manager.featureRoot(id), abort))
+  )
+  ipcMain.on('pr:cancelDraft', (_e, id: string) => draftingPrs.get(id)?.abort())
+  ipcMain.handle('pr:create', async (_e, id: string, draft: PullRequestDraft) => {
+    const url = await manager.createPullRequest(id, draft)
+    send('git:changed', id)
+    return url
+  })
+  ipcMain.handle('handoff:draft', (_e, id: string) => {
+    const feature = manager.getState().features.find((f) => f.id === id)
+    if (!feature) throw new Error(t().errors.unknownFeature)
+    return cancellable(draftingHandoffs, id, (abort) =>
+      draftHandoff(feature.worktreePath, t().handoff.title(feature.title), manager.getEvents(id), abort)
+    )
+  })
+  ipcMain.on('handoff:cancelDraft', (_e, id: string) => draftingHandoffs.get(id)?.abort())
+  ipcMain.handle('handoff:continue', (_e, id: string, handoff: HandoffDraft) => manager.continueFeature(id, handoff))
   ipcMain.handle('git:pull', async (_e, id: string) => {
     await manager.pull(id)
     send('git:changed', id)
@@ -623,7 +694,8 @@ void app.whenReady().then(() => {
   lang = loadLanguage()
   applyTheme(themeById(readSettings().theme))
   maxRunning = loadMaxRunning()
-  manager = new Manager(new Store(join(dataDir, 'state.db')), join(dataDir, 'worktrees'), join(dataDir, 'attachments'), linear, t, () => maxRunning, {
+  notificationPrefs = normalizePrefs(readSettings().notifications)
+  manager = new Manager(new Store(join(dataDir, 'state.db')), join(dataDir, 'worktrees'), join(dataDir, 'attachments'), join(dataDir, 'trash'), linear, t, () => maxRunning, {
     event: (ev) => send('event', ev),
     feature: (f) => send('feature', f),
     featureRemoved: (id) => send('feature:removed', id),
@@ -639,6 +711,7 @@ void app.whenReady().then(() => {
   createWindow()
   setTimeout(() => void refreshUpdate(), 5000)
   setInterval(() => void refreshUpdate(), UPDATE_CHECK_INTERVAL_MS)
+  void manager.trashList()
   void removeMergedFeatures()
   setInterval(() => void removeMergedFeatures(), MERGED_SWEEP_INTERVAL_MS)
   app.on('activate', () => {

@@ -33,7 +33,7 @@ const HOUR = 60 * 60 * 1000
 function setup(maxRunning = 1) {
   const dir = mkdtempSync(join(tmpdir(), 'baton-manager-'))
   const store = new Store(':memory:')
-  store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearLabel: null, commands: [] })
+  store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearLabel: null, commands: [], templates: [] })
   const warnings: (UsageWarning | null)[] = []
   const sink: ManagerSink = {
     event: () => {},
@@ -46,7 +46,7 @@ function setup(maxRunning = 1) {
     usageWarning: (w) => warnings.push(w)
   }
   let max = maxRunning
-  const manager = new Manager(store, join(dir, 'wt'), join(dir, 'att'), {} as never, () => DICTS.en, () => max, sink)
+  const manager = new Manager(store, join(dir, 'wt'), join(dir, 'att'), join(dir, 'trash'), {} as never, () => DICTS.en, () => max, sink)
   const add = (id: string, over: Partial<Feature> = {}) =>
     store.insertFeature({
       id,
@@ -64,6 +64,11 @@ function setup(maxRunning = 1) {
       costUsd: 0,
       contextTokens: 0,
       limitResetsAt: null,
+      pinned: false,
+      archived: false,
+      queuePosition: null,
+      prUrl: null,
+      turnBase: null,
       createdAt: 0,
       updatedAt: 0,
       ...over
@@ -204,7 +209,7 @@ describe('agent slots', () => {
     const { store, manager, add } = setup(0)
     add('a', { status: 'limited', limitResetsAt: Math.floor(Date.now() / 1000) - 60 })
     add('b', { status: 'limited', limitResetsAt: Math.floor(Date.now() / 1000) + 3600 })
-    new Manager(store, '', '', {} as never, () => DICTS.en, () => 0, {
+    new Manager(store, '', '', '', {} as never, () => DICTS.en, () => 0, {
       event: () => {},
       feature: () => {},
       featureRemoved: () => {},
@@ -273,5 +278,69 @@ describe('usage warnings', () => {
       { limitType: undefined, resetsAt: 100, utilization: 0.9 },
       { limitType: undefined, resetsAt: 200, utilization: 0.9 }
     ])
+  })
+})
+
+describe('the queue', () => {
+  it('numbers queued agents and starts the one moved to the front first', async () => {
+    const { manager, add, finish } = setup(1)
+    add('a')
+    add('b')
+    add('c')
+    manager.send('a', 'go')
+    manager.send('b', 'go')
+    manager.send('c', 'go')
+    const places = () => Object.fromEntries(manager.getState().features.map((f) => [f.id, f.queuePosition]))
+    expect(places()).toEqual({ a: null, b: 1, c: 2 })
+
+    manager.promoteQueued('c')
+    expect(places()).toEqual({ a: null, b: 2, c: 1 })
+
+    finish('a')
+    await flush()
+    expect(sent.map((s) => s.featureId)).toEqual(['a', 'c'])
+    expect(places()).toEqual({ a: null, b: 1, c: null })
+  })
+
+  it('ignores a request to move an agent that is not queued', () => {
+    const { manager, add } = setup(1)
+    add('a')
+    expect(() => manager.promoteQueued('a')).not.toThrow()
+  })
+})
+
+describe('organising agents', () => {
+  it('pins and archives, and keeps it', () => {
+    const { store, manager, add } = setup()
+    add('a')
+    manager.setPinned('a', true)
+    manager.setArchived('a', true)
+    expect(store.getFeature('a')).toMatchObject({ pinned: true, archived: true })
+    manager.setArchived('a', false)
+    expect(store.getFeature('a')).toMatchObject({ pinned: true, archived: false })
+  })
+
+  it('keeps a project\'s prompt templates, dropping empty ones and naming the unnamed', () => {
+    const { store, manager } = setup()
+    manager.setProjectTemplates('p', [
+      { id: '1', name: ' Tests ', text: ' Add tests ' },
+      { id: '2', name: '', text: 'Review the diff of this branch carefully' },
+      { id: '3', name: 'Empty', text: '  ' }
+    ])
+    expect(store.getProject('p')!.templates).toEqual([
+      { id: '1', name: 'Tests', text: 'Add tests' },
+      { id: '2', name: 'Review the diff of this', text: 'Review the diff of this branch carefully' }
+    ])
+  })
+
+  it('adds up the cost of finished turns', () => {
+    const { store, manager, add } = setup()
+    add('a')
+    manager.send('a', 'go')
+    agents.get('a')!.emit({ type: 'event', event: { kind: 'result', isError: false, interrupted: false, text: '', turnCostUsd: 0.25 } })
+    const turns = store.listTurnCosts()
+    expect(turns).toHaveLength(1)
+    expect(turns[0]).toMatchObject({ featureId: 'a', costUsd: 0.25 })
+    expect(manager.turnCosts()).toEqual(turns)
   })
 })

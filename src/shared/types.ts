@@ -135,6 +135,13 @@ export interface LaunchCommand {
 /** A launch command Claude proposes after reading the project; the user decides whether it is kept. */
 export type LaunchSuggestion = Omit<LaunchCommand, 'id'>
 
+/** A prompt of a project the user inserts with one click, e.g. "Add tests". */
+export interface PromptTemplate {
+  id: string
+  name: string
+  text: string
+}
+
 export interface Project {
   id: string
   name: string
@@ -143,6 +150,7 @@ export interface Project {
   /** When set, the issues of every Linear project carrying this label belong to the repo. */
   linearLabel: LinearLabel | null
   commands: LaunchCommand[]
+  templates: PromptTemplate[]
 }
 
 /** What the folder picker found, shown before a project is created. */
@@ -164,6 +172,68 @@ export interface ProjectInput {
 }
 
 export type ProjectPatch = Omit<ProjectInput, 'path'>
+
+/** Which attention events raise a notification, and how. */
+export interface NotificationPrefs {
+  waiting: boolean
+  done: boolean
+  error: boolean
+  limited: boolean
+  sound: boolean
+  /** Also notify with the window in front, unless the agent concerned is the one on screen. */
+  whenFocused: boolean
+}
+
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  waiting: true,
+  done: true,
+  error: true,
+  limited: true,
+  sound: true,
+  whenFocused: false
+}
+
+/** Cost of one finished turn, for the usage overview. */
+export interface TurnCost {
+  featureId: string
+  /** Epoch milliseconds. */
+  at: number
+  costUsd: number
+}
+
+/** A feature removed with changes nobody committed, kept for a while. */
+export interface TrashEntry {
+  id: string
+  title: string
+  branch: string
+  projectId: string
+  projectName: string
+  /** Epoch milliseconds. */
+  deletedAt: number
+  /** Files that were modified or untracked. */
+  files: number
+}
+
+/** A pull request drafted by Claude, for the user to edit before it is opened. */
+export interface PullRequestDraft {
+  title: string
+  body: string
+  /** Branch the pull request targets. */
+  base: string
+}
+
+/** Summary of an agent's work, to start another from. */
+export interface HandoffDraft {
+  title: string
+  summary: string
+}
+
+/** Whether the tools pull requests need are there. */
+export interface PullRequestSupport {
+  ok: boolean
+  /** Why not: 'missing' (no gh) or 'signed-out'. */
+  reason?: 'missing' | 'signed-out'
+}
 
 /** Link from a feature to the Linear issue it was created from. */
 export interface LinearLink {
@@ -219,6 +289,16 @@ export interface Feature {
   contextTokens: number
   /** Epoch seconds at which the usage limit resets, when status is 'limited'. */
   limitResetsAt: number | null
+  /** Kept at the top of the list. */
+  pinned: boolean
+  /** Hidden from the list until the user looks at the archive; its worktree is kept. */
+  archived: boolean
+  /** Place in the queue (1 is next) while status is 'queued'. */
+  queuePosition: number | null
+  /** Pull request opened from the app for this branch. */
+  prUrl: string | null
+  /** Tree of the worktree when the last turn began, to show what that turn changed. */
+  turnBase: string | null
   createdAt: number
   updatedAt: number
 }
@@ -349,7 +429,7 @@ export interface ConfirmRequest {
 }
 
 /** Menu choices handed back to the renderer because they need its UI. */
-export type MenuAction = 'rename-feature' | 'link-feature' | 'new-feature' | 'project-settings'
+export type MenuAction = 'rename-feature' | 'link-feature' | 'new-feature' | 'project-settings' | 'continue-feature'
 
 export interface AppState {
   projects: Project[]
@@ -519,8 +599,10 @@ export interface Api {
   onFilesChanged(cb: (featureId: string, paths: string[]) => void): () => void
   /** Branch and changed files of the feature's worktree. */
   gitStatus(featureId: string): Promise<GitStatus>
-  /** A file as the last commit has it; null when absent there or not diffable. */
-  gitHead(featureId: string, path: string): Promise<string | null>
+  /** A file as the last commit has it, or as `ref` (a tree id from `gitTurnChanges`) has it; null when absent there or not diffable. */
+  gitHead(featureId: string, path: string, ref?: string): Promise<string | null>
+  /** What the agent changed since its last turn began; null when no snapshot of that moment exists. */
+  gitTurnChanges(featureId: string): Promise<{ base: string; changes: GitChange[] } | null>
   gitBranches(featureId: string): Promise<GitBranch[]>
   /** Checks another branch out in the feature's worktree. Rejects with git's own explanation. */
   gitSwitch(featureId: string, branch: string): Promise<void>
@@ -529,6 +611,33 @@ export interface Api {
   /** Has Claude word the commit of the given changes. */
   gitDraftCommit(featureId: string, paths: string[]): Promise<string>
   cancelGitDraftCommit(featureId: string): void
+  /** Whether `gh` is installed and signed in. */
+  prSupport(): Promise<PullRequestSupport>
+  /** Has Claude word the pull request of the branch. */
+  draftPullRequest(featureId: string): Promise<PullRequestDraft>
+  cancelDraftPullRequest(featureId: string): void
+  /** Pushes the branch if needed and opens the pull request; resolves with its URL. */
+  createPullRequest(featureId: string, draft: PullRequestDraft): Promise<string>
+  /** Has Claude sum up an agent's work so another can carry on. */
+  draftHandoff(featureId: string): Promise<HandoffDraft>
+  cancelDraftHandoff(featureId: string): void
+  /** Starts a new agent on a branch cut from this one, with the summary as its first message. */
+  continueFeature(featureId: string, handoff: HandoffDraft): Promise<Feature>
+  setFeaturePinned(featureId: string, pinned: boolean): Promise<void>
+  setFeatureArchived(featureId: string, archived: boolean): Promise<void>
+  /** Moves a queued agent to the front of the queue. */
+  promoteQueued(featureId: string): Promise<void>
+  setProjectTemplates(projectId: string, templates: PromptTemplate[]): Promise<Project>
+  getNotificationPrefs(): Promise<NotificationPrefs>
+  setNotificationPrefs(prefs: NotificationPrefs): Promise<void>
+  /** Tells the main process which agent is on screen, null for none. */
+  reportShownFeature(featureId: string | null): void
+  /** Cost of every finished turn, for the usage overview. */
+  turnCosts(): Promise<TurnCost[]>
+  trashList(): Promise<TrashEntry[]>
+  /** Brings a removed feature back: a new worktree on its branch, with the changes it held. */
+  trashRestore(id: string): Promise<Feature>
+  trashDiscard(id: string): Promise<void>
   gitPull(featureId: string): Promise<void>
   /** Publishes the branch when it has no upstream yet. */
   gitPush(featureId: string): Promise<void>

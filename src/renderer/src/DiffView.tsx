@@ -14,10 +14,12 @@ interface Props {
   kind: GitChangeKind
   /** Changes whenever the worktree does, so the comparison is read again. */
   revision: unknown
+  /** Tree to compare with instead of the last commit: the worktree when a turn began. */
+  baseRef?: string
 }
 
 /** Last commit and working copy of a file, side by side; removed lines on the left, added ones on the right. */
-export function DiffView({ id, path, kind, revision }: Props) {
+export function DiffView({ id, path, kind, revision, baseRef }: Props) {
   const t = useT()
   const host = useRef<HTMLDivElement>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -27,7 +29,7 @@ export function DiffView({ id, path, kind, revision }: Props) {
     let merge: MergeView | null = null
     void (async () => {
       const [before, file] = await Promise.all([
-        kind === 'added' || kind === 'untracked' ? '' : window.api.gitHead(id, path).catch(() => null),
+        kind === 'added' || kind === 'untracked' ? '' : window.api.gitHead(id, path, baseRef).catch(() => null),
         kind === 'deleted' ? { kind: 'text' as const, content: '' } : window.api.fileRead(id, path).catch(() => null)
       ])
       if (cancelled) return
@@ -52,12 +54,12 @@ export function DiffView({ id, path, kind, revision }: Props) {
       cancelled = true
       merge?.destroy()
     }
-  }, [id, path, kind, revision])
+  }, [id, path, kind, revision, baseRef])
 
   return (
     <div className="diff">
       <div className="diff-head">
-        <span>{t.git.before}</span>
+        <span>{baseRef ? t.git.beforeTurn : t.git.before}</span>
         <span>{t.git.after}</span>
       </div>
       {notice && <p className="editor-empty">{notice}</p>}
