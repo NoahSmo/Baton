@@ -526,6 +526,9 @@ export interface Api {
   gitSwitch(featureId: string, branch: string): Promise<void>
   /** Commits the given changes, and only those. Rejects with git's own explanation. */
   gitCommit(featureId: string, message: string, paths: string[]): Promise<void>
+  /** Has Claude word the commit of the given changes. */
+  gitDraftCommit(featureId: string, paths: string[]): Promise<string>
+  cancelGitDraftCommit(featureId: string): void
   gitPull(featureId: string): Promise<void>
   /** Publishes the branch when it has no upstream yet. */
   gitPush(featureId: string): Promise<void>

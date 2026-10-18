@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Feature, GitStatus } from '../../shared/types'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
@@ -38,10 +38,10 @@ export function GitActions({ feature, git }: Props) {
       <span className="sep">·</span>
       <span className="git-actions">
         <button className="git-action" disabled={!canPull} title={git.upstream ? t.git.pullHint(git.upstream) : undefined} onClick={() => void run('pull')}>
-          {running === 'pull' ? t.git.pulling : `↓ ${t.git.pull}`}
+          {running === 'pull' ? t.git.pulling : `↓ ${t.git.pull}${git.behind > 0 ? ` ${git.behind}` : ''}`}
         </button>
         <button className="git-action" disabled={!canPush} title={git.upstream ? t.git.pushHint : t.git.publishHint} onClick={() => void run('push')}>
-          {running === 'push' ? t.git.pushing : `↑ ${t.git.push}`}
+          {running === 'push' ? t.git.pushing : `↑ ${t.git.push}${git.ahead > 0 ? ` ${git.ahead}` : ''}`}
         </button>
         <button className="git-action" disabled={!git.changes.length || Boolean(running)} onClick={() => setCommitting(true)}>
           {t.git.commit}
@@ -66,6 +66,11 @@ function CommitDialog({ feature, git, onClose }: { feature: Feature; git: GitSta
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [drafting, setDrafting] = useState(false)
+  // Whether the user has typed since the last draft: what they wrote is not overwritten.
+  const typed = useRef(false)
+  const latest = useRef(0)
+  const pathsRef = useRef<string[]>([])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !busy && onClose()
@@ -77,6 +82,36 @@ function CommitDialog({ feature, git, onClose }: { feature: Feature; git: GitSta
   const present = new Set(git.changes.map((c) => c.path))
   const paths = [...checked].filter((p) => present.has(p))
   const all = paths.length === git.changes.length
+  pathsRef.current = paths
+
+  async function draft(force: boolean) {
+    const run = ++latest.current
+    setDrafting(true)
+    setError(null)
+    try {
+      const text = await window.api.gitDraftCommit(feature.id, pathsRef.current)
+      if (run !== latest.current) return
+      if (!text) setError(t.git.draftFailed)
+      else if (force || !typed.current) {
+        setMessage(text)
+        typed.current = false
+      }
+    } catch (err) {
+      if (run === latest.current) setError(cleanError(err))
+    } finally {
+      if (run === latest.current) setDrafting(false)
+    }
+  }
+
+  // Claude words the commit as soon as the dialog opens.
+  useEffect(() => {
+    void draft(false)
+    return () => {
+      latest.current++
+      window.api.cancelGitDraftCommit(feature.id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function toggle(path: string) {
     const next = new Set(checked)
@@ -103,12 +138,21 @@ function CommitDialog({ feature, git, onClose }: { feature: Feature; git: GitSta
       <div className="dialog commit-dialog" role="dialog" aria-labelledby="commit-title">
         <h2 id="commit-title">{t.git.commitTitle}</h2>
         <p className="hint">{t.git.commitHint}</p>
-        <label>{t.git.commitMessage}</label>
+        <div className="commit-head">
+          <label>{t.git.commitMessage}</label>
+          <button className="link" disabled={drafting || busy || !paths.length} onClick={() => void draft(true)}>
+            {drafting ? t.git.drafting : t.git.redraft}
+          </button>
+        </div>
         <textarea
           autoFocus
-          rows={3}
+          rows={5}
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          placeholder={drafting ? t.git.drafting : undefined}
+          onChange={(e) => {
+            typed.current = true
+            setMessage(e.target.value)
+          }}
           onKeyDown={(e) => e.key === 'Enter' && (e.metaKey || e.ctrlKey) && ready && void commit()}
         />
         <div className="commit-head">
