@@ -1487,16 +1487,31 @@ input.mono {
   color: var(--text);
 }
 
-.statusbar .theme-select {
-  width: auto;
-  padding: 1px 4px;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
 }
 
-.statusbar .theme-select:hover {
+.settings-row select {
+  width: auto;
+}
+
+.topbar-settings {
+  -webkit-app-region: no-drag;
+  align-self: center;
+  margin: 0 10px 0 auto;
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+.topbar-settings:hover:not(:disabled) {
   color: var(--text);
 }
 
