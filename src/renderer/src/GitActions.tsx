@@ -67,8 +67,6 @@ function CommitDialog({ feature, git, onClose }: { feature: Feature; git: GitSta
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [drafting, setDrafting] = useState(false)
-  // Whether the user has typed since the last draft: what they wrote is not overwritten.
-  const typed = useRef(false)
   const latest = useRef(0)
   const pathsRef = useRef<string[]>([])
 
@@ -84,7 +82,7 @@ function CommitDialog({ feature, git, onClose }: { feature: Feature; git: GitSta
   const all = paths.length === git.changes.length
   pathsRef.current = paths
 
-  async function draft(force: boolean) {
+  async function draft() {
     const run = ++latest.current
     setDrafting(true)
     setError(null)
@@ -92,10 +90,7 @@ function CommitDialog({ feature, git, onClose }: { feature: Feature; git: GitSta
       const text = await window.api.gitDraftCommit(feature.id, pathsRef.current)
       if (run !== latest.current) return
       if (!text) setError(t.git.draftFailed)
-      else if (force || !typed.current) {
-        setMessage(text)
-        typed.current = false
-      }
+      else setMessage(text)
     } catch (err) {
       if (run === latest.current) setError(cleanError(err))
     } finally {
@@ -103,9 +98,8 @@ function CommitDialog({ feature, git, onClose }: { feature: Feature; git: GitSta
     }
   }
 
-  // Claude words the commit as soon as the dialog opens.
+  // Claude only words the commit when asked; a draft still running is dropped with the dialog.
   useEffect(() => {
-    void draft(false)
     return () => {
       latest.current++
       window.api.cancelGitDraftCommit(feature.id)
@@ -140,8 +134,8 @@ function CommitDialog({ feature, git, onClose }: { feature: Feature; git: GitSta
         <p className="hint">{t.git.commitHint}</p>
         <div className="commit-head">
           <label>{t.git.commitMessage}</label>
-          <button className="link" disabled={drafting || busy || !paths.length} onClick={() => void draft(true)}>
-            {drafting ? t.git.drafting : t.git.redraft}
+          <button className="link" disabled={drafting || busy || !paths.length} onClick={() => void draft()}>
+            {drafting ? t.git.drafting : message.trim() ? t.git.redraft : t.git.draft}
           </button>
         </div>
         <textarea
@@ -149,10 +143,7 @@ function CommitDialog({ feature, git, onClose }: { feature: Feature; git: GitSta
           rows={5}
           value={message}
           placeholder={drafting ? t.git.drafting : undefined}
-          onChange={(e) => {
-            typed.current = true
-            setMessage(e.target.value)
-          }}
+          onChange={(e) => setMessage(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && (e.metaKey || e.ctrlKey) && ready && void commit()}
         />
         <div className="commit-head">
