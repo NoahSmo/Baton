@@ -203,6 +203,7 @@ export function App() {
         onSelectLinear={() => setShowLinear(true)}
         onSelect={goToProject}
         onNew={() => setDialog({ kind: 'project' })}
+        onOpenSettings={() => setDialog({ kind: 'settings' })}
         onMenuAction={(target, action) => {
           goToProject(target.id)
           if (action === 'new-feature') setDialog({ kind: 'feature' })
@@ -322,11 +323,9 @@ export function App() {
         features={features}
         linear={linear}
         onOpenLinear={() => setDialog({ kind: 'linear' })}
-        onLanguage={changeLanguage}
         version={version}
         update={update}
         onOpenUpdate={() => setDialog({ kind: 'update' })}
-        onOpenSettings={() => setDialog({ kind: 'settings' })}
         terminal={
           project && !linearShown ? { open: terminalOpen, toggle: () => setTerminalOpen((open) => !open) } : undefined
         }
@@ -369,7 +368,7 @@ export function App() {
       )}
       {dialog?.kind === 'linear' && <LinearDialog status={linear} onChange={setLinear} onClose={() => setDialog(null)} />}
       {dialog?.kind === 'settings' && (
-        <SettingsDialog version={version} onUpdateFound={() => setDialog({ kind: 'update' })} onClose={() => setDialog(null)} />
+        <SettingsDialog version={version} onLanguage={changeLanguage} onUpdateFound={() => setDialog({ kind: 'update' })} onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === 'update' && update && (
         <UpdateDialog update={update} currentVersion={version} onClose={() => setDialog(null)} />

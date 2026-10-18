@@ -12,6 +12,7 @@ interface Props {
   onSelectLinear(): void
   onSelect(id: string): void
   onNew(): void
+  onOpenSettings(): void
   /** A choice from a tab's context menu that needs a dialog. */
   onMenuAction(project: Project, action: MenuAction): void
 }
@@ -25,6 +26,7 @@ export function TopBar({
   onSelectLinear,
   onSelect,
   onNew,
+  onOpenSettings,
   onMenuAction
 }: Props) {
   const t = useT()
@@ -66,6 +68,9 @@ export function TopBar({
           +
         </button>
       </nav>
+      <button className="topbar-settings" title={t.update.settingsOpen} aria-label={t.update.settingsOpen} onClick={onOpenSettings}>
+        ⚙
+      </button>
     </header>
   )
 }
