@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import type { Dict } from '../shared/i18n'
 import { needsAttention, nextStatus, slugify } from '../shared/status'
@@ -9,7 +11,9 @@ import {
   type CreateFeatureInput,
   type Feature,
   type GitBranch,
+  type GitChange,
   type GitStatus,
+  type HandoffDraft,
   type ImageInput,
   type LaunchCommand,
   type LinearIssue,
@@ -19,18 +23,24 @@ import {
   type Project,
   type ProjectInput,
   type ProjectPatch,
+  type PromptTemplate,
+  type PullRequestDraft,
   type RepoInfo,
   type StoredEvent,
+  type TrashEntry,
+  type TurnCost,
   type UiEvent,
   type UsageWarning,
   type BackgroundTask
 } from '../shared/types'
 import { AgentSession, type AgentOutput } from './agent'
 import { removeAttachments, saveFiles, saveImages, withFiles } from './attachments'
-import { commitChanges, gitStatus, hasLanded, lastGitActivity, listBranches, pull, push, strayWorktrees, switchBranch } from './git'
+import { changesSince, commitChanges, gitStatus, hasLanded, lastGitActivity, listBranches, pull, push, snapshotTree, strayWorktrees, switchBranch } from './git'
 import type { LinearClient } from './linear'
+import { createPullRequest } from './pullRequest'
 import type { Store } from './store'
-import { createWorktree, fetchRemotes, removeWorktree, repoState } from './worktree'
+import { applyChanges, captureChanges, discardTrash, listTrash, readMeta, saveToTrash } from './trash'
+import { addWorktreeOnBranch, createWorktree, fetchRemotes, removeWorktree, repoState, type Worktree } from './worktree'
 
 /** A merge is often followed by a last word with the agent: a feature just touched is left alone. */
 const MERGED_GRACE_MS = 60 * 60 * 1000
@@ -83,6 +93,8 @@ export class Manager {
     private readonly worktreesRoot: string,
     /** Images sent to the agents, one folder per feature. */
     private readonly attachmentsRoot: string,
+    /** Uncommitted work of removed features, kept for a few days. */
+    private readonly trashRoot: string,
     private readonly linear: LinearClient,
     /** Messages in the language currently selected in the app. */
     private readonly t: () => Dict,
@@ -108,7 +120,44 @@ export class Manager {
   }
 
   getState(): AppState {
-    return { projects: this.store.listProjects(), features: this.store.listFeatures() }
+    return { projects: this.store.listProjects(), features: this.store.listFeatures().map((f) => this.view(f)) }
+  }
+
+  /** A feature as the interface shows it: with its place in the queue, which the store does not know. */
+  private view(feature: Feature): Feature {
+    const place = [...this.queue.keys()].indexOf(feature.id)
+    return { ...feature, queuePosition: place === -1 ? null : place + 1 }
+  }
+
+  /** The queue changed: every queued agent may have a new place. */
+  private republishQueue(): void {
+    for (const id of this.queue.keys()) {
+      const feature = this.store.getFeature(id)
+      if (feature) this.sink.feature(this.view(feature))
+    }
+  }
+
+  setPinned(featureId: string, pinned: boolean): void {
+    this.mustGet(featureId)
+    this.patch(featureId, { pinned })
+  }
+
+  setArchived(featureId: string, archived: boolean): void {
+    this.mustGet(featureId)
+    this.patch(featureId, { archived })
+  }
+
+  /** Puts a queued agent first in line. */
+  promoteQueued(featureId: string): void {
+    const messages = this.queue.get(featureId)
+    if (!messages) return
+    const rest = [...this.queue].filter(([id]) => id !== featureId)
+    this.queue = new Map([[featureId, messages], ...rest])
+    this.republishQueue()
+  }
+
+  turnCosts(): TurnCost[] {
+    return this.store.listTurnCosts()
   }
 
   async inspectFolder(path: string): Promise<RepoInfo> {
@@ -129,7 +178,8 @@ export class Manager {
       path: input.path,
       color: input.color,
       linearLabel: input.linearLabel,
-      commands: []
+      commands: [],
+      templates: []
     }
     this.store.insertProject(project)
     return project
@@ -156,6 +206,20 @@ export class Manager {
       commands: commands
         .map((c) => ({ id: c.id || randomUUID(), name: c.name.trim(), command: c.command.trim() }))
         .filter((c) => c.command)
+    }
+    this.store.updateProject(updated)
+    return updated
+  }
+
+  setProjectTemplates(projectId: string, templates: PromptTemplate[]): Project {
+    const project = this.store.getProject(projectId)
+    if (!project) throw new Error(this.t().errors.unknownProject)
+    const updated: Project = {
+      ...project,
+      templates: templates
+        .map((x) => ({ id: x.id || randomUUID(), name: x.name.trim(), text: x.text.trim() }))
+        .filter((x) => x.text)
+        .map((x) => ({ ...x, name: x.name || x.text.slice(0, 24).trim() }))
     }
     this.store.updateProject(updated)
     return updated
@@ -259,16 +323,26 @@ export class Manager {
     const issue = input.linearIssue
     const worktree = await createWorktree(
       project.path,
-      // Keyed by id as well: two projects may share a folder name, and names can be edited.
-      join(this.worktreesRoot, `${basename(project.path)}-${project.id.slice(0, 8)}`),
+      this.projectWorktrees(project),
       slugify(issue ? `${issue.identifier} ${issue.title}` : title),
       issue?.branchName || undefined
     )
+    return this.register(project, worktree, input)
+  }
+
+  /** Keyed by id as well: two projects may share a folder name, and names can be edited. */
+  private projectWorktrees(project: Project): string {
+    return join(this.worktreesRoot, `${basename(project.path)}-${project.id.slice(0, 8)}`)
+  }
+
+  /** Records a feature whose worktree exists, and sends its first message. */
+  private register(project: Project, worktree: Worktree, input: CreateFeatureInput): Feature {
+    const issue = input.linearIssue
     const now = Date.now()
     const feature: Feature = {
       id: randomUUID(),
       projectId: project.id,
-      title,
+      title: input.title.trim(),
       linear: issue ? { issueId: issue.id, identifier: issue.identifier, url: issue.url } : null,
       branch: worktree.branch,
       worktreePath: worktree.path,
@@ -280,6 +354,11 @@ export class Manager {
       costUsd: 0,
       contextTokens: 0,
       limitResetsAt: null,
+      pinned: false,
+      archived: false,
+      queuePosition: null,
+      prUrl: null,
+      turnBase: null,
       createdAt: now,
       updatedAt: now
     }
@@ -289,7 +368,35 @@ export class Manager {
     if (input.prompt.trim() || images.length || files.length) {
       this.send(feature.id, input.prompt.trim(), input.attachments)
     }
-    return this.store.getFeature(feature.id)!
+    return this.view(this.store.getFeature(feature.id)!)
+  }
+
+  /**
+   * Starts a new agent from another's work: a branch cut from the old one's, its
+   * uncommitted changes carried over, and the summary as first message. The old agent
+   * keeps its own worktree, so the two cannot step on each other.
+   */
+  async continueFeature(featureId: string, handoff: HandoffDraft): Promise<Feature> {
+    const source = this.mustGet(featureId)
+    const project = this.store.getProject(source.projectId)
+    if (!project) throw new Error(this.t().errors.unknownProject)
+    const title = handoff.title.trim() || source.title
+    const worktree = await createWorktree(project.path, this.projectWorktrees(project), slugify(title), undefined, source.branch)
+    const carry = await mkdtemp(join(tmpdir(), 'baton-carry-'))
+    try {
+      if (await captureChanges(source.worktreePath, carry)) await applyChanges(carry, worktree.path)
+    } catch {
+      // The new agent starts from the committed work; the summary says what was in progress.
+    } finally {
+      await rm(carry, { recursive: true, force: true })
+    }
+    return this.register(project, worktree, {
+      projectId: project.id,
+      title,
+      prompt: this.t().handoff.prompt(source.title, handoff.summary),
+      permissionMode: source.permissionMode,
+      agentModel: source.agentModel
+    })
   }
 
   getEvents(featureId: string): StoredEvent[] {
@@ -312,6 +419,8 @@ export class Manager {
     const idleSince = this.store.lastEventAt(featureId)
     // An agent already in a turn takes the message along; another one needs a free slot.
     const runNow = isActive(feature) || (feature.status !== 'queued' && this.hasFreeSlot() && !this.isLimited())
+    // A turn begins: remember the worktree as it is, to show later what the turn changed.
+    if (!isActive(feature) && feature.status !== 'queued') void this.snapshotTurn(featureId)
     // The first message is when work on the issue actually begins.
     if (feature.linear && !feature.sessionId) void this.startLinearIssue(feature)
     this.record(featureId, {
@@ -332,6 +441,23 @@ export class Manager {
       this.record(featureId, { kind: 'notice', notice: { code: 'queued', maxRunning: this.maxRunning() } })
     }
     this.patch(featureId, { status: 'queued' })
+    this.republishQueue()
+  }
+
+  private async snapshotTurn(featureId: string): Promise<void> {
+    try {
+      const turnBase = await snapshotTree(this.featureRoot(featureId))
+      this.patch(featureId, { turnBase })
+    } catch {
+      // Not a repository any more, or the feature is gone: nothing to compare with.
+    }
+  }
+
+  /** What the agent changed since its last turn began; null without a snapshot of that moment. */
+  async turnChanges(featureId: string): Promise<{ base: string; changes: GitChange[] } | null> {
+    const { turnBase, worktreePath } = this.mustGet(featureId)
+    if (!turnBase) return null
+    return { base: turnBase, changes: await changesSince(worktreePath, turnBase) }
   }
 
   /** Starts queued agents while slots are free; called whenever one may have freed up. */
@@ -344,7 +470,9 @@ export class Manager {
       if (!feature) continue
       this.patch(featureId, { status: 'working' })
       this.dispatch(feature, messages)
+      void this.snapshotTurn(featureId)
     }
+    this.republishQueue()
   }
 
   private hasFreeSlot(): boolean {
@@ -389,6 +517,7 @@ export class Manager {
     if (this.queue.delete(featureId)) {
       // Never sent: the agent knows nothing of these messages.
       this.record(featureId, { kind: 'result', isError: false, interrupted: true, text: '', turnCostUsd: 0 })
+      this.republishQueue()
       return
     }
     await this.sessions.get(featureId)?.interrupt()
@@ -399,11 +528,44 @@ export class Manager {
     const project = this.store.getProject(feature.projectId)
     this.sessions.get(featureId)?.close()
     this.sessions.delete(featureId)
-    this.queue.delete(featureId)
+    if (this.queue.delete(featureId)) this.republishQueue()
+    // Whatever was not committed would be lost with the worktree: it is kept for a few days.
+    if (project) await saveToTrash(this.trashRoot, feature, project.name).catch(() => null)
     if (project) await removeWorktree(project.path, feature.worktreePath)
     removeAttachments(this.attachmentsDir(featureId))
     this.store.deleteFeature(featureId)
     this.sink.featureRemoved(featureId)
+  }
+
+  trashList(): Promise<TrashEntry[]> {
+    return listTrash(this.trashRoot)
+  }
+
+  trashDiscard(id: string): Promise<void> {
+    return discardTrash(this.trashRoot, id)
+  }
+
+  /** Brings a removed feature back: a worktree on its branch, holding the changes it had. */
+  async trashRestore(id: string): Promise<Feature> {
+    const meta = await readMeta(this.trashRoot, id)
+    if (!meta) throw new Error(this.t().errors.trashGone)
+    const project = this.store.getProject(meta.projectId)
+    if (!project) throw new Error(this.t().errors.unknownProject)
+    const worktree = await addWorktreeOnBranch(project.path, this.projectWorktrees(project), slugify(meta.title), meta.branch, meta.head)
+    await applyChanges(join(this.trashRoot, id), worktree.path)
+    await discardTrash(this.trashRoot, id)
+    return this.register(project, worktree, { projectId: project.id, title: meta.title, prompt: '', permissionMode: 'default', agentModel: DEFAULT_AGENT_MODEL })
+  }
+
+  /** Pushes the branch when it has nothing to compare with, then opens its pull request. */
+  async createPullRequest(featureId: string, draft: PullRequestDraft): Promise<string> {
+    const feature = this.mustGet(featureId)
+    const status = await gitStatus(feature.worktreePath)
+    if (!status.branch) throw new Error(this.t().errors.detachedHead)
+    if (status.ahead > 0 || !status.upstream) await push(feature.worktreePath)
+    const url = await createPullRequest(feature.worktreePath, status.branch, draft)
+    this.patch(featureId, { prUrl: url })
+    return url
   }
 
   /** Looks up what has been merged on the remotes since the last time. */
@@ -591,7 +753,7 @@ export class Manager {
     if (!before) return
     const after: Feature = { ...before, ...patch, updatedAt: Date.now() }
     this.store.updateFeature(after)
-    this.sink.feature(after)
+    this.sink.feature(this.view(after))
     if (after.status !== before.status && needsAttention(after.status)) this.sink.attention(after)
     // Deferred: the turn that just ended may still be recording its own events.
     if (isActive(before) && !isActive(after) && this.queue.size) queueMicrotask(() => this.startQueued())

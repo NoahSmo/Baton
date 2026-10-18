@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import Markdown from 'react-markdown'
 import { kTokens } from '../../shared/i18n'
+import { atEdge, sentMessages, START, stepHistory, type HistoryCursor } from '../../shared/history'
 import { issuePrompt } from '../../shared/linear'
 import {
   AGENT_MODELS,
@@ -14,11 +15,14 @@ import {
 } from '../../shared/types'
 import { AttachButton, DraftAttachments, SentAttachments } from './Attachments'
 import { BranchPicker } from './BranchPicker'
+import { ConversationSearch } from './ConversationSearch'
+import { loadDraft, saveDraft } from './drafts'
 import { GitActions } from './GitActions'
 import { openContextMenu } from './contextMenu'
 import { useLang, useT } from './i18n'
 import { LinkIssueDialog } from './LinkIssueDialog'
 import { PermissionCard } from './PermissionCard'
+import { TemplateChips } from './TemplatesDialog'
 import { buildTranscript, toolSummary, type Item, type Todo } from './transcript'
 import { toMessageAttachments, useAttachments } from './useAttachments'
 
@@ -41,6 +45,8 @@ interface Props {
   /** The dialog linking this agent to an issue is open. */
   linking: boolean
   onLinking(open: boolean): void
+  /** Opens the dialog starting a new agent from this one's work. */
+  onContinue(): void
 }
 
 export function FeatureView({
@@ -57,13 +63,34 @@ export function FeatureView({
   onShowChanges,
   linearConnected,
   linking,
-  onLinking
+  onLinking,
+  onContinue
 }: Props) {
   const t = useT()
   const lang = useLang()
   const { items, todos } = useMemo(() => buildTranscript(events, t, lang), [events, t, lang])
-  const [draft, setDraft] = useState('')
+  // What was typed here and not sent comes back when the agent does.
+  const [draft, setDraft] = useState(() => loadDraft(feature.id))
   const attachments = useAttachments()
+  const box = useRef<HTMLTextAreaElement>(null)
+  const history = useMemo(() => sentMessages(events), [events])
+  const cursor = useRef<HistoryCursor>(START)
+  /** Caret position to restore once a message recalled from the history is on screen. */
+  const caretAtEnd = useRef(false)
+  const [finding, setFinding] = useState(false)
+  /** Changes with the transcript, to find the matches again; the stream is not part of `items`. */
+  const searchRevision = useMemo(() => ({}), [items, stream])
+  useEffect(() => saveDraft(feature.id, draft), [feature.id, draft])
+  useLayoutEffect(() => {
+    if (!caretAtEnd.current || !box.current) return
+    caretAtEnd.current = false
+    box.current.setSelectionRange(draft.length, draft.length)
+  }, [draft])
+  useEffect(() => {
+    const open = () => setFinding(true)
+    window.addEventListener('baton:find', open)
+    return () => window.removeEventListener('baton:find', open)
+  }, [])
   const scroller = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
 
@@ -79,6 +106,7 @@ export function FeatureView({
     const text = draft.trim()
     if (!text && !attachments.drafts.length) return
     setDraft('')
+    cursor.current = START
     attachments.clear()
     pinned.current = true
     void window.api.send(feature.id, text, toMessageAttachments(attachments.drafts))
@@ -98,6 +126,20 @@ export function FeatureView({
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       submit()
+      return
+    }
+    // ↑ and ↓ leaf through earlier messages, from an empty box or the start of the text.
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && !e.nativeEvent.isComposing) {
+      const direction = e.key === 'ArrowUp' ? 'up' : 'down'
+      const browsing = cursor.current.index !== null
+      const start = draft === '' || (selectionStart === 0 && selectionEnd === 0)
+      if (!(browsing ? atEdge(draft, selectionStart, direction) : direction === 'up' && start)) return
+      const step = stepHistory(cursor.current, history, draft, direction)
+      if (!step) return
+      e.preventDefault()
+      cursor.current = step.cursor
+      caretAtEnd.current = true
+      setDraft(step.text)
     }
   }
 
@@ -164,6 +206,11 @@ export function FeatureView({
                 <span className={`num${feature.contextTokens > 100_000 ? ' heavy' : ''}`} title={t.feature.contextSize}>
                   {kTokens(feature.contextTokens)} ctx
                 </span>
+                {feature.contextTokens > 100_000 && feature.sessionId && (
+                  <button className="link" title={t.handoff.heavy} onClick={onContinue}>
+                    {t.handoff.button}
+                  </button>
+                )}
               </>
             )}
           </p>
@@ -195,6 +242,8 @@ export function FeatureView({
       </header>
 
       {todos.length > 0 && <PlanBanner todos={todos} />}
+
+      {finding && <ConversationSearch scroller={scroller} revision={searchRevision} onClose={() => setFinding(false)} />}
 
       <div
         className="transcript"
@@ -232,11 +281,26 @@ export function FeatureView({
 
       <footer className="composer" onDragOver={attachments.onDragOver} onDrop={attachments.onDrop}>
         <DraftAttachments drafts={attachments.drafts} rejected={attachments.rejected} onRemove={attachments.remove} />
+        {project && (
+          <TemplateChips
+            templates={project.templates}
+            onPick={(text) => {
+              cursor.current = START
+              caretAtEnd.current = true
+              setDraft((current) => (current.trim() ? `${current.trimEnd()}\n${text}` : text))
+              box.current?.focus()
+            }}
+          />
+        )}
         <div className="composer-row">
           <AttachButton onPick={(files) => void attachments.add(files)} />
           <textarea
+            ref={box}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              cursor.current = START
+              setDraft(e.target.value)
+            }}
             onKeyDown={onKeyDown}
             onPaste={attachments.onPaste}
             rows={Math.min(8, Math.max(1, draft.split('\n').length))}

@@ -89,7 +89,9 @@ export async function createWorktree(
   repo: string,
   worktreesRoot: string,
   slug: string,
-  preferredBranch?: string
+  preferredBranch?: string,
+  /** Where the new branch starts: the repo's current HEAD when absent. */
+  startPoint?: string
 ): Promise<Worktree> {
   await mkdir(worktreesRoot, { recursive: true })
   await pullBase(repo)
@@ -101,7 +103,28 @@ export async function createWorktree(
     name = `${slug}-${i}`
   }
   const path = join(worktreesRoot, name)
-  await git(repo, 'worktree', 'add', '-b', branch, path)
+  await git(repo, 'worktree', 'add', '-b', branch, path, ...(startPoint ? [startPoint] : []))
+  await copyEnvFiles(repo, path)
+  return { branch, path }
+}
+
+/**
+ * Checks an existing branch out in a new worktree, as a removed feature comes back. When the
+ * branch is gone it is recreated at `fallbackCommit`, where the feature last was.
+ */
+export async function addWorktreeOnBranch(
+  repo: string,
+  worktreesRoot: string,
+  slug: string,
+  branch: string,
+  fallbackCommit: string
+): Promise<Worktree> {
+  await mkdir(worktreesRoot, { recursive: true })
+  let name = slug
+  for (let i = 2; existsSync(join(worktreesRoot, name)); i++) name = `${slug}-${i}`
+  const path = join(worktreesRoot, name)
+  if (await branchExists(repo, branch)) await git(repo, 'worktree', 'add', path, branch)
+  else await git(repo, 'worktree', 'add', '-b', branch, path, fallbackCommit)
   await copyEnvFiles(repo, path)
   return { branch, path }
 }

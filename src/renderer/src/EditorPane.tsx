@@ -5,7 +5,7 @@ import { EditorState, Transaction, type Extension, type Text } from '@codemirror
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { Feature, FileEntry, GitChangeKind, GitStatus } from '../../shared/types'
+import type { Feature, FileEntry, GitChange, GitChangeKind, GitStatus } from '../../shared/types'
 import { DiffView } from './DiffView'
 import { editorTheme } from './editorTheme'
 import { useT } from './i18n'
@@ -67,17 +67,35 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
   const [error, setError] = useState<string | null>(null)
   /** File whose diff fills the editor, picked from the changes list. */
   const [diffPath, setDiffPath] = useState<string | null>(null)
+  /** Changes since the last commit, or since the agent's last turn began. */
+  const [changesMode, setChangesMode] = useState<'commit' | 'turn'>('commit')
+  /** Undefined while loading; null when no snapshot of the turn exists. */
+  const [turn, setTurn] = useState<{ base: string; changes: GitChange[] } | null | undefined>(undefined)
   const buffers = useRef(new Map<string, Buffer>())
   const view = useRef<EditorView | null>(null)
   const host = useRef<HTMLDivElement>(null)
 
   const active = tabs.find((tab) => tab.path === activePath) ?? null
-  const changes = git?.changes ?? []
+  const commitChanges = git?.changes ?? []
+  const changes = changesMode === 'turn' ? (turn?.changes ?? []) : commitChanges
+
+  // The turn's changes follow the worktree like the status does.
+  useEffect(() => {
+    if (changesMode !== 'turn' || !visible) return
+    let stale = false
+    window.api
+      .gitTurnChanges(id)
+      .then((result) => !stale && setTurn(result))
+      .catch(() => !stale && setTurn(null))
+    return () => {
+      stale = true
+    }
+  }, [changesMode, visible, id, git, feature.turnBase])
 
   /** Changed files by path, and the folders leading to them. */
   const changed = useMemo(() => {
     const kinds = new Map<string, GitChangeKind | 'inside'>()
-    for (const change of changes) {
+    for (const change of commitChanges) {
       kinds.set(change.path, change.kind)
       for (let dir = parentOf(change.path); dir && !kinds.has(dir); dir = parentOf(dir)) kinds.set(dir, 'inside')
     }
@@ -309,14 +327,34 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
             className={`sidebar-title tree-tab${panel === 'changes' ? ' selected' : ''}`}
             onClick={() => onPanel('changes')}
           >
-            {t.git.changes} {changes.length > 0 && <span className="num">{changes.length}</span>}
+            {t.git.changes} {commitChanges.length > 0 && <span className="num">{commitChanges.length}</span>}
           </button>
         </div>
         {panel === 'files' ? (
           <div className="editor-tree-list">{renderDir('', 0)}</div>
         ) : (
           <div className="editor-tree-list">
-            {!changes.length && <p className="tree-empty">{t.git.noChanges}</p>}
+            <div className="filters" role="group" aria-label={t.git.changes}>
+              {(['commit', 'turn'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  className={`filter${changesMode === mode ? ' selected' : ''}`}
+                  aria-pressed={changesMode === mode}
+                  title={mode === 'turn' ? t.git.lastTurnHint : undefined}
+                  onClick={() => {
+                    setChangesMode(mode)
+                    setDiffPath(null)
+                  }}
+                >
+                  {mode === 'turn' ? t.git.lastTurn : t.git.sinceCommit}
+                </button>
+              ))}
+            </div>
+            {!changes.length && (
+              <p className="tree-empty">
+                {changesMode === 'commit' ? t.git.noChanges : turn === null ? t.git.noTurnSnapshot : turn ? t.git.noTurnChanges : t.editor.loading}
+              </p>
+            )}
             {changes.map((change) => (
               <button
                 key={change.path}
@@ -377,7 +415,7 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
         )}
         {error && <p className="editor-notice error">{error}</p>}
 
-        {diffChange && <DiffView id={id} path={diffChange.path} kind={diffChange.kind} revision={git} />}
+        {diffChange && <DiffView id={id} path={diffChange.path} kind={diffChange.kind} revision={git} baseRef={changesMode === 'turn' ? turn?.base : undefined} />}
         <div className="editor-code" ref={host} hidden={!showsText} />
         {!showsText && !diffChange && <p className="editor-empty">{active ? notice[active.status as keyof typeof notice] : t.editor.pickFile}</p>}
       </div>

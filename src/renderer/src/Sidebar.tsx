@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { arrangeFeatures, SIDEBAR_SORTS, type SidebarSort } from '../../shared/features'
 import type { Feature, FeatureStatus, Project, TerminalTarget } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
 import { useT } from './i18n'
@@ -23,6 +24,15 @@ interface Props {
   onLink(feature: Feature): void
   onEditProject(): void
   onEditCommands(): void
+  onEditTemplates(): void
+  /** Opens the dialog starting a new agent from this one's work. */
+  onContinue(feature: Feature): void
+  query: string
+  onQuery(query: string): void
+  statuses: FeatureStatus[]
+  onStatuses(statuses: FeatureStatus[]): void
+  sort: SidebarSort
+  onSort(sort: SidebarSort): void
   /** Whether the terminal panel is on screen. */
   terminalOpen: boolean
   onShowTerminal(): void
@@ -38,6 +48,14 @@ export function Sidebar({
   onLink,
   onEditProject,
   onEditCommands,
+  onEditTemplates,
+  onContinue,
+  query,
+  onQuery,
+  statuses,
+  onStatuses,
+  sort,
+  onSort,
   terminalOpen,
   onShowTerminal,
   linearConnected
@@ -65,14 +83,25 @@ export function Sidebar({
       setTerminalError(t.terminal.failed(cleanError(err)))
     }
   }
-  const [filter, setFilter] = useState<FeatureStatus[]>([])
+  const search = useRef<HTMLInputElement>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
 
   async function openMenu(e: React.MouseEvent, feature: Feature) {
     const action = await openContextMenu(e, { kind: 'feature', featureId: feature.id })
     if (action === 'rename-feature') setRenamingId(feature.id)
     if (action === 'link-feature') onLink(feature)
+    if (action === 'continue-feature') onContinue(feature)
   }
+
+  // The search shortcut lives in the app; the field is here.
+  useEffect(() => {
+    const focus = () => {
+      search.current?.focus()
+      search.current?.select()
+    }
+    window.addEventListener('baton:search-sidebar', focus)
+    return () => window.removeEventListener('baton:search-sidebar', focus)
+  }, [])
 
   function commitRename(feature: Feature, title: string) {
     setRenamingId(null)
@@ -83,11 +112,61 @@ export function Sidebar({
   for (const f of features) counts.set(f.status, (counts.get(f.status) ?? 0) + 1)
   const present = STATUS_ORDER.filter((s) => counts.has(s))
   // A filtered status can empty out (features change state, tabs change): ignore it rather than show nothing.
-  const active = filter.filter((s) => counts.has(s))
-  const shown = active.length ? features.filter((f) => active.includes(f.status)) : features
+  const active = statuses.filter((s) => counts.has(s))
+  const { shown, archived } = arrangeFeatures(features, { query, statuses, sort })
 
   const toggle = (status: FeatureStatus) =>
-    setFilter(active.includes(status) ? active.filter((s) => s !== status) : [...active, status])
+    onStatuses(active.includes(status) ? active.filter((s) => s !== status) : [...active, status])
+
+  function row(f: Feature) {
+    return (
+      <div
+        key={f.id}
+        role="button"
+        tabIndex={0}
+        className={`feature-row${f.id === selectedId ? ' selected' : ''}${f.archived ? ' archived' : ''}`}
+        onClick={() => onSelect(f)}
+        onKeyDown={(e) => e.key === 'Enter' && e.target === e.currentTarget && onSelect(f)}
+        onDoubleClick={() => setRenamingId(f.id)}
+        onContextMenu={(e) => void openMenu(e, f)}
+      >
+        <span className="feature-row-top">
+          <span className={`dot ${f.status}`} />
+          {renamingId === f.id ? (
+            <input
+              className="feature-row-rename"
+              autoFocus
+              defaultValue={f.title}
+              onFocus={(e) => e.target.select()}
+              onClick={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
+              onBlur={(e) => commitRename(f, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitRename(f, e.currentTarget.value)
+                if (e.key === 'Escape') setRenamingId(null)
+              }}
+            />
+          ) : (
+            <span className="feature-row-title">{f.title}</span>
+          )}
+          {f.pinned && (
+            <span className="feature-row-pin" title={t.menu.unpin} aria-label={t.menu.unpin}>
+              ★
+            </span>
+          )}
+          <span className="feature-row-status">
+            {t.status[f.status]}
+            {f.status === 'queued' && f.queuePosition ? ` · ${t.sidebar.queueRank(f.queuePosition)}` : ''}
+          </span>
+        </span>
+        <span className="feature-row-sub">
+          {f.linear && <span className="feature-row-issue">{f.linear.identifier}</span>}
+          {f.model && <span>{shortModel(f.model)}</span>}
+          <span className="num">${f.costUsd.toFixed(2)}</span>
+        </span>
+      </div>
+    )
+  }
 
   return (
     <aside className="sidebar">
@@ -100,9 +179,35 @@ export function Sidebar({
         </button>
       </div>
 
+      {features.length > 1 && (
+        <div className="sidebar-search">
+          <input
+            ref={search}
+            type="search"
+            value={query}
+            placeholder={t.sidebar.search}
+            aria-label={t.sidebar.searchLabel}
+            onChange={(e) => onQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                onQuery('')
+                e.currentTarget.blur()
+              }
+            }}
+          />
+          <select value={sort} aria-label={t.sidebar.sortBy} title={t.sidebar.sortBy} onChange={(e) => onSort(e.target.value as SidebarSort)}>
+            {SIDEBAR_SORTS.map((s) => (
+              <option key={s} value={s}>
+                {t.sidebar.sort[s]}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {present.length > 1 && (
         <div className="filters" role="group" aria-label={t.sidebar.filterByStatus}>
-          <button className={`filter${active.length ? '' : ' selected'}`} onClick={() => setFilter([])}>
+          <button className={`filter${active.length ? '' : ' selected'}`} onClick={() => onStatuses([])}>
             {t.sidebar.all}
           </button>
           {present.map((status) => (
@@ -121,46 +226,15 @@ export function Sidebar({
       )}
 
       <div className="sidebar-list">
-        {shown.map((f) => (
-          <div
-            key={f.id}
-            role="button"
-            tabIndex={0}
-            className={`feature-row${f.id === selectedId ? ' selected' : ''}`}
-            onClick={() => onSelect(f)}
-            onKeyDown={(e) => e.key === 'Enter' && e.target === e.currentTarget && onSelect(f)}
-            onDoubleClick={() => setRenamingId(f.id)}
-            onContextMenu={(e) => void openMenu(e, f)}
-          >
-            <span className="feature-row-top">
-              <span className={`dot ${f.status}`} />
-              {renamingId === f.id ? (
-                <input
-                  className="feature-row-rename"
-                  autoFocus
-                  defaultValue={f.title}
-                  onFocus={(e) => e.target.select()}
-                  onClick={(e) => e.stopPropagation()}
-                  onDoubleClick={(e) => e.stopPropagation()}
-                  onBlur={(e) => commitRename(f, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') commitRename(f, e.currentTarget.value)
-                    if (e.key === 'Escape') setRenamingId(null)
-                  }}
-                />
-              ) : (
-                <span className="feature-row-title">{f.title}</span>
-              )}
-              <span className="feature-row-status">{t.status[f.status]}</span>
-            </span>
-            <span className="feature-row-sub">
-              {f.linear && <span className="feature-row-issue">{f.linear.identifier}</span>}
-              {f.model && <span>{shortModel(f.model)}</span>}
-              <span className="num">${f.costUsd.toFixed(2)}</span>
-            </span>
-          </div>
-        ))}
+        {shown.map(row)}
         {!features.length && <p className="sidebar-empty">{t.sidebar.none}</p>}
+        {features.length > 0 && !shown.length && !archived.length && <p className="sidebar-empty">{t.sidebar.noMatch}</p>}
+        {archived.length > 0 && (
+          <details className="archive">
+            <summary>{t.sidebar.archived(archived.length)}</summary>
+            {archived.map(row)}
+          </details>
+        )}
       </div>
 
       <div className="sidebar-section">
@@ -237,6 +311,18 @@ export function Sidebar({
             </button>
           </p>
         )}
+      </div>
+
+      <div className="sidebar-section">
+        <div className="sidebar-section-head">
+          <span className="sidebar-title">
+            {t.sidebar.prompts}
+            {project.templates.length > 0 && <span className="num">{project.templates.length}</span>}
+          </span>
+          <button className="icon" onClick={onEditTemplates} title={t.sidebar.promptsSettings}>
+            ⚙
+          </button>
+        </div>
       </div>
 
       <div className="sidebar-section">

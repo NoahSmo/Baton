@@ -153,3 +153,17 @@ export function toolSummary(input: Record<string, unknown>): string {
 export function asQuestions(input: Record<string, unknown>): Question[] {
   return Array.isArray(input.questions) ? (input.questions as Question[]) : []
 }
+
+/**
+ * The first request still waiting for an answer that "allow" settles by itself: a question
+ * needs the user's own answers, so it is never the one a shortcut approves.
+ */
+export function pendingRequest(events: StoredEvent[]): { requestId: string } | null {
+  const open = new Map<string, string>()
+  for (const { event } of events) {
+    if (event.kind === 'permission_request') open.set(event.requestId, event.toolName)
+    else if (event.kind === 'permission_resolved') open.delete(event.requestId)
+  }
+  for (const [requestId, toolName] of open) if (toolName !== 'AskUserQuestion') return { requestId }
+  return null
+}

@@ -42,6 +42,15 @@ Independent project, not affiliated with Anthropic.
 - **Launch commands.** Give a project its usual commands (dev server, tests…) under **Launch** in the sidebar: one click runs one in a new terminal, in the worktree of the feature on screen.
 - **Change permissions on the fly.** Switch a feature between Ask, Accept edits, Plan and Bypass under the message box, in the middle of a turn too.
 - **Go easy on your usage limit.** Sonnet by default, a cap on agents running at once, long conversations summarised before they are picked up again, and a warning before the limit hits. See [below](#going-easy-on-your-usage-limit).
+- **Keyboard shortcuts.** `⌘N` new agent, `⌘J` next agent waiting for you, `⌘[` / `⌘]` previous or next agent, `⌘1…9` project, `⌘E` editor, `⌘⏎` allow the first pending request, `⌘F` search the conversation, `⌘⇧F` search the agents (`Ctrl` outside macOS). Listed in Settings.
+- **Find and organise.** Search agents by title, branch or issue, sort them by status, activity or date, pin the ones you need, archive the finished ones. A queued agent shows its place in line, and can jump it from the right-click menu.
+- **A message box that remembers.** What you typed stays with each agent, `↑` / `↓` bring back earlier messages, and each project can keep ready-made **Prompts** inserted with one click.
+- **Pull requests.** **Create PR** next to Commit and Push: Claude drafts the title and description from the branch, you edit them, `gh` opens it.
+- **Continue in a new agent.** On a heavy conversation, Claude sums up the work and a new agent carries on from a branch cut from the old one, with the uncommitted changes.
+- **What the last turn changed.** The editor's **Changes** tab switches between "since the last commit" and "last turn".
+- **Usage overview.** Click the total in the status bar for the cost per day, project and agent.
+- **A trash for deleted agents.** Uncommitted changes are kept 7 days and can be restored from Settings.
+- **Notifications you choose.** Per event, with or without sound, and optionally also while the app is in front for agents you are not looking at.
 - **Right-click everything.** Open the worktree in your file manager (or Terminal on macOS), copy the branch name, rename, stop, delete.
 - **English and French**, switched from the status bar.
 - **Linear, if you use it.** Start features straight from your issues, and link each repository to a Linear project label so issues know where to go.
@@ -156,7 +165,8 @@ Everything stays on your machine, in `~/.baton/` (override with `BATON_DATA_DIR`
 |---|---|
 | `state.db` | projects, features and conversation history (SQLite) |
 | `worktrees/` | one git worktree per feature |
-| `settings.json` | interface language, agents allowed at once |
+| `settings.json` | interface language, theme, agents allowed at once, notifications |
+| `trash/` | uncommitted changes of deleted agents, for 7 days |
 | `linear.key` | your Linear API key, encrypted with the system keychain |
 | `update.log` | output of the last Homebrew upgrade |
 

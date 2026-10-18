@@ -14,6 +14,7 @@ import {
 import { AttachButton, DraftAttachments } from './Attachments'
 import { useT } from './i18n'
 import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
+import { TemplateChips } from './TemplatesDialog'
 import { toMessageAttachments, useAttachments } from './useAttachments'
 
 interface Props {
@@ -252,6 +253,10 @@ export function NewFeatureDialog({
         />
 
         <label htmlFor="nf-prompt">{t.newFeature.promptLabel}</label>
+        <TemplateChips
+          templates={project.templates}
+          onPick={(text) => setPrompt((current) => (current.trim() ? `${current.trimEnd()}\n${text}` : text))}
+        />
         <textarea
           id="nf-prompt"
           rows={6}

@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite'
-import { AGENT_MODELS, DEFAULT_AGENT_MODEL, PROJECT_COLORS, type AgentModel, type Feature, type LaunchCommand, type Project, type StoredEvent, type UiEvent } from '../shared/types'
+import { AGENT_MODELS, DEFAULT_AGENT_MODEL, PROJECT_COLORS, type AgentModel, type Feature, type LaunchCommand, type Project, type PromptTemplate, type StoredEvent, type TurnCost, type UiEvent } from '../shared/types'
 
 type Row = Record<string, unknown>
 
@@ -10,7 +10,8 @@ function toProject(r: Row): Project {
     path: r.path as string,
     color: (r.color as string | null) ?? PROJECT_COLORS[0],
     linearLabel: r.linear_label_id ? { id: r.linear_label_id as string, name: r.linear_label_name as string } : null,
-    commands: r.commands ? (JSON.parse(r.commands as string) as LaunchCommand[]) : []
+    commands: r.commands ? (JSON.parse(r.commands as string) as LaunchCommand[]) : [],
+    templates: r.templates ? (JSON.parse(r.templates as string) as PromptTemplate[]) : []
   }
 }
 
@@ -36,6 +37,11 @@ function toFeature(r: Row): Feature {
     costUsd: r.cost_usd as number,
     contextTokens: (r.context_tokens as number | null) ?? 0,
     limitResetsAt: (r.limit_resets_at as number | null) ?? null,
+    pinned: Boolean(r.pinned),
+    archived: Boolean(r.archived),
+    queuePosition: null,
+    prUrl: (r.pr_url as string | null) ?? null,
+    turnBase: (r.turn_base as string | null) ?? null,
     createdAt: r.created_at as number,
     updatedAt: r.updated_at as number
   }
@@ -81,9 +87,13 @@ export class Store {
       'linear_identifier TEXT',
       'linear_url TEXT',
       'agent_model TEXT',
-      'context_tokens INTEGER'
+      'context_tokens INTEGER',
+      'pinned INTEGER',
+      'archived INTEGER',
+      'pr_url TEXT',
+      'turn_base TEXT'
     ])
-    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'commands TEXT'])
+    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'commands TEXT', 'templates TEXT'])
   }
 
   /** Columns added after the first release; databases created before them are upgraded in place. */
@@ -116,8 +126,8 @@ export class Store {
 
   updateProject(p: Project): void {
     this.db
-      .prepare('UPDATE projects SET name = ?, color = ?, linear_label_id = ?, linear_label_name = ?, commands = ? WHERE id = ?')
-      .run(p.name, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null, JSON.stringify(p.commands), p.id)
+      .prepare('UPDATE projects SET name = ?, color = ?, linear_label_id = ?, linear_label_name = ?, commands = ?, templates = ? WHERE id = ?')
+      .run(p.name, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null, JSON.stringify(p.commands), JSON.stringify(p.templates), p.id)
   }
 
   deleteProject(id: string): void {
@@ -168,7 +178,7 @@ export class Store {
       .prepare(
         `UPDATE features SET title = ?, branch = ?, status = ?, permission_mode = ?, session_id = ?, model = ?, cost_usd = ?,
            limit_resets_at = ?, updated_at = ?, linear_issue_id = ?, linear_identifier = ?, linear_url = ?,
-           agent_model = ?, context_tokens = ?
+           agent_model = ?, context_tokens = ?, pinned = ?, archived = ?, pr_url = ?, turn_base = ?
          WHERE id = ?`
       )
       .run(
@@ -186,6 +196,10 @@ export class Store {
         f.linear?.url ?? null,
         f.agentModel,
         f.contextTokens,
+        f.pinned ? 1 : 0,
+        f.archived ? 1 : 0,
+        f.prUrl,
+        f.turnBase,
         f.id
       )
   }
@@ -209,6 +223,17 @@ export class Store {
       .prepare(`SELECT MAX(at) AS at FROM events WHERE feature_id = ? AND json_extract(payload, '$.kind') != 'notice'`)
       .get(featureId) as Row | undefined
     return (row?.at as number | null) ?? null
+  }
+
+  /** Cost of every finished turn of every feature still around. */
+  listTurnCosts(): TurnCost[] {
+    const rows = this.db
+      .prepare(
+        `SELECT feature_id, at, json_extract(payload, '$.turnCostUsd') AS cost FROM events
+         WHERE json_extract(payload, '$.kind') = 'result' AND json_extract(payload, '$.turnCostUsd') > 0`
+      )
+      .all() as Row[]
+    return rows.map((r) => ({ featureId: r.feature_id as string, at: r.at as number, costUsd: r.cost as number }))
   }
 
   listEvents(featureId: string): StoredEvent[] {

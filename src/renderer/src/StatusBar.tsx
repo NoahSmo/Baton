@@ -12,9 +12,13 @@ interface Props {
   onOpenUpdate(): void
   /** Absent when no project is showing: a terminal belongs to one. */
   terminal?: { open: boolean; toggle(): void }
+  /** Jumps to the agent that has waited longest for an answer, shortcut included in the label. */
+  onNextWaiting(): void
+  nextWaitingShortcut: string
+  onOpenUsage(): void
 }
 
-export function StatusBar({ features, linear, onOpenLinear, version, update, onOpenUpdate, terminal }: Props) {
+export function StatusBar({ features, linear, onOpenLinear, version, update, onOpenUpdate, terminal, onNextWaiting, nextWaitingShortcut, onOpenUsage }: Props) {
   const t = useT()
   const lang = useLang()
   const count = (...statuses: Feature['status'][]) => features.filter((f) => statuses.includes(f.status)).length
@@ -40,9 +44,15 @@ export function StatusBar({ features, linear, onOpenLinear, version, update, onO
       <span>
         <span className="dot working still" /> {t.statusbar.working(count('working'))}
       </span>
-      <span>
-        <span className="dot waiting" /> {t.statusbar.waiting(count('waiting'))}
-      </span>
+      {count('waiting') > 0 ? (
+        <button className="statusbar-linear" title={`${t.statusbar.nextWaiting(count('waiting'))} · ${nextWaitingShortcut}`} onClick={onNextWaiting}>
+          <span className="dot waiting" /> {t.statusbar.waiting(count('waiting'))} →
+        </button>
+      ) : (
+        <span>
+          <span className="dot waiting" /> {t.statusbar.waiting(0)}
+        </span>
+      )}
       {count('queued') > 0 && (
         <span>
           <span className="dot queued" /> {t.statusbar.queued(count('queued'))}
@@ -58,9 +68,9 @@ export function StatusBar({ features, linear, onOpenLinear, version, update, onO
       )}
       <span className="statusbar-sep" />
       {warning && <span className="statusbar-warning">{t.statusbar.usageNear(resetTime, warning.utilization, warning.limitType)}</span>}
-      <span>
+      <button className="statusbar-linear" title={t.usage.title} onClick={onOpenUsage}>
         {t.statusbar.total} <span className="num strong">${cost.toFixed(2)}</span>
-      </span>
+      </button>
       <span className="statusbar-right">
         {update ? (
           <button className="statusbar-update" onClick={onOpenUpdate}>
