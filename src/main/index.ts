@@ -37,6 +37,7 @@ import { fileMtime, FileWatchers, listDir, readTextFile, writeTextFile } from '.
 import { gitDirOf, headContent } from './git'
 import { LinearClient } from './linear'
 import { Manager } from './manager'
+import { draftCommitMessage } from './commitMessage'
 import { suggestCommands } from './suggest'
 import { contextMenuTemplate, defaultMenuTemplate, type MenuEntry } from './menus'
 import { SecretFile } from './secrets'
@@ -281,6 +282,7 @@ async function removeStrayWorktrees(): Promise<void> {
 
 /** Projects Claude is reading to propose launch commands, each with the means to stop it. */
 const suggesting = new Map<string, AbortController>()
+const drafting = new Map<string, AbortController>()
 
 const MERGED_SWEEP_INTERVAL_MS = 15 * 60 * 1000
 let sweeping = false
@@ -562,6 +564,18 @@ function registerIpc(): void {
     await manager.commitChanges(id, message, paths)
     send('git:changed', id)
   })
+  ipcMain.handle('git:draftCommit', async (_e, id: string, paths: string[]) => {
+    const root = manager.featureRoot(id)
+    drafting.get(id)?.abort()
+    const abort = new AbortController()
+    drafting.set(id, abort)
+    try {
+      return await draftCommitMessage(root, paths, abort)
+    } finally {
+      if (drafting.get(id) === abort) drafting.delete(id)
+    }
+  })
+  ipcMain.on('git:cancelDraftCommit', (_e, id: string) => drafting.get(id)?.abort())
   ipcMain.handle('git:pull', async (_e, id: string) => {
     await manager.pull(id)
     send('git:changed', id)
