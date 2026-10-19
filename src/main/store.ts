@@ -11,7 +11,8 @@ function toProject(r: Row): Project {
     color: (r.color as string | null) ?? PROJECT_COLORS[0],
     linearLabel: r.linear_label_id ? { id: r.linear_label_id as string, name: r.linear_label_name as string } : null,
     commands: r.commands ? (JSON.parse(r.commands as string) as LaunchCommand[]) : [],
-    templates: r.templates ? (JSON.parse(r.templates as string) as PromptTemplate[]) : []
+    templates: r.templates ? (JSON.parse(r.templates as string) as PromptTemplate[]) : [],
+    worktrees: r.worktrees !== 0
   }
 }
 
@@ -93,7 +94,7 @@ export class Store {
       'pr_url TEXT',
       'turn_base TEXT'
     ])
-    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'commands TEXT', 'templates TEXT'])
+    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'commands TEXT', 'templates TEXT', 'worktrees INTEGER'])
   }
 
   /** Columns added after the first release; databases created before them are upgraded in place. */
@@ -120,14 +121,14 @@ export class Store {
 
   insertProject(p: Project): void {
     this.db
-      .prepare('INSERT INTO projects (id, name, path, color, linear_label_id, linear_label_name) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(p.id, p.name, p.path, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null)
+      .prepare('INSERT INTO projects (id, name, path, color, linear_label_id, linear_label_name, worktrees) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(p.id, p.name, p.path, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null, p.worktrees ? 1 : 0)
   }
 
   updateProject(p: Project): void {
     this.db
-      .prepare('UPDATE projects SET name = ?, color = ?, linear_label_id = ?, linear_label_name = ?, commands = ?, templates = ? WHERE id = ?')
-      .run(p.name, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null, JSON.stringify(p.commands), JSON.stringify(p.templates), p.id)
+      .prepare('UPDATE projects SET name = ?, color = ?, linear_label_id = ?, linear_label_name = ?, commands = ?, templates = ?, worktrees = ? WHERE id = ?')
+      .run(p.name, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null, JSON.stringify(p.commands), JSON.stringify(p.templates), p.worktrees ? 1 : 0, p.id)
   }
 
   deleteProject(id: string): void {

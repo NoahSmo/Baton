@@ -54,7 +54,7 @@ function context(state: AppState, lang: 'en' | 'fr' = 'en', linearConnected = fa
   return { ctx, chosen, removed, unlinked, actions }
 }
 
-const project = { id: 'p1', name: 'App', path: '/repo', color: '#fff', linearLabel: null, commands: [], templates: [] }
+const project = { id: 'p1', name: 'App', path: '/repo', color: '#fff', linearLabel: null, commands: [], templates: [], worktrees: true }
 const labels = (items: { label?: string; type?: string }[]) => items.filter((i) => i.type !== 'separator').map((i) => i.label)
 const item = (items: { label?: string }[], label: string) => items.find((i) => i.label === label) as any
 

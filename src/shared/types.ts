@@ -151,7 +151,13 @@ export interface Project {
   linearLabel: LinearLabel | null
   commands: LaunchCommand[]
   templates: PromptTemplate[]
+  /** Each agent works in a worktree of its own. Off, they all work in the project folder itself. */
+  worktrees: boolean
 }
+
+/** An agent working in the project folder itself rather than in a worktree: nothing of it is ever removed. */
+export const worksInPlace = (feature: Pick<Feature, 'worktreePath'>, project: Pick<Project, 'path'>): boolean =>
+  feature.worktreePath === project.path
 
 /** What the folder picker found, shown before a project is created. */
 export interface RepoInfo {
@@ -169,6 +175,8 @@ export interface ProjectInput {
   name: string
   color: string
   linearLabel: LinearLabel | null
+  /** Ignored for a folder that is not a git repository: agents can only work in place there. */
+  worktrees: boolean
 }
 
 export type ProjectPatch = Omit<ProjectInput, 'path'>

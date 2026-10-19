@@ -31,7 +31,8 @@ import {
   type TurnCost,
   type UiEvent,
   type UsageWarning,
-  type BackgroundTask
+  type BackgroundTask,
+  worksInPlace
 } from '../shared/types'
 import { AgentSession, type AgentOutput } from './agent'
 import { removeAttachments, saveFiles, saveImages, withFiles } from './attachments'
@@ -171,7 +172,7 @@ export class Manager {
 
   async createProject(input: ProjectInput): Promise<Project> {
     if (this.store.getProjectByPath(input.path)) throw new Error(this.t().errors.folderTaken)
-    if (!(await repoState(input.path)).isGit) throw new Error(this.t().errors.notGit(input.path))
+    const { isGit } = await repoState(input.path)
     const project: Project = {
       id: randomUUID(),
       name: input.name.trim() || basename(input.path),
@@ -179,20 +180,22 @@ export class Manager {
       color: input.color,
       linearLabel: input.linearLabel,
       commands: [],
-      templates: []
+      templates: [],
+      worktrees: isGit && input.worktrees
     }
     this.store.insertProject(project)
     return project
   }
 
-  updateProject(projectId: string, patch: ProjectPatch): Project {
+  async updateProject(projectId: string, patch: ProjectPatch): Promise<Project> {
     const project = this.store.getProject(projectId)
     if (!project) throw new Error(this.t().errors.unknownProject)
     const updated: Project = {
       ...project,
       name: patch.name.trim() || project.name,
       color: patch.color,
-      linearLabel: patch.linearLabel
+      linearLabel: patch.linearLabel,
+      worktrees: patch.worktrees && (await repoState(project.path)).isGit
     }
     this.store.updateProject(updated)
     return updated
@@ -321,13 +324,20 @@ export class Manager {
     if (!title) throw new Error(this.t().errors.needTitle)
 
     const issue = input.linearIssue
-    const worktree = await createWorktree(
-      project.path,
-      this.projectWorktrees(project),
-      slugify(issue ? `${issue.identifier} ${issue.title}` : title),
-      issue?.branchName || undefined
-    )
+    const worktree = project.worktrees
+      ? await createWorktree(
+          project.path,
+          this.projectWorktrees(project),
+          slugify(issue ? `${issue.identifier} ${issue.title}` : title),
+          issue?.branchName || undefined
+        )
+      : await this.inPlace(project)
     return this.register(project, worktree, input)
+  }
+
+  /** The project folder itself, on whatever branch it is on; no branch at all outside a repository. */
+  private async inPlace(project: Project): Promise<Worktree> {
+    return { branch: (await repoState(project.path)).branch ?? '', path: project.path }
   }
 
   /** Keyed by id as well: two projects may share a folder name, and names can be edited. */
@@ -381,6 +391,16 @@ export class Manager {
     const project = this.store.getProject(source.projectId)
     if (!project) throw new Error(this.t().errors.unknownProject)
     const title = handoff.title.trim() || source.title
+    // Without worktrees, the new agent shares the folder, and with it the work in progress.
+    if (!project.worktrees) {
+      return this.register(project, await this.inPlace(project), {
+        projectId: project.id,
+        title,
+        prompt: this.t().handoff.prompt(source.title, handoff.summary),
+        permissionMode: source.permissionMode,
+        agentModel: source.agentModel
+      })
+    }
     const worktree = await createWorktree(project.path, this.projectWorktrees(project), slugify(title), undefined, source.branch)
     const carry = await mkdtemp(join(tmpdir(), 'baton-carry-'))
     try {
@@ -529,9 +549,12 @@ export class Manager {
     this.sessions.get(featureId)?.close()
     this.sessions.delete(featureId)
     if (this.queue.delete(featureId)) this.republishQueue()
-    // Whatever was not committed would be lost with the worktree: it is kept for a few days.
-    if (project) await saveToTrash(this.trashRoot, feature, project.name).catch(() => null)
-    if (project) await removeWorktree(project.path, feature.worktreePath)
+    // The project folder is the user's own: only a worktree made for the agent goes with it.
+    if (project && !worksInPlace(feature, project)) {
+      // Whatever was not committed would be lost with the worktree: it is kept for a few days.
+      await saveToTrash(this.trashRoot, feature, project.name).catch(() => null)
+      await removeWorktree(project.path, feature.worktreePath)
+    }
     removeAttachments(this.attachmentsDir(featureId))
     this.store.deleteFeature(featureId)
     this.sink.featureRemoved(featureId)
@@ -580,6 +603,9 @@ export class Manager {
   async isMerged(featureId: string): Promise<boolean> {
     const feature = this.store.getFeature(featureId)
     if (!feature || feature.status === 'working' || feature.status === 'waiting') return false
+    // The project folder stays, merged or not.
+    const project = this.store.getProject(feature.projectId)
+    if (!project || worksInPlace(feature, project)) return false
     if (Date.now() - feature.updatedAt < MERGED_GRACE_MS) return false
     // A worktree that is gone or unreadable is not one to decide about.
     return hasLanded(feature.worktreePath).catch(() => false)
