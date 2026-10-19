@@ -157,7 +157,7 @@ export function FeatureView({
             <span className="sep">·</span>
             {project?.name}
             <span className="sep">·</span>
-            <BranchPicker feature={feature} git={git} />
+            {project?.isGit && <BranchPicker feature={feature} git={git} />}
             {git && git.ahead > 0 && (
               <span className="num" title={t.git.ahead(git.ahead, git.upstream ?? '')}>
                 ↑{git.ahead}

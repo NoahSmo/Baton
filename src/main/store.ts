@@ -8,6 +8,7 @@ function toProject(r: Row): Project {
     id: r.id as string,
     name: r.name as string,
     path: r.path as string,
+    isGit: r.is_git === null || r.is_git === undefined ? true : Boolean(r.is_git),
     color: (r.color as string | null) ?? PROJECT_COLORS[0],
     linearLabel: r.linear_label_id ? { id: r.linear_label_id as string, name: r.linear_label_name as string } : null,
     commands: r.commands ? (JSON.parse(r.commands as string) as LaunchCommand[]) : [],
@@ -29,6 +30,7 @@ function toFeature(r: Row): Feature {
       : null,
     branch: r.branch as string,
     worktreePath: r.worktree_path as string,
+    isolated: r.isolated === null || r.isolated === undefined ? true : Boolean(r.isolated),
     status: r.status as Feature['status'],
     permissionMode: r.permission_mode as Feature['permissionMode'],
     agentModel: AGENT_MODELS.includes(r.agent_model as AgentModel) ? (r.agent_model as AgentModel) : DEFAULT_AGENT_MODEL,
@@ -91,9 +93,10 @@ export class Store {
       'pinned INTEGER',
       'archived INTEGER',
       'pr_url TEXT',
-      'turn_base TEXT'
+      'turn_base TEXT',
+      'isolated INTEGER'
     ])
-    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'commands TEXT', 'templates TEXT'])
+    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'commands TEXT', 'templates TEXT', 'is_git INTEGER'])
   }
 
   /** Columns added after the first release; databases created before them are upgraded in place. */
@@ -120,8 +123,8 @@ export class Store {
 
   insertProject(p: Project): void {
     this.db
-      .prepare('INSERT INTO projects (id, name, path, color, linear_label_id, linear_label_name) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(p.id, p.name, p.path, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null)
+      .prepare('INSERT INTO projects (id, name, path, color, linear_label_id, linear_label_name, is_git) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(p.id, p.name, p.path, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null, p.isGit ? 1 : 0)
   }
 
   updateProject(p: Project): void {
@@ -148,8 +151,8 @@ export class Store {
       .prepare(
         `INSERT INTO features (id, project_id, title, branch, worktree_path, status, permission_mode,
            session_id, model, cost_usd, limit_resets_at, created_at, updated_at,
-           linear_issue_id, linear_identifier, linear_url, agent_model, context_tokens)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           linear_issue_id, linear_identifier, linear_url, agent_model, context_tokens, isolated)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         f.id,
@@ -169,7 +172,8 @@ export class Store {
         f.linear?.identifier ?? null,
         f.linear?.url ?? null,
         f.agentModel,
-        f.contextTokens
+        f.contextTokens,
+        f.isolated ? 1 : 0
       )
   }
 

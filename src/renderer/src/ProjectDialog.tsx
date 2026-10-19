@@ -45,7 +45,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
   }
 
   const path = project?.path ?? repo?.path ?? ''
-  const ready = Boolean(name.trim()) && (project ? true : Boolean(repo?.isGit))
+  const ready = Boolean(name.trim()) && (project ? true : Boolean(repo))
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -91,8 +91,8 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
               <span className="dot done" /> {t.project.gitDetected(repo.branch, repo.changedFiles)}
             </p>
           ) : (
-            <p className="repo-state bad">
-              <span className="dot error" /> {t.project.notGit}
+            <p className="repo-state">
+              <span className="dot idle" /> {t.project.notGit}
             </p>
           ))}
 

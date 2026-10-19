@@ -43,6 +43,7 @@ export function NewFeatureDialog({
   const attachments = useAttachments()
   const [mode, setMode] = useState<PermissionMode>('default')
   const [model, setModel] = useState<AgentModel>(DEFAULT_AGENT_MODEL)
+  const [isolated, setIsolated] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [issues, setIssues] = useState<LinearIssue[] | null>(null)
@@ -135,6 +136,7 @@ export function NewFeatureDialog({
         attachments: toMessageAttachments(attachments.drafts),
         permissionMode: mode,
         agentModel: model,
+        isolated: project.isGit && isolated,
         ...(issue ? { linearIssue: issue } : {})
       }
       onCreated(await window.api.createFeature(input))
@@ -303,6 +305,18 @@ export function NewFeatureDialog({
           ))}
         </div>
         <p className="hint">{t.models[model].hint}</p>
+
+        {project.isGit ? (
+          <>
+            <label className="settings-check">
+              <input type="checkbox" checked={isolated} onChange={(e) => setIsolated(e.target.checked)} />
+              {t.newFeature.isolated}
+            </label>
+            <p className="hint">{isolated ? t.newFeature.isolatedHint : t.newFeature.notIsolatedHint}</p>
+          </>
+        ) : (
+          <p className="hint">{t.newFeature.plainFolderHint}</p>
+        )}
 
         {error && <p className="form-error">{error}</p>}
 

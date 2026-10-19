@@ -171,11 +171,12 @@ export class Manager {
 
   async createProject(input: ProjectInput): Promise<Project> {
     if (this.store.getProjectByPath(input.path)) throw new Error(this.t().errors.folderTaken)
-    if (!(await repoState(input.path)).isGit) throw new Error(this.t().errors.notGit(input.path))
+    const { isGit } = await repoState(input.path)
     const project: Project = {
       id: randomUUID(),
       name: input.name.trim() || basename(input.path),
       path: input.path,
+      isGit,
       color: input.color,
       linearLabel: input.linearLabel,
       commands: [],
@@ -321,6 +322,7 @@ export class Manager {
     if (!title) throw new Error(this.t().errors.needTitle)
 
     const issue = input.linearIssue
+    if (!project.isGit || input.isolated === false) return this.register(project, await this.inPlace(project), input, false)
     const worktree = await createWorktree(
       project.path,
       this.projectWorktrees(project),
@@ -330,13 +332,19 @@ export class Manager {
     return this.register(project, worktree, input)
   }
 
+  /** Where a feature without worktree works: the project's folder, on whatever branch it holds. */
+  private async inPlace(project: Project): Promise<Worktree> {
+    const { branch } = await repoState(project.path)
+    return { branch: branch ?? '', path: project.path }
+  }
+
   /** Keyed by id as well: two projects may share a folder name, and names can be edited. */
   private projectWorktrees(project: Project): string {
     return join(this.worktreesRoot, `${basename(project.path)}-${project.id.slice(0, 8)}`)
   }
 
   /** Records a feature whose worktree exists, and sends its first message. */
-  private register(project: Project, worktree: Worktree, input: CreateFeatureInput): Feature {
+  private register(project: Project, worktree: Worktree, input: CreateFeatureInput, isolated = true): Feature {
     const issue = input.linearIssue
     const now = Date.now()
     const feature: Feature = {
@@ -346,6 +354,7 @@ export class Manager {
       linear: issue ? { issueId: issue.id, identifier: issue.identifier, url: issue.url } : null,
       branch: worktree.branch,
       worktreePath: worktree.path,
+      isolated,
       status: 'idle',
       permissionMode: input.permissionMode,
       agentModel: input.agentModel ?? DEFAULT_AGENT_MODEL,
@@ -381,6 +390,15 @@ export class Manager {
     const project = this.store.getProject(source.projectId)
     if (!project) throw new Error(this.t().errors.unknownProject)
     const title = handoff.title.trim() || source.title
+    const handoffInput = {
+      projectId: project.id,
+      title,
+      prompt: this.t().handoff.prompt(source.title, handoff.summary),
+      permissionMode: source.permissionMode,
+      agentModel: source.agentModel
+    }
+    // Without a worktree to cut, the new agent takes over the folder: the changes are already there.
+    if (!project.isGit || !source.isolated) return this.register(project, await this.inPlace(project), handoffInput, false)
     const worktree = await createWorktree(project.path, this.projectWorktrees(project), slugify(title), undefined, source.branch)
     const carry = await mkdtemp(join(tmpdir(), 'baton-carry-'))
     try {
@@ -390,13 +408,7 @@ export class Manager {
     } finally {
       await rm(carry, { recursive: true, force: true })
     }
-    return this.register(project, worktree, {
-      projectId: project.id,
-      title,
-      prompt: this.t().handoff.prompt(source.title, handoff.summary),
-      permissionMode: source.permissionMode,
-      agentModel: source.agentModel
-    })
+    return this.register(project, worktree, handoffInput)
   }
 
   getEvents(featureId: string): StoredEvent[] {
@@ -530,8 +542,11 @@ export class Manager {
     this.sessions.delete(featureId)
     if (this.queue.delete(featureId)) this.republishQueue()
     // Whatever was not committed would be lost with the worktree: it is kept for a few days.
-    if (project) await saveToTrash(this.trashRoot, feature, project.name).catch(() => null)
-    if (project) await removeWorktree(project.path, feature.worktreePath)
+    // A feature without worktree works in the project's folder itself, which stays.
+    if (project && feature.isolated) {
+      await saveToTrash(this.trashRoot, feature, project.name).catch(() => null)
+      await removeWorktree(project.path, feature.worktreePath)
+    }
     removeAttachments(this.attachmentsDir(featureId))
     this.store.deleteFeature(featureId)
     this.sink.featureRemoved(featureId)
@@ -570,7 +585,7 @@ export class Manager {
 
   /** Looks up what has been merged on the remotes since the last time. */
   async refreshRemotes(): Promise<void> {
-    await Promise.all(this.store.listProjects().map((p) => fetchRemotes(p.path)))
+    await Promise.all(this.store.listProjects().filter((p) => p.isGit).map((p) => fetchRemotes(p.path)))
   }
 
   /**
@@ -579,7 +594,7 @@ export class Manager {
    */
   async isMerged(featureId: string): Promise<boolean> {
     const feature = this.store.getFeature(featureId)
-    if (!feature || feature.status === 'working' || feature.status === 'waiting') return false
+    if (!feature || !feature.isolated || feature.status === 'working' || feature.status === 'waiting') return false
     if (Date.now() - feature.updatedAt < MERGED_GRACE_MS) return false
     // A worktree that is gone or unreadable is not one to decide about.
     return hasLanded(feature.worktreePath).catch(() => false)
@@ -593,7 +608,7 @@ export class Manager {
   async removeStrayWorktrees(): Promise<string[]> {
     const known = new Set(this.store.listFeatures().map((f) => f.worktreePath))
     const removed: string[] = []
-    for (const project of this.store.listProjects()) {
+    for (const project of this.store.listProjects().filter((p) => p.isGit)) {
       const strays = await strayWorktrees(project.path, this.worktreesRoot, known).catch(() => [])
       for (const { path, branch } of strays) {
         if (!branch || Date.now() - lastGitActivity(path) < MERGED_GRACE_MS) continue

@@ -146,6 +146,8 @@ export interface Project {
   id: string
   name: string
   path: string
+  /** A plain folder has no branches or worktrees: its agents work in it directly. */
+  isGit: boolean
   color: string
   /** When set, the issues of every Linear project carrying this label belong to the repo. */
   linearLabel: LinearLabel | null
@@ -276,8 +278,12 @@ export interface Feature {
   projectId: string
   title: string
   linear: LinearLink | null
+  /** Empty without git. */
   branch: string
+  /** The project's own folder when the feature is not isolated. */
   worktreePath: string
+  /** Works in a worktree of its own; otherwise directly in the project's folder. */
+  isolated: boolean
   status: FeatureStatus
   permissionMode: PermissionMode
   agentModel: AgentModel
@@ -404,6 +410,8 @@ export interface CreateFeatureInput {
   permissionMode: PermissionMode
   agentModel: AgentModel
   linearIssue?: LinearIssue
+  /** Work in a worktree of its own (the default) or directly in the project's folder. Plain folders always do the latter. */
+  isolated?: boolean
 }
 
 export type ContextMenuSpec =
