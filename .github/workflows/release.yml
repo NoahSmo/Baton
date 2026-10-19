@@ -1,12 +1,12 @@
 name: Release
 
-# Every push or merge to main publishes a release: macOS zip, Linux packages,
-# GitHub release and Homebrew cask. The version comes from scripts/ci-version.mjs.
+# Run manually (Actions > Release > Run workflow) to publish a release: macOS zip,
+# Linux packages, GitHub release and Homebrew cask. The version comes from
+# scripts/ci-version.mjs. Typecheck and tests run on every push in ci.yml.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
-# One release at a time, so two quick merges never pick the same version.
+# One release at a time, so two quick runs never pick the same version.
 concurrency:
   group: release
   cancel-in-progress: false

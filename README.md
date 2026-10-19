@@ -205,7 +205,7 @@ The renderer reloads on save; restart `npm run dev` after changing anything unde
 
 ### Releasing
 
-Versions follow [semantic versioning](https://semver.org). Every push or merge to `main` publishes a release through [GitHub Actions](.github/workflows/release.yml): it runs the checks, builds the macOS zip and the Linux packages (`.deb`, `.rpm`, `.tar.gz`, for x64 and arm64), creates the GitHub release and updates the Homebrew cask.
+Versions follow [semantic versioning](https://semver.org). A release is published on demand (Actions > Release > Run workflow) through [GitHub Actions](.github/workflows/release.yml): it runs the checks, builds the macOS zip and the Linux packages (`.deb`, `.rpm`, `.tar.gz`, for x64 and arm64), creates the GitHub release and updates the Homebrew cask.
 
 The version is the latest release plus one patch. For a minor or major release, raise `version` in `package.json` in your commit (`npm version 0.4.0 --no-git-tag-version`): when it is ahead of the latest release, that exact version is published. CI never commits back to `main`.
 
