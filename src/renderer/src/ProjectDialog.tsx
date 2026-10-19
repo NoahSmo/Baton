@@ -27,6 +27,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
   const [linearLabel, setLinearLabel] = useState<LinearLabel | null>(project?.linearLabel ?? null)
   const [linearLabels, setLinearLabels] = useState<LinearLabel[] | null>(null)
   const [linearError, setLinearError] = useState('')
+  const [worktrees, setWorktrees] = useState(project?.worktrees ?? true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -42,6 +43,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
     if (picked.existingProjectId) return onExisting(picked.existingProjectId)
     setRepo(picked)
     setName(picked.name)
+    setWorktrees(picked.isGit)
   }
 
   const path = project?.path ?? repo?.path ?? ''
@@ -53,7 +55,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
     setBusy(true)
     setError('')
     try {
-      const patch = { name, color, linearLabel }
+      const patch = { name, color, linearLabel, worktrees }
       onSaved(
         project
           ? await window.api.updateProject(project.id, patch)
@@ -92,9 +94,20 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
             </p>
           ) : (
             <p className="repo-state">
-              <span className="dot idle" /> {t.project.notGit}
+              <span className="dot still" /> {t.project.notGit}
             </p>
           ))}
+
+        {/* Only a git repository can host worktrees; the main process refuses them for any other folder. */}
+        {(project || repo?.isGit) && (
+          <>
+            <label className="settings-check">
+              <input type="checkbox" checked={worktrees} onChange={(e) => setWorktrees(e.target.checked)} />
+              {t.project.useWorktrees}
+            </label>
+            <p className="hint">{t.project.useWorktreesHint}</p>
+          </>
+        )}
 
         <div className="row split">
           <div>

@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -33,7 +33,7 @@ const HOUR = 60 * 60 * 1000
 function setup(maxRunning = 1) {
   const dir = mkdtempSync(join(tmpdir(), 'baton-manager-'))
   const store = new Store(':memory:')
-  store.insertProject({ id: 'p', name: 'P', path: dir, isGit: false, color: '#fff', linearLabel: null, commands: [], templates: [] })
+  store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearLabel: null, commands: [], templates: [], worktrees: true })
   const warnings: (UsageWarning | null)[] = []
   const sink: ManagerSink = {
     event: () => {},
@@ -56,7 +56,6 @@ function setup(maxRunning = 1) {
       branch: id,
       // The fake agent is keyed by it.
       worktreePath: id,
-      isolated: true,
       status: 'idle',
       permissionMode: 'default',
       agentModel: 'sonnet',
@@ -334,6 +333,32 @@ describe('organising agents', () => {
     ])
   })
 
+  it('opens a folder that is not a git repository, without worktrees', async () => {
+    const { manager } = setup()
+    const dir = mkdtempSync(join(tmpdir(), 'baton-plain-'))
+    const project = await manager.createProject({ path: dir, name: '', color: '#fff', linearLabel: null, worktrees: true })
+    expect(project.worktrees).toBe(false)
+    const feature = await manager.createFeature({ projectId: project.id, title: 'Tweak', prompt: '', permissionMode: 'default' })
+    expect(feature.worktreePath).toBe(dir)
+    expect(feature.branch).toBe('')
+  })
+
+  it('leaves the project folder alone when an agent working in it is removed', async () => {
+    const { manager } = setup()
+    const dir = mkdtempSync(join(tmpdir(), 'baton-plain-'))
+    const project = await manager.createProject({ path: dir, name: 'Plain', color: '#fff', linearLabel: null, worktrees: false })
+    const feature = await manager.createFeature({ projectId: project.id, title: 'Tweak', prompt: '', permissionMode: 'default' })
+    await manager.removeFeature(feature.id)
+    expect(existsSync(dir)).toBe(true)
+    expect(manager.getState().features.find((f) => f.id === feature.id)).toBeUndefined()
+  })
+
+  it('never takes an agent working in place for a merged one', async () => {
+    const { manager, add } = setup()
+    add('inplace', { worktreePath: manager.getState().projects[0].path })
+    expect(await manager.isMerged('inplace')).toBe(false)
+  })
+
   it('adds up the cost of finished turns', () => {
     const { store, manager, add } = setup()
     add('a')
@@ -343,29 +368,5 @@ describe('organising agents', () => {
     expect(turns).toHaveLength(1)
     expect(turns[0]).toMatchObject({ featureId: 'a', costUsd: 0.25 })
     expect(manager.turnCosts()).toEqual(turns)
-  })
-})
-
-describe('plain folders', () => {
-  it('opens a project that is not a git repository', async () => {
-    const { manager } = setup()
-    const dir = mkdtempSync(join(tmpdir(), 'baton-plain-'))
-    const project = await manager.createProject({ path: dir, name: 'Plain', color: '#fff', linearLabel: null })
-    expect(project.isGit).toBe(false)
-  })
-
-  it('works in the project folder itself, and leaves it when the agent is removed', async () => {
-    const { store, manager } = setup()
-    const feature = await manager.createFeature({
-      projectId: 'p',
-      title: 'Edit',
-      prompt: '',
-      permissionMode: 'default',
-      agentModel: 'sonnet'
-    })
-    expect(feature).toMatchObject({ isolated: false, branch: '', worktreePath: store.getProject('p')!.path })
-    await manager.removeFeature(feature.id)
-    expect(store.getFeature(feature.id)).toBeUndefined()
-    expect(store.getProject('p')).toBeDefined()
   })
 })

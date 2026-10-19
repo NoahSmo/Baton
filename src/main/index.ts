@@ -31,6 +31,7 @@ import {
   type PermissionMode,
   type ProjectInput,
   type ProjectPatch,
+  worksInPlace,
   type PromptTemplate,
   type PullRequestDraft,
   type TerminalTarget,
@@ -271,9 +272,11 @@ function unwatchGit(featureId: string): void {
 async function confirmRemoveFeature(id: string): Promise<boolean> {
   const feature = manager.getState().features.find((f) => f.id === id)
   if (!feature) return false
+  const project = manager.getState().projects.find((p) => p.id === feature.projectId)
+  const inPlace = Boolean(project && worksInPlace(feature, project))
   const confirmed = await askConfirm({
     message: t().native.deleteQuestion(feature.title),
-    detail: t().native.deleteDetail(feature.branch),
+    detail: inPlace ? t().native.deleteInPlaceDetail : t().native.deleteDetail(feature.branch),
     confirmLabel: t().common.delete,
     danger: true
   })

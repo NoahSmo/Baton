@@ -120,9 +120,9 @@ const en = {
 
   empty: {
     noFeatureTitle: 'No agent yet',
-    noFeatureBody: (project: string) => `Each agent gets its own branch and worktree in ${project}.`,
+    noFeatureBody: (project: string) => `Each agent works on its own in ${project}.`,
     firstProjectTitle: 'Add your first project',
-    firstProjectBody: 'A project is a git repository. Its agents each work in their own worktree.'
+    firstProjectBody: 'A project is a folder, ideally a git repository. Its agents can each work in their own worktree.'
   },
 
   feature: {
@@ -278,10 +278,6 @@ const en = {
     titlePlaceholder: 'Dark mode toggle',
     promptLabel: 'What should the agent do?',
     promptPlaceholder: 'Leave empty to create the worktree and write the first message later.',
-    isolated: 'Work in a separate worktree',
-    isolatedHint: 'On a new branch, away from your files. Turn off to edit the project folder directly.',
-    notIsolatedHint: "The agent edits the project folder directly, on its current branch, alongside anything else working there.",
-    plainFolderHint: 'This folder is not a git repository: the agent works in it directly.',
     permissions: 'Permissions',
     model: 'Model',
     creating: 'Creating…',
@@ -313,7 +309,9 @@ const en = {
     browse: 'Browse…',
     gitDetected: (branch: string | null, changed: number) =>
       `Git repository detected${branch ? ` · branch ${branch}` : ''} · ${changed} changed ${changed === 1 ? 'file' : 'files'}`,
-    notGit: 'Not a git repository. Agents will work directly in this folder, without branches or worktrees.',
+    notGit: 'Not a git repository. Agents will work directly in this folder.',
+    useWorktrees: 'One worktree per agent',
+    useWorktreesHint: 'Each agent works on its own branch, in a copy of the repository. Off, every agent edits the project folder itself.',
     name: 'Name',
     tabPreview: 'Tab preview',
     fallbackName: 'Project',
@@ -417,10 +415,11 @@ const en = {
   /** Native dialogs opened by the main process. */
   native: {
     pickTitle: 'New project',
-    pickMessage: 'Choose the root folder of a git repository',
+    pickMessage: 'Choose the folder of the project',
     deleteQuestion: (title: string) => `Delete “${title}”?`,
     deleteDetail: (branch: string) =>
       `The worktree will be deleted. Uncommitted changes are kept for 7 days in Settings › Trash. The branch ${branch} is kept.`,
+    deleteInPlaceDetail: 'Only the agent is removed. Your project folder is left untouched.',
     mergedRemoved: (branch: string) => `Merged: its worktree was removed. The branch ${branch} is kept.`,
     strayRemoved: (branch: string) => `A worktree left behind by an agent was removed. The branch ${branch} is kept.`,
     removeProjectQuestion: (name: string) => `Remove “${name}” from the app?`,
@@ -648,9 +647,9 @@ const fr: Dict = {
 
   empty: {
     noFeatureTitle: 'Aucun agent',
-    noFeatureBody: (project) => `Chaque agent a sa branche et son worktree dans ${project}.`,
+    noFeatureBody: (project) => `Chaque agent travaille de son côté dans ${project}.`,
     firstProjectTitle: 'Ajoute ton premier projet',
-    firstProjectBody: 'Un projet est un dépôt git. Chacun de ses agents travaille dans son propre worktree.'
+    firstProjectBody: 'Un projet est un dossier, de préférence un dépôt git. Ses agents peuvent chacun travailler dans leur propre worktree.'
   },
 
   feature: {
@@ -805,10 +804,6 @@ const fr: Dict = {
     titlePlaceholder: 'Bouton mode sombre',
     promptLabel: "Que doit faire l'agent ?",
     promptPlaceholder: 'Laisse vide pour créer le worktree et écrire le premier message plus tard.',
-    isolated: 'Travailler dans un worktree séparé',
-    isolatedHint: 'Sur une nouvelle branche, à l\'écart de tes fichiers. Désactive pour modifier directement le dossier du projet.',
-    notIsolatedHint: "L'agent modifie directement le dossier du projet, sur sa branche actuelle, en même temps que tout ce qui y travaille.",
-    plainFolderHint: "Ce dossier n'est pas un dépôt git : l'agent y travaille directement.",
     permissions: 'Permissions',
     model: 'Modèle',
     creating: 'Création…',
@@ -840,7 +835,9 @@ const fr: Dict = {
     browse: 'Parcourir…',
     gitDetected: (branch, changed) =>
       `Dépôt git détecté${branch ? ` · branche ${branch}` : ''} · ${changed} ${changed > 1 ? 'fichiers modifiés' : 'fichier modifié'}`,
-    notGit: "Ce n'est pas un dépôt git. Les agents travailleront directement dans ce dossier, sans branches ni worktrees.",
+    notGit: "Ce n'est pas un dépôt git. Les agents travailleront directement dans ce dossier.",
+    useWorktrees: 'Un worktree par agent',
+    useWorktreesHint: "Chaque agent travaille sur sa propre branche, dans une copie du dépôt. Désactivé, tous les agents modifient directement le dossier du projet.",
     name: 'Nom',
     tabPreview: "Aperçu de l'onglet",
     fallbackName: 'Projet',
@@ -943,10 +940,11 @@ const fr: Dict = {
 
   native: {
     pickTitle: 'Nouveau projet',
-    pickMessage: "Choisis le dossier racine d'un dépôt git",
+    pickMessage: 'Choisis le dossier du projet',
     deleteQuestion: (title) => `Supprimer « ${title} » ?`,
     deleteDetail: (branch) =>
       `Le worktree sera supprimé. Les modifications non commitées sont gardées 7 jours dans Réglages › Corbeille. La branche ${branch} est conservée.`,
+    deleteInPlaceDetail: "Seul l'agent est supprimé. Ton dossier de projet n'est pas touché.",
     mergedRemoved: (branch) => `Mergé : son worktree a été supprimé. La branche ${branch} est conservée.`,
     strayRemoved: (branch) => `Un worktree laissé par un agent a été supprimé. La branche ${branch} est conservée.`,
     removeProjectQuestion: (name) => `Retirer « ${name} » de l'app ?`,
