@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -33,7 +33,7 @@ const HOUR = 60 * 60 * 1000
 function setup(maxRunning = 1) {
   const dir = mkdtempSync(join(tmpdir(), 'baton-manager-'))
   const store = new Store(':memory:')
-  store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearLabel: null, commands: [], templates: [] })
+  store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearLabel: null, commands: [], templates: [], worktrees: true })
   const warnings: (UsageWarning | null)[] = []
   const sink: ManagerSink = {
     event: () => {},
@@ -331,6 +331,32 @@ describe('organising agents', () => {
       { id: '1', name: 'Tests', text: 'Add tests' },
       { id: '2', name: 'Review the diff of this', text: 'Review the diff of this branch carefully' }
     ])
+  })
+
+  it('opens a folder that is not a git repository, without worktrees', async () => {
+    const { manager } = setup()
+    const dir = mkdtempSync(join(tmpdir(), 'baton-plain-'))
+    const project = await manager.createProject({ path: dir, name: '', color: '#fff', linearLabel: null, worktrees: true })
+    expect(project.worktrees).toBe(false)
+    const feature = await manager.createFeature({ projectId: project.id, title: 'Tweak', prompt: '', permissionMode: 'default' })
+    expect(feature.worktreePath).toBe(dir)
+    expect(feature.branch).toBe('')
+  })
+
+  it('leaves the project folder alone when an agent working in it is removed', async () => {
+    const { manager } = setup()
+    const dir = mkdtempSync(join(tmpdir(), 'baton-plain-'))
+    const project = await manager.createProject({ path: dir, name: 'Plain', color: '#fff', linearLabel: null, worktrees: false })
+    const feature = await manager.createFeature({ projectId: project.id, title: 'Tweak', prompt: '', permissionMode: 'default' })
+    await manager.removeFeature(feature.id)
+    expect(existsSync(dir)).toBe(true)
+    expect(manager.getState().features.find((f) => f.id === feature.id)).toBeUndefined()
+  })
+
+  it('never takes an agent working in place for a merged one', async () => {
+    const { manager, add } = setup()
+    add('inplace', { worktreePath: manager.getState().projects[0].path })
+    expect(await manager.isMerged('inplace')).toBe(false)
   })
 
   it('adds up the cost of finished turns', () => {
