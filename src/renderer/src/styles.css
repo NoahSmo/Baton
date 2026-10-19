@@ -2372,6 +2372,8 @@ button.toggled:hover:not(:disabled) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
 .diff {
   flex: 1;
   min-height: 0;
