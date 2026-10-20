@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { Feature, LinearIssue, LinearProject, LinearState, LinearStatus, Project } from '../../shared/types'
+import { issuePrompt } from '../../shared/linear'
+import { DEFAULT_AGENT_MODEL, type Feature, type LinearIssue, type LinearProject, type LinearState, type LinearStatus, type Project } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
 import { useT } from './i18n'
 import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
@@ -9,13 +10,17 @@ interface Props {
   linear: LinearStatus
   projects: Project[]
   features: Feature[]
+  /** Repository used for an issue that points at none (or several). */
+  defaultProjectId: string | null
   onConnect(): void
   /** `repos` are the repositories the issue's labels point at; with none or several, the user picks. */
   onStart(issue: LinearIssue, repos: Project[]): void
   onOpenFeature(feature: Feature): void
+  /** An agent was started from each selected issue. */
+  onStarted(features: Feature[]): void
 }
 
-export function LinearView({ linear, projects, features, onConnect, onStart, onOpenFeature }: Props) {
+export function LinearView({ linear, projects, features, defaultProjectId, onConnect, onStart, onOpenFeature, onStarted }: Props) {
   const t = useT()
   const [linearProjects, setLinearProjects] = useState<LinearProject[] | null>(null)
   /** Selected Linear project; null shows the issues assigned to the user. */
@@ -26,6 +31,8 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
   const [text, setText] = useState('')
   const [error, setError] = useState('')
   const [reload, setReload] = useState(0)
+  const [selection, setSelection] = useState<string[]>([])
+  const [starting, setStarting] = useState(false)
 
   useEffect(() => {
     if (!linear.connected) return
@@ -36,6 +43,7 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
     if (!linear.connected) return
     let stale = false
     setIssues(null)
+    setSelection([])
     setError('')
     window.api.linearIssues(selectedId ?? undefined).then(
       (list) => !stale && setIssues(list),
@@ -94,6 +102,51 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
   }
 
   const shown = (issues ?? []).filter((i) => matchesIssueFilter(i, stateFilter, text))
+  const hasFeature = (issue: LinearIssue) => features.some((f) => f.linear?.issueId === issue.id)
+  const startable = shown.filter((i) => !hasFeature(i))
+  const picked = (issues ?? []).filter((i) => selection.includes(i.id) && !hasFeature(i))
+  const allPicked = startable.length > 0 && startable.every((i) => selection.includes(i.id))
+
+  const toggle = (id: string) => setSelection((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
+
+  /** The only repository the issue points at, else the one being worked in. */
+  function repoFor(issue: LinearIssue): Project {
+    const repos = reposFor(issue.linearProjectId)
+    if (repos.length === 1) return repos[0]
+    const candidates = repos.length ? repos : projects
+    return candidates.find((p) => p.id === defaultProjectId) ?? candidates[0]
+  }
+
+  /** One agent per selected issue, with the default settings; failures stay selected. */
+  async function startSelected() {
+    if (!picked.length || starting) return
+    setStarting(true)
+    setError('')
+    const started: Feature[] = []
+    const failed: string[] = []
+    let lastError = ''
+    for (const issue of picked) {
+      try {
+        started.push(
+          await window.api.createFeature({
+            projectId: repoFor(issue).id,
+            title: `${issue.identifier} ${issue.title}`,
+            prompt: issuePrompt(issue),
+            permissionMode: 'default',
+            agentModel: DEFAULT_AGENT_MODEL,
+            linearIssue: issue
+          })
+        )
+      } catch (err) {
+        failed.push(issue.id)
+        lastError = cleanError(err)
+      }
+    }
+    setStarting(false)
+    setSelection(failed)
+    if (failed.length) setError(lastError)
+    if (started.length) onStarted(started)
+  }
 
   return (
     <main className="main wide linear-view">
@@ -148,6 +201,31 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
           {issues && <IssueStateFilter issues={issues} selected={stateFilter} onChange={setStateFilter} />}
         </div>
 
+        {startable.length > 0 && (
+          <div className="linear-bulk">
+            <label className="linear-check">
+              <input
+                type="checkbox"
+                checked={allPicked}
+                onChange={() =>
+                  setSelection((s) =>
+                    allPicked ? s.filter((id) => !startable.some((i) => i.id === id)) : [...new Set([...s, ...startable.map((i) => i.id)])]
+                  )
+                }
+              />
+              {t.linearView.selectAll}
+            </label>
+            {picked.length > 0 && (
+              <>
+                <span className="hint">{t.linearView.selected(picked.length)}</span>
+                <button className="primary" disabled={starting || !projects.length} onClick={() => void startSelected()}>
+                  {starting ? t.linearView.startingMany : t.linearView.startMany(picked.length)}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
         {error && <p className="form-error linear-error">{error}</p>}
         {selectedProject && !reposFor(selectedId).length && projects.length > 1 && (
           <p className="hint linear-hint">{t.linearView.needRepository}</p>
@@ -167,6 +245,14 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
                   void openContextMenu(e, { kind: 'issue', identifier, url, branchName })
                 }}
               >
+                <input
+                  type="checkbox"
+                  className="linear-check"
+                  aria-label={issue.identifier}
+                  disabled={!!feature || starting}
+                  checked={!feature && selection.includes(issue.id)}
+                  onChange={() => toggle(issue.id)}
+                />
                 <a className="issue-id" href={issue.url} target="_blank" rel="noreferrer">
                   {issue.identifier}
                 </a>
