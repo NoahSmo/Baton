@@ -573,6 +573,9 @@ function registerIpc(): void {
   ipcMain.handle('linear:setIssueState', (_e, issueId: string, stateId: string) =>
     linear.setIssueState(issueId, stateId)
   )
+  ipcMain.handle('linear:setIssuePriority', (_e, issueId: string, priority: number) =>
+    linear.setIssuePriority(issueId, priority)
+  )
 
   ipcMain.handle('feature:setPermissionMode', (_e, id: string, mode: PermissionMode) => {
     if (PERMISSION_MODES.includes(mode)) return manager.setPermissionMode(id, mode)

@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
+import type { Feature, LinearIssue, LinearProject, LinearState, LinearStatus, Project } from '../../shared/types'
+import { BOARD_GROUPINGS, stateForColumn, type BoardGrouping, type KanbanColumn } from '../../shared/kanban'
 import { issuePrompt } from '../../shared/linear'
 import { DEFAULT_AGENT_MODEL, type Feature, type LinearIssue, type LinearProject, type LinearState, type LinearStatus, type Project } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
 import { useT } from './i18n'
 import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
+import { KanbanBoard } from './KanbanBoard'
 import { cleanError } from './NewFeatureDialog'
+import { usePersisted } from './usePersisted'
 
 interface Props {
   linear: LinearStatus
@@ -28,6 +32,8 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
   const [issues, setIssues] = useState<LinearIssue[] | null>(null)
   const [teamStates, setTeamStates] = useState<Record<string, LinearState[]>>({})
   const [stateFilter, setStateFilter] = useState<string[]>([])
+  const [view, setView] = usePersisted<'list' | 'board'>('linear-view', 'list', ['list', 'board'])
+  const [grouping, setGrouping] = usePersisted<BoardGrouping>('linear-board-grouping', 'status', BOARD_GROUPINGS)
   const [text, setText] = useState('')
   const [error, setError] = useState('')
   const [reload, setReload] = useState(0)
@@ -99,6 +105,28 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
       patch(issue)
       setError(cleanError(err))
     }
+  }
+
+  /** A card dropped on a column: the issue takes that status or priority, undone if Linear refuses. */
+  async function moveIssue(issue: LinearIssue, column: KanbanColumn) {
+    setError('')
+    const patch = (next: Partial<LinearIssue>) =>
+      setIssues((list) => list?.map((i) => (i.id === issue.id ? { ...i, ...next } : i)) ?? null)
+    if (column.priority !== undefined) {
+      if (column.priority === issue.priority) return
+      patch({ priority: column.priority })
+      try {
+        await window.api.linearSetIssuePriority(issue.id, column.priority)
+      } catch (err) {
+        patch({ priority: issue.priority })
+        setError(cleanError(err))
+      }
+      return
+    }
+    if (column.key === issue.stateName) return
+    const state = stateForColumn(teamStates[issue.teamId] ?? [], column)
+    if (!state) return setError(t.linearView.noStateInTeam(column.key))
+    await changeState(issue, state.id)
   }
 
   const shown = (issues ?? []).filter((i) => matchesIssueFilter(i, stateFilter, text))
@@ -193,6 +221,34 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
               ].join(' · ')}
             </p>
           </div>
+          <div className="filters" role="group">
+            {(['list', 'board'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                className={`filter${view === v ? ' selected' : ''}`}
+                aria-pressed={view === v}
+                onClick={() => setView(v)}
+              >
+                {t.linearView[v]}
+              </button>
+            ))}
+          </div>
+          {view === 'board' && (
+            <div className="filters" role="group">
+              {BOARD_GROUPINGS.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  className={`filter${grouping === g ? ' selected' : ''}`}
+                  aria-pressed={grouping === g}
+                  onClick={() => setGrouping(g)}
+                >
+                  {g === 'status' ? t.linearView.groupByStatus : t.linearView.groupByPriority}
+                </button>
+              ))}
+            </div>
+          )}
           <button onClick={() => setReload((n) => n + 1)}>{t.linearView.refresh}</button>
         </header>
 
@@ -231,6 +287,21 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
           <p className="hint linear-hint">{t.linearView.needRepository}</p>
         )}
 
+        {view === 'board' && issues && (
+          <KanbanBoard
+            issues={shown}
+            teamStates={teamStates}
+            grouping={grouping}
+            projects={projects}
+            features={features}
+            reposFor={reposFor}
+            onMove={(issue, column) => void moveIssue(issue, column)}
+            onStart={onStart}
+            onOpenFeature={onOpenFeature}
+          />
+        )}
+
+        {view === 'list' && (
         <div className="linear-list">
           {shown.map((issue) => {
             const feature = features.find((f) => f.linear?.issueId === issue.id)
@@ -291,6 +362,7 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
           })}
           {issues && !shown.length && <p className="hint linear-hint">{t.linearView.noIssues}</p>}
         </div>
+        )}
       </section>
     </main>
   )

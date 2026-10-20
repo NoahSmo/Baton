@@ -397,7 +397,13 @@ const en = {
     unassigned: 'Unassigned',
     refresh: 'Refresh',
     noIssues: 'No matching open issue.',
-    issues: (n: number) => `${n} open ${n === 1 ? 'issue' : 'issues'}`
+    issues: (n: number) => `${n} open ${n === 1 ? 'issue' : 'issues'}`,
+    list: 'List',
+    board: 'Board',
+    groupByStatus: 'Status',
+    groupByPriority: 'Priority',
+    noStateInTeam: (name: string) => `This issue's team has no "${name}" state.`,
+    priorities: { 0: 'No priority', 1: 'Urgent', 2: 'High', 3: 'Medium', 4: 'Low' } as Record<number, string>
   },
 
   update: {
@@ -942,7 +948,13 @@ const fr: Dict = {
     unassigned: 'Non assignée',
     refresh: 'Actualiser',
     noIssues: 'Aucune issue ouverte correspondante.',
-    issues: (n) => `${n} ${n > 1 ? 'issues ouvertes' : 'issue ouverte'}`
+    issues: (n) => `${n} ${n > 1 ? 'issues ouvertes' : 'issue ouverte'}`,
+    list: 'Liste',
+    board: 'Tableau',
+    groupByStatus: 'Statut',
+    groupByPriority: 'Priorité',
+    noStateInTeam: (name) => `L'équipe de cette issue n'a pas de statut « ${name} ».`,
+    priorities: { 0: 'Sans priorité', 1: 'Urgente', 2: 'Haute', 3: 'Moyenne', 4: 'Basse' }
   },
 
   update: {

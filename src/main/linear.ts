@@ -13,7 +13,7 @@ export function pickStartedState(states: LinearState[]): LinearState | undefined
 }
 
 const ISSUE_FIELDS =
-  'id identifier title description url branchName state { id name type } team { id } project { id } assignee { name }'
+  'id identifier title description url branchName state { id name type } team { id } project { id } assignee { name } priority'
 
 interface RawIssue {
   id: string
@@ -26,6 +26,7 @@ interface RawIssue {
   team: { id: string }
   project: { id: string } | null
   assignee: { name: string } | null
+  priority: number
 }
 
 function toIssue({ state, team, project, assignee, ...issue }: RawIssue): LinearIssue {
@@ -191,6 +192,15 @@ export class LinearClient {
         issueUpdate(id: $id, input: { stateId: $stateId }) { success }
       }`,
       { id: issueId, stateId }
+    )
+  }
+
+  async setIssuePriority(issueId: string, priority: number): Promise<void> {
+    await this.request(
+      `mutation($id: String!, $priority: Int!) {
+        issueUpdate(id: $id, input: { priority: $priority }) { success }
+      }`,
+      { id: issueId, priority }
     )
   }
 }

@@ -2782,6 +2782,132 @@ kbd {
   text-align: right;
 }
 
+/* Linear board */
+
+.kanban {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+  min-height: 0;
+  overflow-x: auto;
+  padding: 10px 16px 16px;
+}
+
+.kanban-column {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 260px;
+  min-height: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.kanban-column.over {
+  border-color: var(--accent);
+  background: var(--raised);
+}
+
+.kanban-column-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  font-weight: 600;
+}
+
+.kanban-column-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kanban-cards {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
+.kanban-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 10px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: grab;
+}
+
+.kanban-card:hover {
+  border-color: var(--border-strong);
+}
+
+.kanban-card.dragging {
+  opacity: 0.4;
+}
+
+.kanban-card-top,
+.kanban-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kanban-card-title {
+  margin: 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.kanban-priority,
+.kanban-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.priority-icon {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 11px;
+}
+
+.priority-icon i {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--faint);
+  opacity: 0.45;
+}
+
+.priority-icon i.lit {
+  opacity: 1;
+  background: var(--muted);
+}
+
+.priority-icon.p1 i.lit {
+  background: var(--red);
+}
+
+.priority-icon.p2 i.lit {
+  background: var(--orange);
+}
+
+.priority-icon.p3 i.lit {
+  background: var(--amber);
 .dialog.conflict-dialog {
   width: 680px;
 }
