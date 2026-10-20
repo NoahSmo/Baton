@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Feature, GitStatus } from '../../shared/types'
+import type { ConflictCheck, Feature, GitStatus } from '../../shared/types'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
+import { ConflictDialog } from './ConflictDialog'
 import { PullRequestDialog } from './PullRequestDialog'
 
 interface Props {
@@ -16,6 +17,7 @@ export function GitActions({ feature, git }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [committing, setCommitting] = useState(false)
   const [openingPr, setOpeningPr] = useState(false)
+  const [conflicts, setConflicts] = useState<ConflictCheck | null>(null)
 
   if (!git || !git.branch) return null
 
@@ -23,7 +25,13 @@ export function GitActions({ feature, git }: Props) {
     setRunning(action)
     setError(null)
     try {
-      await (action === 'pull' ? window.api.gitPull(feature.id) : window.api.gitPush(feature.id))
+      if (action === 'pull') await window.api.gitPull(feature.id)
+      else {
+        // A merge that would conflict is resolved, and reviewed, before anything is pushed.
+        const found = await window.api.gitCheckConflicts(feature.id)
+        if (found) setConflicts(found)
+        else await window.api.gitPush(feature.id)
+      }
     } catch (err) {
       setError(cleanError(err))
     } finally {
@@ -74,6 +82,7 @@ export function GitActions({ feature, git }: Props) {
           </button>
         </span>
       )}
+      {conflicts && <ConflictDialog feature={feature} check={conflicts} onClose={() => setConflicts(null)} />}
       {openingPr && <PullRequestDialog feature={feature} onClose={() => setOpeningPr(false)} />}
       {committing && <CommitDialog feature={feature} git={git} onClose={() => setCommitting(false)} />}
     </>
