@@ -456,6 +456,32 @@ export type FileContent =
   | { kind: 'binary' }
   | { kind: 'too_large'; size: number }
 
+/** A merge that a push needs and that would end in conflicts: what it merges, and the files in conflict. */
+export interface ConflictCheck {
+  target: string
+  files: string[]
+}
+
+/** A conflicted file after Claude's pass: what it now holds, and why. */
+export interface ResolvedFile {
+  path: string
+  content: string
+  summary: string
+  /** False when conflict markers remain, or nothing was written: the user has to finish it. */
+  resolved: boolean
+}
+
+export interface ConflictResolution {
+  target: string
+  files: ResolvedFile[]
+}
+
+/** The user's own version of a resolved file. */
+export interface ConflictEdit {
+  path: string
+  content: string
+}
+
 export type GitChangeKind = 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'conflicted'
 
 /** A file of a worktree that differs from its last commit. */
@@ -649,6 +675,15 @@ export interface Api {
   gitPull(featureId: string): Promise<void>
   /** Publishes the branch when it has no upstream yet. */
   gitPush(featureId: string): Promise<void>
+  /** Fetches, then looks for conflicts a push would run into; null when there are none. */
+  gitCheckConflicts(featureId: string): Promise<ConflictCheck | null>
+  /** Merges `target` and has Claude resolve the conflicts. The merge stays open until finished or aborted. */
+  gitResolveConflicts(featureId: string, target: string): Promise<ConflictResolution>
+  cancelGitResolveConflicts(featureId: string): void
+  /** Writes the user's edits, commits the open merge and pushes. */
+  gitFinishMerge(featureId: string, edits: ConflictEdit[]): Promise<void>
+  /** Drops the open merge: the branch is back where it was. */
+  gitAbortMerge(featureId: string): Promise<void>
   gitWatch(featureId: string): Promise<void>
   gitUnwatch(featureId: string): Promise<void>
   /** The status of a watched worktree may have changed. */
