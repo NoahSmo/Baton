@@ -265,6 +265,8 @@ export interface LinearIssue {
   teamId: string
   linearProjectId: string | null
   assigneeName: string | null
+  /** Linear's priority: 0 none, 1 urgent, 2 high, 3 medium, 4 low. */
+  priority: number
 }
 
 export interface LinearState {
@@ -581,6 +583,7 @@ export interface Api {
   /** Workflow states an issue of this team can be moved to, in workflow order. */
   linearTeamStates(teamId: string): Promise<LinearState[]>
   linearSetIssueState(issueId: string, stateId: string): Promise<void>
+  linearSetIssuePriority(issueId: string, priority: number): Promise<void>
   linearCreateIssue(input: CreateLinearIssueInput): Promise<LinearIssue>
   onEvent(cb: (ev: StoredEvent) => void): () => void
   onFeature(cb: (feature: Feature) => void): () => void
