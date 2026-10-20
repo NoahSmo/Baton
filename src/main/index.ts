@@ -25,6 +25,7 @@ import {
   type MenuAction,
   type MenuModel,
   type MessageAttachments,
+  type CommitAction,
   type NotificationPrefs,
   PERMISSION_MODES,
   type PermissionDecision,
@@ -41,7 +42,7 @@ import {
 } from '../shared/types'
 import { readImageUrl, storedFilePath } from './attachments'
 import { fileMtime, FileWatchers, listDir, readTextFile, writeTextFile } from './files'
-import { gitDirOf, headContent } from './git'
+import { commitFiles, gitDirOf, gitLog, headContent, mergePreview } from './git'
 import { draftHandoff } from './handoff'
 import { draftPullRequest, pullRequestSupport } from './pullRequest'
 import { LinearClient } from './linear'
@@ -615,6 +616,14 @@ function registerIpc(): void {
   ipcMain.handle('git:status', (_e, id: string) => manager.gitStatus(id))
   ipcMain.handle('git:head', (_e, id: string, path: string, ref?: string) => headContent(manager.featureRoot(id), path, ref))
   ipcMain.handle('git:turnChanges', (_e, id: string) => manager.turnChanges(id))
+  ipcMain.handle('git:log', (_e, id: string, limit: number) => gitLog(manager.featureRoot(id), limit))
+  ipcMain.handle('git:commitFiles', (_e, id: string, hash: string, from?: string) => commitFiles(manager.featureRoot(id), hash, from))
+  ipcMain.handle('git:mergePreview', (_e, id: string) => mergePreview(manager.featureRoot(id)))
+  ipcMain.handle('git:commitAction', async (_e, id: string, hash: string, action: CommitAction, name?: string) => {
+    await manager.commitAction(id, hash, action, name)
+    send('git:changed', id)
+  })
+  ipcMain.handle('git:turns', (_e, id: string) => manager.agentTurns(id))
   ipcMain.handle('git:branches', (_e, id: string) => manager.gitBranches(id))
   ipcMain.handle('git:switch', async (_e, id: string, branch: string) => {
     await manager.switchBranch(id, branch)

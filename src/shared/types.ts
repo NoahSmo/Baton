@@ -419,6 +419,7 @@ export interface CreateFeatureInput {
 export type ContextMenuSpec =
   | { kind: 'feature'; featureId: string }
   | { kind: 'project'; projectId: string }
+  | { kind: 'commit'; hash: string; subject: string }
   | { kind: 'issue'; identifier: string; url: string; branchName: string }
   | { kind: 'text'; entries: { label: 'message' | 'input' | 'output'; text: string }[] }
 
@@ -439,7 +440,16 @@ export interface ConfirmRequest {
 }
 
 /** Menu choices handed back to the renderer because they need its UI. */
-export type MenuAction = 'rename-feature' | 'link-feature' | 'new-feature' | 'project-settings' | 'continue-feature'
+export type MenuAction =
+  | 'rename-feature'
+  | 'link-feature'
+  | 'new-feature'
+  | 'project-settings'
+  | 'continue-feature'
+  | 'compare-commit'
+  | 'cherry-pick-commit'
+  | 'revert-commit'
+  | 'branch-commit'
 
 export interface AppState {
   projects: Project[]
@@ -506,6 +516,50 @@ export interface GitStatus {
   behind: number
   changes: GitChange[]
 }
+
+/** A commit of the history, as `git log` reports it. */
+export interface GitCommit {
+  hash: string
+  /** Full ids of the parents, the first being the line the commit continues. */
+  parents: string[]
+  subject: string
+  author: string
+  /** Unix seconds. */
+  time: number
+  /** Branches and tags pointing at it, `origin/main`, `v1.4.0`… */
+  refs: string[]
+  /** True for the commit checked out. */
+  head: boolean
+  /** On this branch only: no trunk of a remote holds it yet. */
+  mine: boolean
+  /** Not on the upstream yet. */
+  unpushed: boolean
+  /** On the upstream, not pulled yet. */
+  incoming: boolean
+}
+
+export interface GitLog {
+  commits: GitCommit[]
+  /** Older commits exist beyond the ones returned. */
+  more: boolean
+}
+
+/** What merging the branch into a remote trunk would do. */
+export interface MergePreview {
+  /** The trunk compared with, `origin/main`. */
+  base: string
+  /** Files that would conflict; empty when the merge is clean. */
+  conflicts: string[]
+}
+
+/** A turn of the agent, from the message sent to the result; times in epoch milliseconds. */
+export interface AgentTurn {
+  start: number
+  end: number
+  costUsd: number
+}
+
+export type CommitAction = 'cherry-pick' | 'revert' | 'branch'
 
 export interface GitBranch {
   name: string
@@ -640,6 +694,16 @@ export interface Api {
   gitHead(featureId: string, path: string, ref?: string): Promise<string | null>
   /** What the agent changed since its last turn began; null when no snapshot of that moment exists. */
   gitTurnChanges(featureId: string): Promise<{ base: string; changes: GitChange[] } | null>
+  /** Latest commits of every branch, newest first, for drawing the graph. */
+  gitLog(featureId: string, limit: number): Promise<GitLog>
+  /** Files a commit changed; with `from`, those that differ between the two commits. */
+  gitCommitFiles(featureId: string, hash: string, from?: string): Promise<GitChange[]>
+  /** Whether the branch merges cleanly into the trunk of its remote; null when that cannot be told. */
+  gitMergePreview(featureId: string): Promise<MergePreview | null>
+  /** Cherry-picks or reverts a commit, or opens a branch (named by `name`) at it. Rejects with git's own explanation. */
+  gitCommitAction(featureId: string, hash: string, action: CommitAction, name?: string): Promise<void>
+  /** The agent's turns, to tell its commits from the user's. */
+  gitTurns(featureId: string): Promise<AgentTurn[]>
   gitBranches(featureId: string): Promise<GitBranch[]>
   /** Checks another branch out in the feature's worktree. Rejects with git's own explanation. */
   gitSwitch(featureId: string, branch: string): Promise<void>

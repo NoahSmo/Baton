@@ -104,6 +104,18 @@ export function contextMenuTemplate(spec: ContextMenuSpec, ctx: MenuContext): Me
       ]
     }
 
+    case 'commit':
+      return [
+        { label: t.menu.copyHash, click: () => clipboard.writeText(spec.hash) },
+        { label: t.menu.copySubject, click: () => clipboard.writeText(spec.subject) },
+        separator,
+        { label: t.menu.compareHead, click: () => ctx.choose('compare-commit') },
+        { label: t.menu.branchHere, click: () => ctx.choose('branch-commit') },
+        separator,
+        { label: t.menu.cherryPick, click: () => ctx.choose('cherry-pick-commit') },
+        { label: t.menu.revert, danger: true, click: () => ctx.choose('revert-commit') }
+      ]
+
     case 'issue':
       return [
         { label: t.menu.openIssue(spec.identifier), click: () => void shell.openExternal(spec.url) },

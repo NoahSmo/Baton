@@ -41,6 +41,8 @@ interface Props {
   onToggleTerminal(): void
   /** Opens the editor on the list of changed files. */
   onShowChanges(): void
+  /** Opens the editor on the commit graph. */
+  onShowHistory(): void
   linearConnected: boolean
   /** The dialog linking this agent to an issue is open. */
   linking: boolean
@@ -61,6 +63,7 @@ export function FeatureView({
   onToggleEditor,
   onToggleTerminal,
   onShowChanges,
+  onShowHistory,
   linearConnected,
   linking,
   onLinking,
@@ -225,6 +228,9 @@ export function FeatureView({
             onClick={onToggleEditor}
           >
             {'</>'}
+          </button>
+          <button title={t.git.history} aria-label={t.git.history} onClick={onShowHistory}>
+            ⑂
           </button>
           <button
             className={terminalOpen ? 'toggled' : ''}

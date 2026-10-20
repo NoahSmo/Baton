@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import type { Feature, LinearIssue, LinearProject, LinearState, LinearStatus, Project } from '../../shared/types'
 import { BOARD_GROUPINGS, stateForColumn, type BoardGrouping, type KanbanColumn } from '../../shared/kanban'
 import { issuePrompt } from '../../shared/linear'
 import { DEFAULT_AGENT_MODEL, type Feature, type LinearIssue, type LinearProject, type LinearState, type LinearStatus, type Project } from '../../shared/types'

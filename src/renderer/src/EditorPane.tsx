@@ -8,6 +8,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from '
 import type { Feature, FileEntry, GitChange, GitChangeKind, GitStatus } from '../../shared/types'
 import { DiffView } from './DiffView'
 import { editorTheme } from './editorTheme'
+import { HistoryGraph } from './HistoryGraph'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 
@@ -23,7 +24,7 @@ interface Props {
   onPanel(panel: EditorPanel): void
 }
 
-export type EditorPanel = 'files' | 'changes'
+export type EditorPanel = 'files' | 'changes' | 'history'
 
 /** Letter a changed file is tagged with, as git and most editors do. */
 const CHANGE_MARK: Record<GitChangeKind, string> = {
@@ -102,7 +103,9 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
     return kinds
   }, [git])
   const diffChange = changes.find((change) => change.path === diffPath)
-  const showsText = !diffChange && active?.status === 'text'
+  /** The graph fills the editor while the history is picked and no diff is. */
+  const showsHistory = panel === 'history' && !diffChange
+  const showsText = !diffChange && !showsHistory && active?.status === 'text'
 
   function patchTab(path: string, patch: Partial<Tab>) {
     setTabs((list) => {
@@ -329,6 +332,17 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
           >
             {t.git.changes} {commitChanges.length > 0 && <span className="num">{commitChanges.length}</span>}
           </button>
+          <button
+            role="tab"
+            aria-selected={panel === 'history'}
+            className={`sidebar-title tree-tab${panel === 'history' ? ' selected' : ''}`}
+            onClick={() => {
+              onPanel('history')
+              setDiffPath(null)
+            }}
+          >
+            {t.git.history}
+          </button>
         </div>
         {panel === 'files' ? (
           <div className="editor-tree-list">{renderDir('', 0)}</div>
@@ -416,8 +430,9 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
         {error && <p className="editor-notice error">{error}</p>}
 
         {diffChange && <DiffView id={id} path={diffChange.path} kind={diffChange.kind} revision={git} baseRef={changesMode === 'turn' ? turn?.base : undefined} />}
+        {showsHistory && visible && <HistoryGraph id={id} git={git} onShowChanges={() => onPanel('changes')} />}
         <div className="editor-code" ref={host} hidden={!showsText} />
-        {!showsText && !diffChange && <p className="editor-empty">{active ? notice[active.status as keyof typeof notice] : t.editor.pickFile}</p>}
+        {!showsText && !diffChange && !showsHistory && <p className="editor-empty">{active ? notice[active.status as keyof typeof notice] : t.editor.pickFile}</p>}
       </div>
     </section>
   )

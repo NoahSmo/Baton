@@ -358,6 +358,10 @@ export function App() {
                     setEditors((all) => ({ ...all, [feature.id]: true }))
                     setEditorPanel('changes')
                   }}
+                  onShowHistory={() => {
+                    setEditors((all) => ({ ...all, [feature.id]: true }))
+                    setEditorPanel('history')
+                  }}
                   linearConnected={linear.connected}
                   linking={linkingId === feature.id}
                   onLinking={(open) => setLinkingId(open ? feature.id : null)}
