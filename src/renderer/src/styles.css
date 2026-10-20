@@ -2765,3 +2765,208 @@ kbd {
 .usage-row .num {
   text-align: right;
 }
+
+.history {
+  flex: 1;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  overflow: auto;
+}
+
+.history-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px 0 10px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.history-row:hover {
+  background: var(--raised);
+}
+
+.history-row.head .history-subject {
+  font-weight: 600;
+}
+
+.graph-lines {
+  flex: none;
+  overflow: visible;
+}
+
+.graph-lines path {
+  fill: none;
+  stroke-width: 2;
+}
+
+.graph-lines circle {
+  fill: var(--bg);
+  stroke-width: 2;
+}
+
+.history-ref {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.history-ref.remote {
+  background: var(--raised);
+  color: var(--muted);
+}
+
+.history-subject {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-meta,
+.history-hash {
+  flex: none;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.history-hash {
+  margin-left: auto;
+  font-family: var(--mono);
+  opacity: 0.7;
+}
+
+.history-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.history-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-filter {
+  flex: 1;
+  min-width: 0;
+  max-width: 320px;
+}
+
+.history-merge {
+  font-size: 12px;
+  color: var(--green);
+}
+
+.history-merge.conflict {
+  color: var(--amber);
+}
+
+.history-row {
+  cursor: default;
+}
+
+.history-row.selected,
+.history-row.selected:hover {
+  background: var(--raised);
+}
+
+.history-row.other .history-subject {
+  color: var(--muted);
+}
+
+.history-row.mine {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.history-row.pending .link {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.history-badge {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.history-badge.agent {
+  color: var(--accent);
+}
+
+.history-more {
+  padding: 8px 14px;
+}
+
+.commit-detail {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  height: 46%;
+  min-height: 140px;
+  border-top: 1px solid var(--border-strong);
+}
+
+.commit-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.commit-detail-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-detail-head .link {
+  margin-left: auto;
+}
+
+.commit-detail-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.commit-files {
+  flex: none;
+  width: 230px;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+}
+
+.commit-diff {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.commit-branch {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+}
+
+.commit-branch input {
+  flex: 1;
+}

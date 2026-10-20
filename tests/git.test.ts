@@ -12,6 +12,12 @@ import {
   isTrunkRef,
   lastGitActivity,
   listBranches,
+  commitFiles,
+  commitOp,
+  gitLog,
+  mergePreview,
+  parseLog,
+  parseMergeConflicts,
   parseStatus,
   parseWorktrees,
   push,
@@ -251,5 +257,88 @@ describe('commitChanges', () => {
   it('rejects a push of a detached HEAD', async () => {
     run('checkout', '--detach')
     await expect(push(dir)).rejects.toThrow()
+  })
+})
+
+describe('parseLog', () => {
+  const line = (hash: string, parents: string, refs: string, subject: string) => [hash, parents, 'Ann', '1700000000', refs, subject].join('\x1f')
+
+  it('reads parents, refs and subject, keeping separators inside a subject', () => {
+    const [merge, root] = parseLog([line('b', 'a c', 'HEAD -> main, origin/main, origin/HEAD, tag: v1', 'Merge\x1fit'), line('a', '', '', 'Init')].join('\n'), 'b')
+    expect(merge).toMatchObject({ hash: 'b', parents: ['a', 'c'], refs: ['main', 'origin/main', 'v1'], subject: 'Merge\x1fit', head: true })
+    expect(root).toMatchObject({ parents: [], refs: [], head: false })
+  })
+})
+
+describe('parseMergeConflicts', () => {
+  it('lists the paths between the tree id and the messages', () => {
+    expect(parseMergeConflicts('abc123\na.ts\nb/c.ts\n\nAuto-merging a.ts\nCONFLICT (content): a.ts\n')).toEqual(['a.ts', 'b/c.ts'])
+    expect(parseMergeConflicts('abc123\n')).toEqual([])
+  })
+})
+
+describe('history of a real repository', () => {
+  let dir: string
+  const sh = (...args: string[]) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', env: { ...process.env, LC_ALL: 'C' } }).trim()
+
+  beforeAll(() => {
+    dir = realpathSync(mkdtempSync(join(tmpdir(), 'baton-history-')))
+    sh('init', '-b', 'main')
+    sh('config', 'user.email', 't@t')
+    sh('config', 'user.name', 'T')
+    writeFileSync(join(dir, 'a.txt'), 'one\n')
+    sh('add', '.')
+    sh('commit', '-m', 'first')
+    sh('switch', '-c', 'feat')
+    writeFileSync(join(dir, 'b.txt'), 'two\n')
+    sh('add', '.')
+    sh('commit', '-m', 'second')
+  })
+
+  afterAll(() => rmSync(dir, { recursive: true, force: true }))
+
+  it('returns commits newest first, with the checked-out one marked and pages told apart', async () => {
+    const log = await gitLog(dir, 1)
+    expect(log.commits.map((c) => c.subject)).toEqual(['second'])
+    expect(log.more).toBe(true)
+    const all = await gitLog(dir, 10)
+    expect(all.commits.map((c) => c.subject)).toEqual(['second', 'first'])
+    expect(all.more).toBe(false)
+    expect(all.commits[0]).toMatchObject({ head: true, refs: ['feat'] })
+  })
+
+  it('lists what a commit changed, root commit included', async () => {
+    const [second, first] = (await gitLog(dir, 10)).commits
+    expect(await commitFiles(dir, second.hash)).toEqual([{ path: 'b.txt', kind: 'added' }])
+    expect(await commitFiles(dir, first.hash)).toEqual([{ path: 'a.txt', kind: 'added' }])
+    expect(await commitFiles(dir, second.hash, first.hash)).toEqual([{ path: 'b.txt', kind: 'added' }])
+    await expect(commitFiles(dir, 'HEAD')).rejects.toThrow('Invalid revision')
+  })
+
+  it('has nothing to preview without a remote trunk', async () => {
+    expect(await mergePreview(dir)).toBeNull()
+  })
+
+  it('opens a branch at a commit without moving the checkout', async () => {
+    const [, first] = (await gitLog(dir, 10)).commits
+    await commitOp(dir, first.hash, 'branch', 'from-first')
+    expect(sh('rev-parse', 'from-first')).toBe(first.hash)
+    expect(sh('branch', '--show-current')).toBe('feat')
+    await expect(commitOp(dir, first.hash, 'branch', 'bad name')).rejects.toThrow()
+  })
+
+  it('reverts a commit, and leaves no half-done operation when git refuses', async () => {
+    const [second] = (await gitLog(dir, 10)).commits
+    await commitOp(dir, second.hash, 'revert')
+    expect(sh('log', '-1', '--format=%s')).toMatch(/^Revert/)
+    // Reverting it again conflicts with nothing, but picking a commit already applied is refused.
+    writeFileSync(join(dir, 'a.txt'), 'changed\n')
+    sh('commit', '-am', 'edit a')
+    sh('switch', '-c', 'other', 'main')
+    writeFileSync(join(dir, 'a.txt'), 'other\n')
+    sh('commit', '-am', 'edit a differently')
+    const [edit] = (await gitLog(dir, 20)).commits.filter((c) => c.subject === 'edit a')
+    await expect(commitOp(dir, edit.hash, 'cherry-pick')).rejects.toThrow()
+    expect(() => sh('rev-parse', '--verify', 'CHERRY_PICK_HEAD')).toThrow()
   })
 })

@@ -13,6 +13,8 @@ import {
   type GitBranch,
   type GitChange,
   type GitStatus,
+  type AgentTurn,
+  type CommitAction,
   type HandoffDraft,
   type ImageInput,
   type LaunchCommand,
@@ -36,7 +38,7 @@ import {
 } from '../shared/types'
 import { AgentSession, type AgentOutput } from './agent'
 import { removeAttachments, saveFiles, saveImages, withFiles } from './attachments'
-import { changesSince, commitChanges, gitStatus, hasLanded, lastGitActivity, listBranches, pull, push, snapshotTree, strayWorktrees, switchBranch } from './git'
+import { changesSince, commitChanges, commitOp, gitStatus, hasLanded, lastGitActivity, listBranches, pull, push, snapshotTree, strayWorktrees, switchBranch } from './git'
 import type { LinearClient } from './linear'
 import { createPullRequest } from './pullRequest'
 import type { Store } from './store'
@@ -301,6 +303,26 @@ export class Manager {
     if (this.isBusy(featureId)) throw new Error(this.t().errors.agentBusy)
     await switchBranch(feature.worktreePath, branch)
     this.patch(featureId, { branch })
+  }
+
+  /** Cherry-picks or reverts a commit, or opens a branch at it. Rewriting files is refused under a running turn. */
+  async commitAction(featureId: string, hash: string, action: CommitAction, name?: string): Promise<void> {
+    if (action !== 'branch' && this.isBusy(featureId)) throw new Error(this.t().errors.agentBusy)
+    await commitOp(this.featureRoot(featureId), hash, action, name)
+  }
+
+  /** Each message sent to the agent and the result that answered it, read back from the journal. */
+  agentTurns(featureId: string): AgentTurn[] {
+    const turns: AgentTurn[] = []
+    let start: number | null = null
+    for (const { at, event } of this.store.listEvents(featureId)) {
+      if (event.kind === 'user') start = at
+      else if (event.kind === 'result' && start !== null) {
+        turns.push({ start, end: at, costUsd: event.turnCostUsd })
+        start = null
+      }
+    }
+    return turns
   }
 
   async commitChanges(featureId: string, message: string, paths: string[]): Promise<void> {
