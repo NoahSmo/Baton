@@ -301,6 +301,7 @@ export function App() {
           linear={linear}
           projects={projects}
           features={features}
+          defaultProjectId={activeProjectId}
           onConnect={() => setDialog({ kind: 'linear' })}
           onStart={(issue, repos) => {
             const repositories = repos.length ? repos : projects
@@ -308,6 +309,7 @@ export function App() {
             setDialog({ kind: 'feature', project: target, issue, repositories })
           }}
           onOpenFeature={showFeature}
+          onStarted={(started) => showFeature(started[0])}
         />
       )}
       {project ? (

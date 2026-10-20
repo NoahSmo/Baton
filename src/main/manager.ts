@@ -26,6 +26,9 @@ import {
   type ProjectInput,
   type ProjectPatch,
   type PromptTemplate,
+  type ConflictCheck,
+  type ConflictEdit,
+  type ConflictResolution,
   type PullRequestDraft,
   type RepoInfo,
   type StoredEvent,
@@ -38,6 +41,7 @@ import {
 } from '../shared/types'
 import { AgentSession, type AgentOutput } from './agent'
 import { removeAttachments, saveFiles, saveImages, withFiles } from './attachments'
+import { abortMerge, checkConflicts, finishMerge, mergeUpstream, resolveConflicts } from './conflicts'
 import { changesSince, commitChanges, commitOp, gitStatus, hasLanded, lastGitActivity, listBranches, pull, push, snapshotTree, strayWorktrees, switchBranch } from './git'
 import type { LinearClient } from './linear'
 import { createPullRequest } from './pullRequest'
@@ -336,7 +340,30 @@ export class Manager {
   }
 
   async push(featureId: string): Promise<void> {
-    await push(this.featureRoot(featureId))
+    const root = this.featureRoot(featureId)
+    // The caller looked for conflicts; what is left of the upstream goes in cleanly.
+    await mergeUpstream(root)
+    await push(root)
+  }
+
+  async checkConflicts(featureId: string): Promise<ConflictCheck | null> {
+    return checkConflicts(this.featureRoot(featureId))
+  }
+
+  async resolveConflicts(featureId: string, target: string, abort: AbortController): Promise<ConflictResolution> {
+    // Resolving rewrites files under a running turn, like a pull.
+    if (this.isBusy(featureId)) throw new Error(this.t().errors.agentBusyPull)
+    return resolveConflicts(this.featureRoot(featureId), target, abort)
+  }
+
+  async finishMerge(featureId: string, edits: ConflictEdit[]): Promise<void> {
+    const root = this.featureRoot(featureId)
+    await finishMerge(root, edits)
+    await push(root)
+  }
+
+  async abortMerge(featureId: string): Promise<void> {
+    await abortMerge(this.featureRoot(featureId))
   }
 
   async createFeature(input: CreateFeatureInput): Promise<Feature> {

@@ -1,21 +1,29 @@
 import { useEffect, useState } from 'react'
-import type { Feature, LinearIssue, LinearProject, LinearState, LinearStatus, Project } from '../../shared/types'
+import { BOARD_GROUPINGS, stateForColumn, type BoardGrouping, type KanbanColumn } from '../../shared/kanban'
+import { issuePrompt } from '../../shared/linear'
+import { DEFAULT_AGENT_MODEL, type Feature, type LinearIssue, type LinearProject, type LinearState, type LinearStatus, type Project } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
 import { useT } from './i18n'
 import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
+import { KanbanBoard } from './KanbanBoard'
 import { cleanError } from './NewFeatureDialog'
+import { usePersisted } from './usePersisted'
 
 interface Props {
   linear: LinearStatus
   projects: Project[]
   features: Feature[]
+  /** Repository used for an issue that points at none (or several). */
+  defaultProjectId: string | null
   onConnect(): void
   /** `repos` are the repositories the issue's labels point at; with none or several, the user picks. */
   onStart(issue: LinearIssue, repos: Project[]): void
   onOpenFeature(feature: Feature): void
+  /** An agent was started from each selected issue. */
+  onStarted(features: Feature[]): void
 }
 
-export function LinearView({ linear, projects, features, onConnect, onStart, onOpenFeature }: Props) {
+export function LinearView({ linear, projects, features, defaultProjectId, onConnect, onStart, onOpenFeature, onStarted }: Props) {
   const t = useT()
   const [linearProjects, setLinearProjects] = useState<LinearProject[] | null>(null)
   /** Selected Linear project; null shows the issues assigned to the user. */
@@ -23,9 +31,13 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
   const [issues, setIssues] = useState<LinearIssue[] | null>(null)
   const [teamStates, setTeamStates] = useState<Record<string, LinearState[]>>({})
   const [stateFilter, setStateFilter] = useState<string[]>([])
+  const [view, setView] = usePersisted<'list' | 'board'>('linear-view', 'list', ['list', 'board'])
+  const [grouping, setGrouping] = usePersisted<BoardGrouping>('linear-board-grouping', 'status', BOARD_GROUPINGS)
   const [text, setText] = useState('')
   const [error, setError] = useState('')
   const [reload, setReload] = useState(0)
+  const [selection, setSelection] = useState<string[]>([])
+  const [starting, setStarting] = useState(false)
 
   useEffect(() => {
     if (!linear.connected) return
@@ -36,6 +48,7 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
     if (!linear.connected) return
     let stale = false
     setIssues(null)
+    setSelection([])
     setError('')
     window.api.linearIssues(selectedId ?? undefined).then(
       (list) => !stale && setIssues(list),
@@ -93,7 +106,74 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
     }
   }
 
+  /** A card dropped on a column: the issue takes that status or priority, undone if Linear refuses. */
+  async function moveIssue(issue: LinearIssue, column: KanbanColumn) {
+    setError('')
+    const patch = (next: Partial<LinearIssue>) =>
+      setIssues((list) => list?.map((i) => (i.id === issue.id ? { ...i, ...next } : i)) ?? null)
+    if (column.priority !== undefined) {
+      if (column.priority === issue.priority) return
+      patch({ priority: column.priority })
+      try {
+        await window.api.linearSetIssuePriority(issue.id, column.priority)
+      } catch (err) {
+        patch({ priority: issue.priority })
+        setError(cleanError(err))
+      }
+      return
+    }
+    if (column.key === issue.stateName) return
+    const state = stateForColumn(teamStates[issue.teamId] ?? [], column)
+    if (!state) return setError(t.linearView.noStateInTeam(column.key))
+    await changeState(issue, state.id)
+  }
+
   const shown = (issues ?? []).filter((i) => matchesIssueFilter(i, stateFilter, text))
+  const hasFeature = (issue: LinearIssue) => features.some((f) => f.linear?.issueId === issue.id)
+  const startable = shown.filter((i) => !hasFeature(i))
+  const picked = (issues ?? []).filter((i) => selection.includes(i.id) && !hasFeature(i))
+  const allPicked = startable.length > 0 && startable.every((i) => selection.includes(i.id))
+
+  const toggle = (id: string) => setSelection((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
+
+  /** The only repository the issue points at, else the one being worked in. */
+  function repoFor(issue: LinearIssue): Project {
+    const repos = reposFor(issue.linearProjectId)
+    if (repos.length === 1) return repos[0]
+    const candidates = repos.length ? repos : projects
+    return candidates.find((p) => p.id === defaultProjectId) ?? candidates[0]
+  }
+
+  /** One agent per selected issue, with the default settings; failures stay selected. */
+  async function startSelected() {
+    if (!picked.length || starting) return
+    setStarting(true)
+    setError('')
+    const started: Feature[] = []
+    const failed: string[] = []
+    let lastError = ''
+    for (const issue of picked) {
+      try {
+        started.push(
+          await window.api.createFeature({
+            projectId: repoFor(issue).id,
+            title: `${issue.identifier} ${issue.title}`,
+            prompt: issuePrompt(issue),
+            permissionMode: 'default',
+            agentModel: DEFAULT_AGENT_MODEL,
+            linearIssue: issue
+          })
+        )
+      } catch (err) {
+        failed.push(issue.id)
+        lastError = cleanError(err)
+      }
+    }
+    setStarting(false)
+    setSelection(failed)
+    if (failed.length) setError(lastError)
+    if (started.length) onStarted(started)
+  }
 
   return (
     <main className="main wide linear-view">
@@ -140,6 +220,34 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
               ].join(' · ')}
             </p>
           </div>
+          <div className="filters" role="group">
+            {(['list', 'board'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                className={`filter${view === v ? ' selected' : ''}`}
+                aria-pressed={view === v}
+                onClick={() => setView(v)}
+              >
+                {t.linearView[v]}
+              </button>
+            ))}
+          </div>
+          {view === 'board' && (
+            <div className="filters" role="group">
+              {BOARD_GROUPINGS.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  className={`filter${grouping === g ? ' selected' : ''}`}
+                  aria-pressed={grouping === g}
+                  onClick={() => setGrouping(g)}
+                >
+                  {g === 'status' ? t.linearView.groupByStatus : t.linearView.groupByPriority}
+                </button>
+              ))}
+            </div>
+          )}
           <button onClick={() => setReload((n) => n + 1)}>{t.linearView.refresh}</button>
         </header>
 
@@ -148,11 +256,51 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
           {issues && <IssueStateFilter issues={issues} selected={stateFilter} onChange={setStateFilter} />}
         </div>
 
+        {startable.length > 0 && (
+          <div className="linear-bulk">
+            <label className="linear-check">
+              <input
+                type="checkbox"
+                checked={allPicked}
+                onChange={() =>
+                  setSelection((s) =>
+                    allPicked ? s.filter((id) => !startable.some((i) => i.id === id)) : [...new Set([...s, ...startable.map((i) => i.id)])]
+                  )
+                }
+              />
+              {t.linearView.selectAll}
+            </label>
+            {picked.length > 0 && (
+              <>
+                <span className="hint">{t.linearView.selected(picked.length)}</span>
+                <button className="primary" disabled={starting || !projects.length} onClick={() => void startSelected()}>
+                  {starting ? t.linearView.startingMany : t.linearView.startMany(picked.length)}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
         {error && <p className="form-error linear-error">{error}</p>}
         {selectedProject && !reposFor(selectedId).length && projects.length > 1 && (
           <p className="hint linear-hint">{t.linearView.needRepository}</p>
         )}
 
+        {view === 'board' && issues && (
+          <KanbanBoard
+            issues={shown}
+            teamStates={teamStates}
+            grouping={grouping}
+            projects={projects}
+            features={features}
+            reposFor={reposFor}
+            onMove={(issue, column) => void moveIssue(issue, column)}
+            onStart={onStart}
+            onOpenFeature={onOpenFeature}
+          />
+        )}
+
+        {view === 'list' && (
         <div className="linear-list">
           {shown.map((issue) => {
             const feature = features.find((f) => f.linear?.issueId === issue.id)
@@ -167,6 +315,14 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
                   void openContextMenu(e, { kind: 'issue', identifier, url, branchName })
                 }}
               >
+                <input
+                  type="checkbox"
+                  className="linear-check"
+                  aria-label={issue.identifier}
+                  disabled={!!feature || starting}
+                  checked={!feature && selection.includes(issue.id)}
+                  onChange={() => toggle(issue.id)}
+                />
                 <a className="issue-id" href={issue.url} target="_blank" rel="noreferrer">
                   {issue.identifier}
                 </a>
@@ -205,6 +361,7 @@ export function LinearView({ linear, projects, features, onConnect, onStart, onO
           })}
           {issues && !shown.length && <p className="hint linear-hint">{t.linearView.noIssues}</p>}
         </div>
+        )}
       </section>
     </main>
   )

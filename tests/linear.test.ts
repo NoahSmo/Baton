@@ -15,7 +15,8 @@ const issue: LinearIssue = {
   stateId: 's1',
   teamId: 't1',
   linearProjectId: 'p1',
-  assigneeName: 'Sam'
+  assigneeName: 'Sam',
+  priority: 2
 }
 
 /** The issue as Linear's API returns it, before flattening. */
@@ -29,7 +30,8 @@ const rawIssue = {
   state: { id: 's1', name: 'Todo', type: 'unstarted' },
   team: { id: 't1' },
   project: { id: 'p1' },
-  assignee: { name: 'Sam' }
+  assignee: { name: 'Sam' },
+  priority: 2
 }
 
 const states = [
