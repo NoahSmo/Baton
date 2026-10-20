@@ -33,6 +33,7 @@ import {
   type ProjectPatch,
   worksInPlace,
   type PromptTemplate,
+  type ConflictEdit,
   type PullRequestDraft,
   type TerminalTarget,
   type UpdateInfo,
@@ -306,6 +307,7 @@ const suggesting = new Map<string, AbortController>()
 const drafting = new Map<string, AbortController>()
 const draftingPrs = new Map<string, AbortController>()
 const draftingHandoffs = new Map<string, AbortController>()
+const resolving = new Map<string, AbortController>()
 
 /** Runs a drafting job that a newer request for the same agent, or the user, can cancel. */
 async function cancellable<T>(jobs: Map<string, AbortController>, id: string, run: (abort: AbortController) => Promise<T>): Promise<T> {
@@ -659,6 +661,26 @@ function registerIpc(): void {
   })
   ipcMain.handle('git:push', async (_e, id: string) => {
     await manager.push(id)
+    send('git:changed', id)
+  })
+  ipcMain.handle('git:checkConflicts', (_e, id: string) => manager.checkConflicts(id))
+  ipcMain.handle('git:resolveConflicts', async (_e, id: string, target: string) => {
+    try {
+      return await cancellable(resolving, id, (abort) => manager.resolveConflicts(id, target, abort))
+    } finally {
+      send('git:changed', id)
+    }
+  })
+  ipcMain.on('git:cancelResolveConflicts', (_e, id: string) => resolving.get(id)?.abort())
+  ipcMain.handle('git:finishMerge', async (_e, id: string, edits: ConflictEdit[]) => {
+    try {
+      await manager.finishMerge(id, edits)
+    } finally {
+      send('git:changed', id)
+    }
+  })
+  ipcMain.handle('git:abortMerge', async (_e, id: string) => {
+    await manager.abortMerge(id)
     send('git:changed', id)
   })
   ipcMain.handle('git:watch', (_e, id: string) => {
