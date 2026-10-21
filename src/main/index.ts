@@ -37,7 +37,8 @@ import {
   type PullRequestDraft,
   type TerminalTarget,
   type UpdateInfo,
-  type UsageWarning
+  type UsageWarning,
+  type UsageWindow
 } from '../shared/types'
 import { readImageUrl, storedFilePath } from './attachments'
 import { fileMtime, FileWatchers, listDir, readTextFile, writeTextFile } from './files'
@@ -135,6 +136,12 @@ function loadMaxRunning(): number {
 }
 
 let usageWarning: UsageWarning | null = null
+let usageWindows: UsageWindow[] = []
+
+function setUsageWindows(windows: UsageWindow[]): void {
+  usageWindows = windows
+  send('usage:windows', windows)
+}
 
 /** Shown even with the window in front: the next agents started could hit the limit. */
 function warnUsage(warning: UsageWarning | null): void {
@@ -541,6 +548,7 @@ function registerIpc(): void {
   ipcMain.handle('feature:setPinned', (_e, id: string, pinned: boolean) => manager.setPinned(id, Boolean(pinned)))
   ipcMain.handle('feature:setArchived', (_e, id: string, archived: boolean) => manager.setArchived(id, Boolean(archived)))
   ipcMain.handle('feature:promote', (_e, id: string) => manager.promoteQueued(id))
+  ipcMain.handle('usage:windows', () => usageWindows.filter((w) => !w.resetsAt || w.resetsAt * 1000 > Date.now()))
   ipcMain.handle('usage:warning', () =>
     usageWarning?.resetsAt && usageWarning.resetsAt * 1000 < Date.now() ? null : usageWarning
   )
@@ -731,7 +739,8 @@ void app.whenReady().then(() => {
     stream: (id, text) => send('stream', id, text),
     backgroundTasks: (id, tasks) => send('background', id, tasks),
     attention: notify,
-    usageWarning: warnUsage
+    usageWarning: warnUsage,
+    usageWindows: setUsageWindows
   })
   // In development the Dock shows the icon of the Electron bundle, not the app's.
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))

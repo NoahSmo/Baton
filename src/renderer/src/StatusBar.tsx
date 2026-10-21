@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { formatReset } from '../../shared/time'
-import type { Feature, LinearStatus, UpdateInfo, UsageWarning } from '../../shared/types'
+import type { Feature, LinearStatus, UpdateInfo, UsageWarning, UsageWindow } from '../../shared/types'
+import { limitWindow } from '../../shared/i18n'
 import { useLang, useT } from './i18n'
 
 interface Props {
@@ -29,6 +30,21 @@ export function StatusBar({ features, linear, onOpenLinear, version, update, onO
     void window.api.getUsageWarning().then(setWarning)
     return window.api.onUsageWarning(setWarning)
   }, [])
+
+  const [windows, setWindows] = useState<UsageWindow[]>([])
+
+  useEffect(() => {
+    void window.api.getUsageWindows().then(setWindows)
+    return window.api.onUsageWindows(setWindows)
+  }, [])
+
+  // A window that has reset is full again: its last reading no longer holds.
+  useEffect(() => {
+    const next = Math.min(...windows.map((w) => (w.resetsAt ? w.resetsAt * 1000 : Infinity)))
+    if (!Number.isFinite(next)) return
+    const timer = setTimeout(() => setWindows((all) => all.filter((w) => !w.resetsAt || w.resetsAt * 1000 > Date.now())), Math.max(0, next - Date.now()) + 1000)
+    return () => clearTimeout(timer)
+  }, [windows])
 
   // The warning goes once its window has reset.
   useEffect(() => {
@@ -67,6 +83,27 @@ export function StatusBar({ features, linear, onOpenLinear, version, update, onO
         </span>
       )}
       <span className="statusbar-sep" />
+      {windows.map((w) => {
+        const kind = limitWindow(w.limitType)
+        const used = Math.min(1, Math.max(0, w.utilization))
+        const level = used >= 0.95 ? ' critical' : used >= 0.8 ? ' high' : ''
+        const reset = formatReset(w.resetsAt, lang)
+        return (
+          <span
+            key={w.limitType ?? ''}
+            className={`credit-meter${level}`}
+            title={t.statusbar.creditLeft(kind, Math.round((1 - used) * 100), reset)}
+            role="img"
+            aria-label={t.statusbar.creditLeft(kind, Math.round((1 - used) * 100), reset)}
+          >
+            {kind === 'weekly' ? '7d' : kind === 'daily' ? '5h' : '∗'}
+            <span className="credit-bar">
+              <span style={{ width: `${(1 - used) * 100}%` }} />
+            </span>
+            <span className="num strong">{Math.round((1 - used) * 100)}%</span>
+          </span>
+        )
+      })}
       {warning && <span className="statusbar-warning">{t.statusbar.usageNear(resetTime, warning.utilization, warning.limitType)}</span>}
       <button className="statusbar-linear" title={t.usage.title} onClick={onOpenUsage}>
         {t.statusbar.total} <span className="num strong">${cost.toFixed(2)}</span>

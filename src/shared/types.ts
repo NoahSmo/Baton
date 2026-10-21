@@ -82,6 +82,15 @@ export interface UsageWarning {
   utilization?: number
 }
 
+/** How much of a usage window is spent, as last reported by an agent. */
+export interface UsageWindow {
+  limitType?: string
+  /** Share of the window used, from 0 to 1. */
+  utilization: number
+  /** Epoch seconds. */
+  resetsAt?: number
+}
+
 export const PROJECT_COLORS = [
   '#e08e62',
   '#b392e6',
@@ -571,6 +580,9 @@ export interface Api {
   /** The last warning that a usage window is nearly used up, if any. */
   getUsageWarning(): Promise<UsageWarning | null>
   onUsageWarning(cb: (warning: UsageWarning | null) => void): () => void
+  /** Every usage window an agent reported on, to show how much of each is left. */
+  getUsageWindows(): Promise<UsageWindow[]>
+  onUsageWindows(cb: (windows: UsageWindow[]) => void): () => void
   /** Builds the context menu for a target; the renderer draws it. */
   menuOpen(spec: ContextMenuSpec): Promise<MenuModel>
   /** Runs an item of the menu last opened. */
