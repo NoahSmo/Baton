@@ -36,6 +36,7 @@ import {
   type TurnCost,
   type UiEvent,
   type UsageWarning,
+  type UsageWindow,
   type BackgroundTask,
   worksInPlace
 } from '../shared/types'
@@ -82,6 +83,8 @@ export interface ManagerSink {
   attention(feature: Feature): void
   /** A usage window is nearly used up (called once per window), or null once the limit lifted. */
   usageWarning(warning: UsageWarning | null): void
+  /** What the agents last reported of each usage window; empty once the limit lifted. */
+  usageWindows(windows: UsageWindow[]): void
 }
 
 export class Manager {
@@ -89,6 +92,7 @@ export class Manager {
   /** Messages of agents waiting for a slot, oldest agent first. */
   private queue = new Map<string, PendingMessage[]>()
   private warnedWindows = new Set<string>()
+  private windows = new Map<string, UsageWindow>()
   /** Epoch milliseconds until which the usage limit refuses requests: queued agents wait it out. */
   private limitedUntil = 0
   private limitTimer: ReturnType<typeof setTimeout> | null = null
@@ -781,6 +785,7 @@ export class Manager {
       // Without a reset time, retry later rather than stay refused for good.
       this.holdQueueUntil(event.resetsAt ? event.resetsAt * 1000 : Date.now() + UNKNOWN_RESET_MS)
     }
+    if (event.kind === 'rate_limit') this.trackWindow(event)
     if (event.kind === 'rate_limit' && event.status === 'allowed_warning') this.warnUsage(event)
     if (event.kind === 'user') patch.limitResetsAt = null
     this.patch(featureId, patch)
@@ -812,8 +817,17 @@ export class Manager {
       if (f.status === 'limited') this.patch(f.id, { status: 'idle', limitResetsAt: null })
     }
     this.warnedWindows.clear()
+    this.windows.clear()
+    this.sink.usageWindows([])
     this.sink.usageWarning(null)
     this.startQueued()
+  }
+
+  private trackWindow(event: Extract<UiEvent, { kind: 'rate_limit' }>): void {
+    const utilization = event.status === 'rejected' ? 1 : event.utilization
+    if (utilization === undefined) return
+    this.windows.set(event.limitType ?? '', { limitType: event.limitType, utilization, resetsAt: event.resetsAt })
+    this.sink.usageWindows([...this.windows.values()])
   }
 
   private warnUsage(event: Extract<UiEvent, { kind: 'rate_limit' }>): void {

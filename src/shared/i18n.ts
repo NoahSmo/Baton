@@ -110,6 +110,8 @@ const en = {
     usageNear: (time?: string, used?: number, type?: string) =>
       `${limitWindow(type) === 'weekly' ? 'Weekly' : limitWindow(type) === 'daily' ? 'Daily' : 'Usage'} limit near${used !== undefined ? ` (${Math.round(used * 100)}%)` : ''}${time ? ` · resets ${time}` : ''}`,
     total: 'Total',
+    creditLeft: (kind: 'daily' | 'weekly' | undefined, left: number, time?: string) =>
+      `${kind === 'weekly' ? 'Weekly' : kind === 'daily' ? 'Daily (5 h)' : 'Usage'} credit: ${left}% left${time ? ` · resets ${time}` : ''}`,
     connectLinear: 'Connect Linear',
     linearConnected: 'connected',
     language: 'Language',
@@ -688,6 +690,8 @@ const fr: Dict = {
     usageNear: (time, used, type) =>
       `Limite ${limitWindow(type) === 'weekly' ? 'hebdo ' : limitWindow(type) === 'daily' ? 'journalière ' : ''}bientôt atteinte${used !== undefined ? ` (${Math.round(used * 100)} %)` : ''}${time ? ` · reset à ${time}` : ''}`,
     total: 'Total',
+    creditLeft: (kind, left, time) =>
+      `Crédit ${kind === 'weekly' ? 'hebdo' : kind === 'daily' ? 'journalier (5 h)' : 'd’usage'} : ${left} % restant${time ? ` · reset à ${time}` : ''}`,
     connectLinear: 'Connecter Linear',
     linearConnected: 'connecté',
     language: 'Langue',

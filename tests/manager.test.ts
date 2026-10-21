@@ -43,7 +43,8 @@ function setup(maxRunning = 1) {
     stream: () => {},
     backgroundTasks: () => {},
     attention: () => {},
-    usageWarning: (w) => warnings.push(w)
+    usageWarning: (w) => warnings.push(w),
+    usageWindows: () => {}
   }
   let max = maxRunning
   const manager = new Manager(store, join(dir, 'wt'), join(dir, 'att'), join(dir, 'trash'), {} as never, () => DICTS.en, () => max, sink)
@@ -217,7 +218,8 @@ describe('agent slots', () => {
       stream: () => {},
     backgroundTasks: () => {},
       attention: () => {},
-      usageWarning: () => {}
+      usageWarning: () => {},
+      usageWindows: () => {}
     })
     expect(store.getFeature('a')!.status).toBe('idle')
     expect(store.getFeature('b')!.status).toBe('limited')

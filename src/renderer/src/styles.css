@@ -1455,6 +1455,35 @@ input.mono {
 
 /* Language switch */
 
+.credit-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.credit-bar {
+  width: 48px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.credit-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.credit-meter.high .credit-bar span {
+  background: var(--amber);
+}
+
+.credit-meter.critical .credit-bar span {
+  background: var(--red);
+}
+
 .statusbar-warning {
   color: var(--amber);
 }
