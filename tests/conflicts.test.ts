@@ -39,6 +39,9 @@ describe('with a remote that moved on', () => {
     run(other, 'commit', '-m', 'first')
     run(other, 'push', 'origin', 'main')
     run(base, 'clone', origin, clone)
+    // finishMerge commits through the app's own git calls, which carry no identity: CI has none configured.
+    run(clone, 'config', 'user.name', 'Test')
+    run(clone, 'config', 'user.email', 'test@example.com')
     run(clone, 'switch', '-c', 'feat/x')
     writeFileSync(join(clone, 'a.txt'), 'mine\n')
     run(clone, 'commit', '-am', 'mine')
