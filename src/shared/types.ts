@@ -151,6 +151,36 @@ export interface PromptTemplate {
   text: string
 }
 
+/** Tests run by themselves on a project's features once their agent is done. */
+export interface QaConfig {
+  enabled: boolean
+  /** Shell command run in the feature's worktree; a non-zero exit means the tests failed. */
+  command: string
+}
+
+export const DEFAULT_QA: QaConfig = { enabled: false, command: '' }
+
+export type QaStatus = 'running' | 'passed' | 'failed' | 'error'
+
+/** One automatic test run of a feature, with the recap Claude wrote of it. */
+export interface QaRun {
+  id: string
+  featureId: string
+  projectId: string
+  /** Kept so the run stays readable after its feature is removed. */
+  featureTitle: string
+  command: string
+  status: QaStatus
+  exitCode: number | null
+  /** End of the output, cut to what is worth reading. */
+  output: string
+  /** What Claude makes of the output; empty until written, or when it could not. */
+  recap: string
+  /** Epoch milliseconds. */
+  startedAt: number
+  endedAt: number | null
+}
+
 export interface Project {
   id: string
   name: string
@@ -162,6 +192,7 @@ export interface Project {
   templates: PromptTemplate[]
   /** Each agent works in a worktree of its own. Off, they all work in the project folder itself. */
   worktrees: boolean
+  qa: QaConfig
 }
 
 /** An agent working in the project folder itself rather than in a worktree: nothing of it is ever removed. */
@@ -604,6 +635,14 @@ export interface Api {
   updateProject(projectId: string, patch: ProjectPatch): Promise<Project>
   /** Replaces the launch commands of a project; those without a command are dropped. */
   setProjectCommands(projectId: string, commands: LaunchCommand[]): Promise<Project>
+  /** Sets the automatic tests of a project; no command turns them off. */
+  setProjectQa(projectId: string, qa: QaConfig): Promise<Project>
+  /** Every test run kept, newest first. */
+  listQaRuns(): Promise<QaRun[]>
+  /** Runs the project's tests on a feature now, whether or not they run by themselves. */
+  runQa(featureId: string): Promise<void>
+  /** A run started, ended or got its recap. */
+  onQaRun(cb: (run: QaRun) => void): () => void
   /** Has Claude read the project, without changing it, and propose its launch commands. */
   suggestCommands(projectId: string): Promise<LaunchSuggestion[]>
   /** Stops the reading under way; its promise rejects. */

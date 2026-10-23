@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { DICTS, langFromLocale, type Lang } from '../../shared/i18n'
 import { arrangeFeatures, neighbour, nextWaiting, SIDEBAR_SORTS, type SidebarSort } from '../../shared/features'
 import { resolveShortcut, shortcutLabel } from '../../shared/shortcuts'
-import type { BackgroundTask, Feature, FeatureStatus, LinearIssue, LinearStatus, Project, StoredEvent, UpdateInfo } from '../../shared/types'
+import type { BackgroundTask, Feature, FeatureStatus, LinearIssue, LinearStatus, Project, QaRun, StoredEvent, UpdateInfo } from '../../shared/types'
 import { ContinueDialog } from './ContinueDialog'
 import { ConfirmHost } from './ConfirmHost'
 import { ContextMenuHost } from './ContextMenuHost'
 import { EditorPane, type EditorPanel } from './EditorPane'
 import { FeatureView } from './FeatureView'
 import { LaunchDialog } from './LaunchDialog'
+import { QaDialog } from './QaDialog'
 import { LangContext } from './i18n'
 import { LinearDialog } from './LinearDialog'
 import { LinearView } from './LinearView'
@@ -39,6 +40,7 @@ type Dialog =
   | { kind: 'update' }
   | { kind: 'settings' }
   | { kind: 'launch'; project: Project }
+  | { kind: 'qa'; project: Project }
   | { kind: 'templates'; project: Project }
   | { kind: 'usage' }
   | { kind: 'continue'; feature: Feature }
@@ -47,6 +49,7 @@ type Dialog =
 export function App() {
   const [projects, setProjects] = useState<Project[]>([])
   const [features, setFeatures] = useState<Feature[]>([])
+  const [qaRuns, setQaRuns] = useState<QaRun[]>([])
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
   /** Each project tab remembers the feature it was showing. */
   const [selected, setSelected] = useState<Record<string, string>>({})
@@ -122,7 +125,11 @@ export function App() {
       setFeatures(s.features)
       setActiveProjectId((cur) => cur ?? s.projects[0]?.id ?? null)
     })
+    void window.api.listQaRuns().then(setQaRuns)
     const offs = [
+      window.api.onQaRun((run) =>
+        setQaRuns((list) => (list.some((x) => x.id === run.id) ? list.map((x) => (x.id === run.id ? run : x)) : [run, ...list]))
+      ),
       window.api.onFeature((f) =>
         setFeatures((list) => (list.some((x) => x.id === f.id) ? list.map((x) => (x.id === f.id ? f : x)) : [f, ...list]))
       ),
@@ -327,6 +334,8 @@ export function App() {
             }}
             onEditProject={() => setDialog({ kind: 'project', project })}
             onEditCommands={() => setDialog({ kind: 'launch', project })}
+            onOpenQa={() => setDialog({ kind: 'qa', project })}
+            qaRuns={qaRuns.filter((r) => r.projectId === project.id)}
             onEditTemplates={() => setDialog({ kind: 'templates', project })}
             onContinue={(f) => setDialog({ kind: 'continue', feature: f })}
             query={query}
@@ -460,6 +469,15 @@ export function App() {
             upsertProject(saved)
             setDialog(null)
           }}
+        />
+      )}
+      {dialog?.kind === 'qa' && (
+        <QaDialog
+          project={dialog.project}
+          features={features}
+          runs={qaRuns.filter((r) => r.projectId === dialog.project.id)}
+          onClose={() => setDialog(null)}
+          onSaved={upsertProject}
         />
       )}
       {dialog?.kind === 'templates' && (
