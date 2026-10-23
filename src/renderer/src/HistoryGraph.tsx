@@ -12,7 +12,7 @@ const MID = ROW_HEIGHT / 2
 const PAGE = 200
 /** Commits land a moment after the result of the turn that made them is recorded, or just before it. */
 const TURN_SLACK_MS = 5000
-const COLORS = ['#9a8f84', '#e08e62', '#4fb7d6', '#a78bfa', '#6cbb7a', '#e0b252']
+const COLORS = ['var(--muted)', 'var(--accent)', 'var(--cyan)', 'var(--purple)', 'var(--green)', 'var(--amber)']
 
 const colorOf = (lane: number) => COLORS[lane % COLORS.length]
 const xOf = (lane: number) => lane * LANE_WIDTH + LANE_WIDTH / 2
