@@ -4,6 +4,7 @@ import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { ConflictDialog } from './ConflictDialog'
 import { PullRequestDialog } from './PullRequestDialog'
+import { Icon } from './ui/Icon'
 
 interface Props {
   feature: Feature
@@ -78,7 +79,7 @@ export function GitActions({ feature, git }: Props) {
         <span className="git-error" title={error} role="alert">
           {error}
           <button className="link" onClick={() => setError(null)} aria-label={t.permission.dismiss}>
-            ×
+            <Icon name="close" size={12} />
           </button>
         </span>
       )}

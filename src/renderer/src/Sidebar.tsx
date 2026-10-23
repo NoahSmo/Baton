@@ -5,6 +5,7 @@ import { openContextMenu } from './contextMenu'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { closeTerminal, inTarget, openTerminal, showTerminal, useTerminals } from './terminalStore'
+import { Icon } from './ui/Icon'
 
 /** Order of the filter chips: what needs the user first. */
 const STATUS_ORDER: FeatureStatus[] = ['waiting', 'working', 'queued', 'done', 'error', 'limited', 'idle']
@@ -178,7 +179,7 @@ export function Sidebar({
           {t.sidebar.features} <span className="num">{features.length}</span>
         </span>
         <button onClick={onNew}>
-          <span className="plus">+</span> {t.sidebar.newFeature}
+          <span className="plus"><Icon name="plus" /></span> {t.sidebar.newFeature}
         </button>
       </div>
 

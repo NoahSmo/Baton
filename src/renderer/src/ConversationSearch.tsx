@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { findOccurrences } from '../../shared/search'
 import { useT } from './i18n'
+import { Icon } from './ui/Icon'
 
 interface Props {
   /** The scrolling transcript whose text is searched. */
@@ -106,13 +107,13 @@ export function ConversationSearch({ scroller, revision, onClose }: Props) {
       />
       <span className="num find-count">{query ? t.search.count(total ? at + 1 : 0, total) : ''}</span>
       <button className="icon" title={t.search.previous} aria-label={t.search.previous} disabled={!total} onClick={() => step(-1)}>
-        ↑
+        <Icon name="arrow-up" />
       </button>
       <button className="icon" title={t.search.next} aria-label={t.search.next} disabled={!total} onClick={() => step(1)}>
-        ↓
+        <Icon name="arrow-down" />
       </button>
       <button className="icon" title={t.search.close} aria-label={t.search.close} onClick={onClose}>
-        ×
+        <Icon name="close" />
       </button>
     </div>
   )

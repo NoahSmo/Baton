@@ -11,6 +11,7 @@ import { editorTheme } from './editorTheme'
 import { HistoryGraph } from './HistoryGraph'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
+import { Icon } from './ui/Icon'
 
 interface Props {
   feature: Feature
@@ -296,7 +297,7 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
             aria-expanded={entry.isDirectory ? open : undefined}
             onClick={() => (entry.isDirectory ? toggleDir(entry.path) : void openFile(entry.path))}
           >
-            <span className="tree-arrow">{entry.isDirectory ? (open ? '▾' : '▸') : ''}</span>
+            <span className="tree-arrow">{entry.isDirectory && <Icon name={open ? 'chevron-down' : 'chevron-right'} size={12} />}</span>
             <span className={`tree-name${entry.isDirectory ? ' dir' : ''} ${changed.get(entry.path) ?? ''}`}>{entry.name}</span>
           </button>
           {open && renderDir(entry.path, depth + 1)}
@@ -411,7 +412,7 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
                     void closeTab(tab.path)
                   }}
                 >
-                  ×
+                  <Icon name="close" size={12} />
                 </button>
               </div>
             ))}

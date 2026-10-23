@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { Project, PromptTemplate } from '../../shared/types'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
+import { Icon } from './ui/Icon'
 
 interface Props {
   project: Project
@@ -63,14 +64,14 @@ export function TemplatesDialog({ project, onClose, onSaved }: Props) {
                 aria-label={t.templates.remove}
                 onClick={() => setRows((list) => list.filter((r) => r.id !== row.id))}
               >
-                ×
+                <Icon name="close" />
               </button>
             </div>
           ))}
         </div>
         <p className="hint">
           <button type="button" className="link" onClick={() => setRows((list) => [...list, blank()])}>
-            <span className="plus">+</span> {t.templates.add}
+            <span className="plus"><Icon name="plus" /></span> {t.templates.add}
           </button>
         </p>
         {error && <p className="form-error">{error}</p>}

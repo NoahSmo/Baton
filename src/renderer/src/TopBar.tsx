@@ -1,6 +1,7 @@
 import type { Feature, MenuAction, Project } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
 import { useT } from './i18n'
+import { Icon } from './ui/Icon'
 
 interface Props {
   projects: Project[]
@@ -65,7 +66,7 @@ export function TopBar({
           )
         })}
         <button className="tab-add" onClick={onNew} title={t.topbar.newProject}>
-          +
+          <Icon name="plus" />
         </button>
       </nav>
       <button className="topbar-settings" title={t.update.settingsOpen} aria-label={t.update.settingsOpen} onClick={onOpenSettings}>
