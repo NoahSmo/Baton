@@ -1,8 +1,8 @@
 import type { Feature, FeatureStatus } from './types'
 
-export type SidebarSort = 'status' | 'activity' | 'created'
+export type SidebarSort = 'status' | 'activity' | 'created' | 'cost' | 'name'
 
-export const SIDEBAR_SORTS: SidebarSort[] = ['status', 'activity', 'created']
+export const SIDEBAR_SORTS: SidebarSort[] = ['status', 'activity', 'created', 'cost', 'name']
 
 /** What needs the user comes first. */
 const STATUS_RANK: Record<FeatureStatus, number> = {
@@ -41,6 +41,8 @@ function compare(sort: SidebarSort): (a: Feature, b: Feature) => number {
     if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
     if (sort === 'status' && STATUS_RANK[a.status] !== STATUS_RANK[b.status]) return STATUS_RANK[a.status] - STATUS_RANK[b.status]
     if (sort === 'activity' || sort === 'status') return b.updatedAt - a.updatedAt
+    if (sort === 'cost') return b.costUsd - a.costUsd || b.updatedAt - a.updatedAt
+    if (sort === 'name') return a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true })
     return b.createdAt - a.createdAt
   }
 }
