@@ -69,6 +69,13 @@ describe('arrangeFeatures', () => {
     expect(arrangeFeatures([a, b], { ...view, sort: 'activity' }).shown).toEqual([a, b])
   })
 
+  it('sorts by cost, dearest first, and by name', () => {
+    const a = feature({ title: 'Beta', costUsd: 1 })
+    const b = feature({ title: 'alpha', costUsd: 5 })
+    expect(arrangeFeatures([a, b], { ...view, sort: 'cost' }).shown).toEqual([b, a])
+    expect(arrangeFeatures([a, b], { ...view, sort: 'name' }).shown).toEqual([b, a])
+  })
+
   it('sets archived agents apart and applies the filters to both lists', () => {
     const shown = feature({ title: 'Login', status: 'done' })
     const archived = feature({ title: 'Login page', archived: true, status: 'done' })

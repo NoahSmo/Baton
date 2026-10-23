@@ -335,7 +335,6 @@ export function App() {
             onStatuses={setStatusFilter}
             sort={sort}
             onSort={setSort}
-            terminalOpen={terminalOpen}
             onShowTerminal={() => setTerminalOpen(true)}
             linearConnected={linear.connected}
           />
@@ -351,16 +350,10 @@ export function App() {
                   background={background[feature.id] ?? NO_TASKS}
                   git={git}
                   editorOpen={Boolean(editors[feature.id])}
-                  terminalOpen={terminalOpen}
                   onToggleEditor={() => toggleEditor(feature.id)}
-                  onToggleTerminal={() => setTerminalOpen((open) => !open)}
                   onShowChanges={() => {
                     setEditors((all) => ({ ...all, [feature.id]: true }))
                     setEditorPanel('changes')
-                  }}
-                  onShowHistory={() => {
-                    setEditors((all) => ({ ...all, [feature.id]: true }))
-                    setEditorPanel('history')
                   }}
                   linearConnected={linear.connected}
                   linking={linkingId === feature.id}

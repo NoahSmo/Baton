@@ -4,7 +4,7 @@ import type { Feature, FeatureStatus, Project, TerminalTarget } from '../../shar
 import { openContextMenu } from './contextMenu'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
-import { closeTerminal, inTarget, openTerminal, showTerminal, useShownTerminal, useTerminals } from './terminalStore'
+import { closeTerminal, inTarget, openTerminal, showTerminal, useTerminals } from './terminalStore'
 
 /** Order of the filter chips: what needs the user first. */
 const STATUS_ORDER: FeatureStatus[] = ['waiting', 'working', 'queued', 'done', 'error', 'limited', 'idle']
@@ -33,8 +33,7 @@ interface Props {
   onStatuses(statuses: FeatureStatus[]): void
   sort: SidebarSort
   onSort(sort: SidebarSort): void
-  /** Whether the terminal panel is on screen. */
-  terminalOpen: boolean
+  /** Brings the terminal panel up. */
   onShowTerminal(): void
   linearConnected: boolean
 }
@@ -56,7 +55,6 @@ export function Sidebar({
   onStatuses,
   sort,
   onSort,
-  terminalOpen,
   onShowTerminal,
   linearConnected
 }: Props) {
@@ -64,7 +62,6 @@ export function Sidebar({
   // Terminals belong to the feature on screen, as in the panel; without one they are the project's.
   const target: TerminalTarget = selectedId ? { featureId: selectedId } : { projectId: project.id }
   const terminals = useTerminals().filter((tab) => inTarget(tab.info, target))
-  const shownTerminal = useShownTerminal(target)
   const [terminalError, setTerminalError] = useState<string | null>(null)
 
   /** The terminal a launch command was started in, while it stays open. */
@@ -131,7 +128,7 @@ export function Sidebar({
         onContextMenu={(e) => void openMenu(e, f)}
       >
         <span className="feature-row-top">
-          <span className={`dot ${f.status}`} />
+          <span className={`dot ${f.status}`} title={t.status[f.status]} />
           {renamingId === f.id ? (
             <input
               className="feature-row-rename"
@@ -154,10 +151,9 @@ export function Sidebar({
               ★
             </span>
           )}
-          <span className="feature-row-status">
-            {t.status[f.status]}
-            {f.status === 'queued' && f.queuePosition ? ` · ${t.sidebar.queueRank(f.queuePosition)}` : ''}
-          </span>
+          {f.status === 'queued' && f.queuePosition ? (
+            <span className="feature-row-status">{t.sidebar.queueRank(f.queuePosition)}</span>
+          ) : null}
         </span>
         <span className="feature-row-sub">
           {f.linear && <span className="feature-row-issue">{f.linear.identifier}</span>}
@@ -311,74 +307,20 @@ export function Sidebar({
             </button>
           </p>
         )}
-      </div>
-
-      <div className="sidebar-section">
-        <div className="sidebar-section-head">
-          <span className="sidebar-title">
-            {t.sidebar.prompts}
-            {project.templates.length > 0 && <span className="num">{project.templates.length}</span>}
-          </span>
-          <button className="icon" onClick={onEditTemplates} title={t.sidebar.promptsSettings}>
-            ⚙
-          </button>
-        </div>
-      </div>
-
-      <div className="sidebar-section">
-        <div className="sidebar-section-head">
-          <span className="sidebar-title">
-            {t.sidebar.terminals} <span className="num">{terminals.length}</span>
-          </span>
-          <button className="icon" onClick={() => void startTerminal()} title={t.sidebar.newTerminal}>
-            <span className="plus">+</span>
-          </button>
-        </div>
-        {terminals.length > 0 && (
-          <div className="terminal-rows">
-            {terminals.map((tab) => (
-              <div
-                key={tab.info.id}
-                role="button"
-                tabIndex={0}
-                className={`terminal-row${terminalOpen && tab === shownTerminal ? ' selected' : ''}`}
-                title={tab.info.cwd}
-                onClick={() => {
-                  showTerminal(tab)
-                  onShowTerminal()
-                }}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter' || e.target !== e.currentTarget) return
-                  showTerminal(tab)
-                  onShowTerminal()
-                }}
-              >
-                <span className="terminal-row-glyph">{tab.info.command ? '▶' : '%_'}</span>
-                <span className="terminal-row-name">{tab.label}</span>
-                <button
-                  className="terminal-tab-close"
-                  title={t.terminal.close}
-                  aria-label={t.terminal.close}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    closeTerminal(tab.info.id)
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
         {terminalError && <p className="sidebar-note error">{terminalError}</p>}
       </div>
 
       <div className="sidebar-project">
         <div className="sidebar-project-head">
           <span className="sidebar-title">{t.sidebar.project}</span>
-          <button className="icon" onClick={onEditProject} title={t.sidebar.projectSettings}>
-            ⚙
-          </button>
+          <span className="sidebar-section-actions">
+            <button className="icon" onClick={onEditTemplates} title={t.sidebar.promptsSettings}>
+              ✎
+            </button>
+            <button className="icon" onClick={onEditProject} title={t.sidebar.projectSettings}>
+              ⚙
+            </button>
+          </span>
         </div>
         <p className="sidebar-path" title={project.path}>
           {project.path.replace(/^\/Users\/[^/]+/, '~')}

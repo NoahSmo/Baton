@@ -36,13 +36,9 @@ interface Props {
   /** Null until the worktree's status has been read. */
   git: GitStatus | null
   editorOpen: boolean
-  terminalOpen: boolean
   onToggleEditor(): void
-  onToggleTerminal(): void
   /** Opens the editor on the list of changed files. */
   onShowChanges(): void
-  /** Opens the editor on the commit graph. */
-  onShowHistory(): void
   linearConnected: boolean
   /** The dialog linking this agent to an issue is open. */
   linking: boolean
@@ -59,11 +55,8 @@ export function FeatureView({
   background,
   git,
   editorOpen,
-  terminalOpen,
   onToggleEditor,
-  onToggleTerminal,
   onShowChanges,
-  onShowHistory,
   linearConnected,
   linking,
   onLinking,
@@ -219,7 +212,6 @@ export function FeatureView({
           </p>
         </div>
         <div className="feature-actions">
-          {busy && <button onClick={stop}>{t.feature.stop}</button>}
           <button
             className={editorOpen ? 'toggled' : ''}
             aria-pressed={editorOpen}
@@ -228,21 +220,6 @@ export function FeatureView({
             onClick={onToggleEditor}
           >
             {'</>'}
-          </button>
-          <button title={t.git.history} aria-label={t.git.history} onClick={onShowHistory}>
-            ⑂
-          </button>
-          <button
-            className={terminalOpen ? 'toggled' : ''}
-            aria-pressed={terminalOpen}
-            title={t.feature.toggleTerminalHint}
-            onClick={onToggleTerminal}
-          >
-            {t.feature.terminal}
-          </button>
-          <button onClick={() => void window.api.reveal(feature.id)}>{t.feature.openFolder}</button>
-          <button className="danger" onClick={() => void window.api.removeFeature(feature.id)}>
-            {t.common.delete}
           </button>
         </div>
       </header>
