@@ -19,6 +19,7 @@ export function QaDialog({ project, features, runs, onClose, onSaved }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const known = new Set(features.map((f) => f.id))
+  const [sent, setSent] = useState<Set<string>>(new Set())
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -31,6 +32,16 @@ export function QaDialog({ project, features, runs, onClose, onSaved }: Props) {
     } catch (err) {
       setError(cleanError(err))
       setBusy(false)
+    }
+  }
+
+  async function sendBack(run: QaRun) {
+    setError('')
+    try {
+      await window.api.send(run.featureId, t.qa.agentPrompt(run.command, run.recap, run.output))
+      setSent((ids) => new Set(ids).add(run.id))
+    } catch (err) {
+      setError(cleanError(err))
     }
   }
 
@@ -81,6 +92,11 @@ export function QaDialog({ project, features, runs, onClose, onSaved }: Props) {
               <pre className="qa-output" aria-label={t.qa.output}>
                 {run.output || '—'}
               </pre>
+              {known.has(run.featureId) && run.status === 'failed' && (
+                <button type="button" className="link" disabled={sent.has(run.id)} onClick={() => void sendBack(run)}>
+                  {sent.has(run.id) ? t.qa.sent : t.qa.sendToAgent}
+                </button>
+              )}
               {known.has(run.featureId) && run.status !== 'running' && (
                 <button type="button" className="link" onClick={() => void runAgain(run.featureId)}>
                   {t.qa.run}

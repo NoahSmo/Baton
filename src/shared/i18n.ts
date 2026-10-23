@@ -120,7 +120,11 @@ const en = {
     recapPending: 'Claude is writing the recap…',
     output: 'Output',
     exit: (code: number | null) => (code === null ? 'stopped' : `exit ${code}`),
-    needCommand: 'Set a test command first.'
+    needCommand: 'Set a test command first.',
+    sendToAgent: 'Send the failure to the agent',
+    sent: 'Sent to the agent',
+    agentPrompt: (command: string, recap: string, output: string) =>
+      `The automatic tests failed (\`${command}\`). Fix the code so they pass, then run them again.\n\n${recap ? `Recap:\n${recap}\n\n` : ''}Output:\n${output}`
   },
 
   statusbar: {
@@ -724,7 +728,11 @@ const fr: Dict = {
     recapPending: 'Claude rédige le résumé…',
     output: 'Sortie',
     exit: (code: number | null) => (code === null ? 'arrêté' : `code ${code}`),
-    needCommand: "Renseigne d'abord une commande de test."
+    needCommand: "Renseigne d'abord une commande de test.",
+    sendToAgent: "Renvoyer l'échec à l'agent",
+    sent: "Envoyé à l'agent",
+    agentPrompt: (command: string, recap: string, output: string) =>
+      `Les tests automatiques ont échoué (\`${command}\`). Corrige le code pour qu'ils passent, puis relance-les.\n\n${recap ? `Résumé :\n${recap}\n\n` : ''}Sortie :\n${output}`
   },
 
   statusbar: {
