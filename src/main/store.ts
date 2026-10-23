@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite'
-import { AGENT_MODELS, DEFAULT_AGENT_MODEL, PROJECT_COLORS, type AgentModel, type Feature, type LaunchCommand, type Project, type PromptTemplate, type StoredEvent, type TurnCost, type UiEvent } from '../shared/types'
+import { AGENT_MODELS, DEFAULT_AGENT_MODEL, DEFAULT_QA, PROJECT_COLORS, type AgentModel, type Feature, type LaunchCommand, type Project, type QaConfig, type QaRun, type PromptTemplate, type StoredEvent, type TurnCost, type UiEvent } from '../shared/types'
 
 type Row = Record<string, unknown>
 
@@ -12,7 +12,24 @@ function toProject(r: Row): Project {
     linearLabel: r.linear_label_id ? { id: r.linear_label_id as string, name: r.linear_label_name as string } : null,
     commands: r.commands ? (JSON.parse(r.commands as string) as LaunchCommand[]) : [],
     templates: r.templates ? (JSON.parse(r.templates as string) as PromptTemplate[]) : [],
-    worktrees: r.worktrees !== 0
+    worktrees: r.worktrees !== 0,
+    qa: r.qa ? (JSON.parse(r.qa as string) as QaConfig) : DEFAULT_QA
+  }
+}
+
+function toQaRun(r: Row): QaRun {
+  return {
+    id: r.id as string,
+    featureId: r.feature_id as string,
+    projectId: r.project_id as string,
+    featureTitle: r.feature_title as string,
+    command: r.command as string,
+    status: r.status as QaRun['status'],
+    exitCode: (r.exit_code as number | null) ?? null,
+    output: r.output as string,
+    recap: r.recap as string,
+    startedAt: r.started_at as number,
+    endedAt: (r.ended_at as number | null) ?? null
   }
 }
 
@@ -82,6 +99,19 @@ export class Store {
         payload TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS events_feature ON events(feature_id, seq);
+      CREATE TABLE IF NOT EXISTS qa_runs (
+        id TEXT PRIMARY KEY,
+        feature_id TEXT NOT NULL,
+        project_id TEXT NOT NULL,
+        feature_title TEXT NOT NULL,
+        command TEXT NOT NULL,
+        status TEXT NOT NULL,
+        exit_code INTEGER,
+        output TEXT NOT NULL DEFAULT '',
+        recap TEXT NOT NULL DEFAULT '',
+        started_at INTEGER NOT NULL,
+        ended_at INTEGER
+      );
     `)
     this.addColumns('features', [
       'linear_issue_id TEXT',
@@ -94,7 +124,7 @@ export class Store {
       'pr_url TEXT',
       'turn_base TEXT'
     ])
-    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'commands TEXT', 'templates TEXT', 'worktrees INTEGER'])
+    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'commands TEXT', 'templates TEXT', 'worktrees INTEGER', 'qa TEXT'])
   }
 
   /** Columns added after the first release; databases created before them are upgraded in place. */
@@ -127,11 +157,12 @@ export class Store {
 
   updateProject(p: Project): void {
     this.db
-      .prepare('UPDATE projects SET name = ?, color = ?, linear_label_id = ?, linear_label_name = ?, commands = ?, templates = ?, worktrees = ? WHERE id = ?')
-      .run(p.name, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null, JSON.stringify(p.commands), JSON.stringify(p.templates), p.worktrees ? 1 : 0, p.id)
+      .prepare('UPDATE projects SET name = ?, color = ?, linear_label_id = ?, linear_label_name = ?, commands = ?, templates = ?, worktrees = ?, qa = ? WHERE id = ?')
+      .run(p.name, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null, JSON.stringify(p.commands), JSON.stringify(p.templates), p.worktrees ? 1 : 0, JSON.stringify(p.qa), p.id)
   }
 
   deleteProject(id: string): void {
+    this.db.prepare('DELETE FROM qa_runs WHERE project_id = ?').run(id)
     this.db.prepare('DELETE FROM projects WHERE id = ?').run(id)
   }
 
@@ -247,5 +278,33 @@ export class Store {
       at: r.at as number,
       event: JSON.parse(r.payload as string) as UiEvent
     }))
+  }
+
+  listQaRuns(): QaRun[] {
+    return (this.db.prepare('SELECT * FROM qa_runs ORDER BY started_at DESC').all() as Row[]).map(toQaRun)
+  }
+
+  getQaRun(id: string): QaRun | undefined {
+    const row = this.db.prepare('SELECT * FROM qa_runs WHERE id = ?').get(id) as Row | undefined
+    return row && toQaRun(row)
+  }
+
+  saveQaRun(r: QaRun): void {
+    this.db
+      .prepare(
+        `INSERT OR REPLACE INTO qa_runs (id, feature_id, project_id, feature_title, command, status, exit_code, output, recap, started_at, ended_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(r.id, r.featureId, r.projectId, r.featureTitle, r.command, r.status, r.exitCode, r.output, r.recap, r.startedAt, r.endedAt)
+  }
+
+  /** Keeps the newest runs of a project; a monitor left on for weeks would pile them up. */
+  pruneQaRuns(projectId: string, keep: number): void {
+    this.db
+      .prepare(
+        `DELETE FROM qa_runs WHERE project_id = ? AND id NOT IN
+           (SELECT id FROM qa_runs WHERE project_id = ? ORDER BY started_at DESC LIMIT ?)`
+      )
+      .run(projectId, projectId, keep)
   }
 }

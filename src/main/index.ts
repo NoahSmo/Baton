@@ -19,6 +19,7 @@ import {
   type Feature,
   type HandoffDraft,
   type LaunchCommand,
+  type QaConfig,
   type LinearIssue,
   type LinearStatus,
   type ConfirmRequest,
@@ -49,6 +50,7 @@ import { draftPullRequest, pullRequestSupport } from './pullRequest'
 import { LinearClient } from './linear'
 import { Manager } from './manager'
 import { draftCommitMessage } from './commitMessage'
+import { QaMonitor } from './qaMonitor'
 import { suggestCommands } from './suggest'
 import { contextMenuTemplate, defaultMenuTemplate, type MenuEntry } from './menus'
 import { SecretFile } from './secrets'
@@ -157,6 +159,8 @@ const linear = new LinearClient(() => linearKey.get(), t)
 
 let win: BrowserWindow | null = null
 let manager: Manager
+let store: Store
+let qaMonitor: QaMonitor
 const attention = new Set<string>()
 
 function send(channel: string, ...args: unknown[]): void {
@@ -466,6 +470,10 @@ function registerIpc(): void {
   })
   ipcMain.on('project:cancelSuggestCommands', (_e, id: string) => suggesting.get(id)?.abort())
 
+  ipcMain.handle('project:setQa', (_e, id: string, qa: QaConfig) => manager.setProjectQa(id, qa))
+  ipcMain.handle('qa:list', () => store.listQaRuns())
+  ipcMain.handle('qa:run', (_e, featureId: string) => qaMonitor.runNow(featureId))
+
   ipcMain.handle('project:setTemplates', (_e, id: string, templates: PromptTemplate[]) =>
     manager.setProjectTemplates(id, templates)
   )
@@ -740,14 +748,19 @@ void app.whenReady().then(() => {
   applyTheme(themeById(readSettings().theme))
   maxRunning = loadMaxRunning()
   notificationPrefs = normalizePrefs(readSettings().notifications)
-  manager = new Manager(new Store(join(dataDir, 'state.db')), join(dataDir, 'worktrees'), join(dataDir, 'attachments'), join(dataDir, 'trash'), linear, t, () => maxRunning, {
+  store = new Store(join(dataDir, 'state.db'))
+  qaMonitor = new QaMonitor(store, () => lang, (run) => send('qa:run', run))
+  manager = new Manager(store, join(dataDir, 'worktrees'), join(dataDir, 'attachments'), join(dataDir, 'trash'), linear, t, () => maxRunning, {
     event: (ev) => send('event', ev),
     feature: (f) => send('feature', f),
     featureRemoved: (id) => send('feature:removed', id),
     projectRemoved: (id) => send('project:removed', id),
     stream: (id, text) => send('stream', id, text),
     backgroundTasks: (id, tasks) => send('background', id, tasks),
-    attention: notify,
+    attention: (f) => {
+      notify(f)
+      if (f.status === 'done') void qaMonitor.featureDone(f)
+    },
     usageWarning: warnUsage,
     usageWindows: setUsageWindows
   })
@@ -771,5 +784,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   manager?.shutdown()
+  qaMonitor?.shutdown()
   releaseWindowResources()
 })

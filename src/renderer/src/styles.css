@@ -3180,3 +3180,80 @@ kbd {
   font-family: var(--mono, ui-monospace, monospace);
   font-size: 12px;
 }
+
+.dot.qa-running {
+  background: var(--blue);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.dot.qa-passed {
+  background: var(--green);
+}
+
+.dot.qa-failed {
+  background: var(--red);
+}
+
+.dot.qa-error {
+  background: var(--amber);
+}
+
+.qa-dialog {
+  max-width: 680px;
+}
+
+.qa-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 8px;
+}
+
+.qa-reports-title {
+  margin: 18px 0 6px;
+  font-size: 13px;
+}
+
+.qa-runs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.qa-run summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.qa-run-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qa-run-state,
+.qa-run-meta {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.qa-recap {
+  margin: 8px 0 6px 16px;
+  white-space: pre-wrap;
+}
+
+.qa-output {
+  margin: 0 0 6px 16px;
+  padding: 8px;
+  max-height: 180px;
+  overflow: auto;
+  font-size: 11px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.18);
+}

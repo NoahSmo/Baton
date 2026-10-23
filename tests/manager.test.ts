@@ -33,7 +33,7 @@ const HOUR = 60 * 60 * 1000
 function setup(maxRunning = 1) {
   const dir = mkdtempSync(join(tmpdir(), 'baton-manager-'))
   const store = new Store(':memory:')
-  store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearLabel: null, commands: [], templates: [], worktrees: true })
+  store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearLabel: null, commands: [], templates: [], worktrees: true, qa: { enabled: false, command: '' } })
   const warnings: (UsageWarning | null)[] = []
   const sink: ManagerSink = {
     event: () => {},

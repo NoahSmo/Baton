@@ -74,7 +74,12 @@ const en = {
     archived: (n: number) => `Archived · ${n}`,
     queueRank: (n: number) => `#${n} in line`,
     prompts: 'Prompts',
-    promptsSettings: 'Edit the prompts'
+    promptsSettings: 'Edit the prompts',
+    qa: 'Tests',
+    qaOpen: 'Open the test reports',
+    qaOff: 'No automatic tests.',
+    qaCounts: (passed: number, failed: number, running: number) =>
+      [running && `${running} running`, failed && `${failed} failed`, passed && `${passed} passed`].filter(Boolean).join(' · ') || 'no run yet'
   },
 
   launch: {
@@ -97,6 +102,25 @@ const en = {
     proposalEmpty: 'Claude found no command to propose.',
     ignore: 'Ignore',
     replace: 'Replace the commands'
+  },
+
+  qa: {
+    title: 'Automatic tests',
+    hint: 'When an agent of this project is done, its tests run in its worktree and Claude sums the result up here.',
+    enabled: 'Run the tests when an agent is done',
+    command: 'Test command',
+    commandPlaceholder: 'npm test',
+    reports: 'Reports',
+    none: 'No test run yet.',
+    run: 'Run now',
+    running: 'running…',
+    passed: 'passed',
+    failed: 'failed',
+    error: 'not completed',
+    recapPending: 'Claude is writing the recap…',
+    output: 'Output',
+    exit: (code: number | null) => (code === null ? 'stopped' : `exit ${code}`),
+    needCommand: 'Set a test command first.'
   },
 
   statusbar: {
@@ -654,7 +678,12 @@ const fr: Dict = {
     archived: (n) => `Archivés · ${n}`,
     queueRank: (n) => `n° ${n} dans la file`,
     prompts: 'Prompts',
-    promptsSettings: 'Modifier les prompts'
+    promptsSettings: 'Modifier les prompts',
+    qa: 'Tests',
+    qaOpen: 'Ouvrir les rapports de tests',
+    qaOff: 'Pas de tests automatiques.',
+    qaCounts: (passed: number, failed: number, running: number) =>
+      [running && `${running} en cours`, failed && `${failed} en échec`, passed && `${passed} réussis`].filter(Boolean).join(' · ') || 'aucun lancement'
   },
 
   launch: {
@@ -677,6 +706,25 @@ const fr: Dict = {
     proposalEmpty: "Claude n'a trouvé aucune commande à proposer.",
     ignore: 'Ignorer',
     replace: 'Remplacer les commandes'
+  },
+
+  qa: {
+    title: 'Tests automatiques',
+    hint: 'Quand un agent de ce projet a fini, ses tests tournent dans son worktree et Claude en résume le résultat ici.',
+    enabled: 'Lancer les tests quand un agent a fini',
+    command: 'Commande de test',
+    commandPlaceholder: 'npm test',
+    reports: 'Rapports',
+    none: 'Aucun test lancé.',
+    run: 'Lancer maintenant',
+    running: 'en cours…',
+    passed: 'réussis',
+    failed: 'en échec',
+    error: 'non terminé',
+    recapPending: 'Claude rédige le résumé…',
+    output: 'Sortie',
+    exit: (code: number | null) => (code === null ? 'arrêté' : `code ${code}`),
+    needCommand: "Renseigne d'abord une commande de test."
   },
 
   statusbar: {

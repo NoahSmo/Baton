@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { arrangeFeatures, SIDEBAR_SORTS, type SidebarSort } from '../../shared/features'
-import type { Feature, FeatureStatus, Project, TerminalTarget } from '../../shared/types'
+import type { Feature, FeatureStatus, Project, QaRun, TerminalTarget } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
@@ -24,6 +24,9 @@ interface Props {
   onLink(feature: Feature): void
   onEditProject(): void
   onEditCommands(): void
+  /** Opens the tests' settings and reports. */
+  onOpenQa(): void
+  qaRuns: QaRun[]
   onEditTemplates(): void
   /** Opens the dialog starting a new agent from this one's work. */
   onContinue(feature: Feature): void
@@ -48,6 +51,8 @@ export function Sidebar({
   onLink,
   onEditProject,
   onEditCommands,
+  onOpenQa,
+  qaRuns,
   onEditTemplates,
   onContinue,
   query,
@@ -69,6 +74,8 @@ export function Sidebar({
 
   /** The terminal a launch command was started in, while it stays open. */
   const running = (commandId: string) => terminals.find((tab) => tab.info.commandId === commandId)
+  // Runs come newest first: the first of a feature is the one that counts.
+  const latestQa = qaRuns.filter((r, i) => qaRuns.findIndex((x) => x.featureId === r.featureId) === i)
   const idle = project.commands.filter((c) => !running(c.id))
 
   /** Opens a shell, or one terminal per launch command given. */
@@ -311,6 +318,23 @@ export function Sidebar({
             </button>
           </p>
         )}
+      </div>
+
+      <div className="sidebar-section">
+        <div className="sidebar-section-head">
+          <span className="sidebar-title">{t.sidebar.qa}</span>
+          <div className="sidebar-section-actions">
+            <button className="icon" onClick={onOpenQa} title={t.sidebar.qaOpen}>
+              ⚙
+            </button>
+          </div>
+        </div>
+        <p className="sidebar-note">
+          {project.qa.enabled ? t.sidebar.qaCounts(latestQa.filter((r) => r.status === 'passed').length, latestQa.filter((r) => r.status === 'failed' || r.status === 'error').length, latestQa.filter((r) => r.status === 'running').length) : t.sidebar.qaOff}{' '}
+          <button className="link" onClick={onOpenQa}>
+            {t.sidebar.qaOpen}
+          </button>
+        </p>
       </div>
 
       <div className="sidebar-section">

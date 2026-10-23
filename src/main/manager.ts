@@ -6,7 +6,9 @@ import type { Dict } from '../shared/i18n'
 import { needsAttention, nextStatus, slugify } from '../shared/status'
 import {
   DEFAULT_AGENT_MODEL,
+  DEFAULT_QA,
   type AgentModel,
+  type QaConfig,
   type AppState,
   type CreateFeatureInput,
   type Feature,
@@ -191,7 +193,8 @@ export class Manager {
       linearLabel: input.linearLabel,
       commands: [],
       templates: [],
-      worktrees: isGit && input.worktrees
+      worktrees: isGit && input.worktrees,
+      qa: DEFAULT_QA
     }
     this.store.insertProject(project)
     return project
@@ -220,6 +223,16 @@ export class Manager {
         .map((c) => ({ id: c.id || randomUUID(), name: c.name.trim(), command: c.command.trim() }))
         .filter((c) => c.command)
     }
+    this.store.updateProject(updated)
+    return updated
+  }
+
+  setProjectQa(projectId: string, qa: QaConfig): Project {
+    const project = this.store.getProject(projectId)
+    if (!project) throw new Error(this.t().errors.unknownProject)
+    const command = qa.command.trim()
+    // Tests with nothing to run cannot be on.
+    const updated: Project = { ...project, qa: { enabled: qa.enabled && Boolean(command), command } }
     this.store.updateProject(updated)
     return updated
   }
