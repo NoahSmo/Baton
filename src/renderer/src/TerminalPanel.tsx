@@ -13,6 +13,7 @@ import {
   useShownTerminal,
   useTerminals
 } from './terminalStore'
+import { Icon } from './ui/Icon'
 
 interface Props {
   project: Project
@@ -85,7 +86,7 @@ export function TerminalPanel({ project, feature, height, onHide }: Props) {
                   closeTerminal(tab.info.id)
                 }}
               >
-                ×
+                <Icon name="close" size={12} />
               </button>
             </div>
           ))}
@@ -95,10 +96,10 @@ export function TerminalPanel({ project, feature, height, onHide }: Props) {
           title={feature ? t.terminal.newInWorktree : t.terminal.newInProject(project.name)}
           onClick={open}
         >
-          <span className="plus">+</span> {feature ? t.terminal.worktree : project.name}
+          <span className="plus"><Icon name="plus" /></span> {feature ? t.terminal.worktree : project.name}
         </button>
         <button className="terminal-action" title={t.terminal.hide} aria-label={t.terminal.hide} onClick={onHide}>
-          ▾
+          <Icon name="chevron-down" />
         </button>
       </header>
       {error && <p className="terminal-error">{error}</p>}

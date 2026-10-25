@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { LaunchCommand, LaunchSuggestion, Project } from '../../shared/types'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
+import { Icon } from './ui/Icon'
 
 interface Props {
   project: Project
@@ -135,14 +136,14 @@ export function LaunchDialog({ project, onClose, onSaved }: Props) {
                 aria-label={t.launch.remove}
                 onClick={() => setRows((list) => list.filter((r) => r.id !== row.id))}
               >
-                ×
+                <Icon name="close" />
               </button>
             </div>
           ))}
         </div>
         <p className="hint">
           <button type="button" className="link" onClick={() => setRows((list) => [...list, blank()])}>
-            <span className="plus">+</span> {t.launch.add}
+            <span className="plus"><Icon name="plus" /></span> {t.launch.add}
           </button>
         </p>
 

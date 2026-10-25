@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FileRef, ImageRef } from '../../shared/types'
 import { useT } from './i18n'
 import type { Draft } from './useAttachments'
+import { Icon } from './ui/Icon'
 
 /** Button opening the file picker. */
 export function AttachButton({ onPick }: { onPick(files: File[]): void }) {
@@ -66,7 +67,7 @@ export function DraftAttachments({
                 <span className="attachment-name">{draft.name}</span>
               )}
               <button type="button" aria-label={t.feature.removeAttachment} onClick={() => onRemove(draft.id)}>
-                ×
+                <Icon name="close" />
               </button>
             </div>
           ))}

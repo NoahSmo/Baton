@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Feature, GitBranch, GitStatus } from '../../shared/types'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
+import { Icon } from './ui/Icon'
 
 const MARGIN = 6
 
@@ -92,7 +93,7 @@ export function BranchPicker({ feature, git }: Props) {
         onClick={toggle}
       >
         <code>{detached ? t.git.detached(git.head) : feature.branch}</code>
-        <span className="branch-caret">▾</span>
+        <span className="branch-caret"><Icon name="chevron-down" size={12} /></span>
       </button>
       {open && (
         <div
@@ -125,7 +126,7 @@ export function BranchPicker({ feature, git }: Props) {
                 disabled={b.current || Boolean(b.heldBy) || busy || switching}
                 onClick={() => void pick(b)}
               >
-                <span className="branch-check">{b.current ? '✓' : ''}</span>
+                <span className="branch-check">{b.current && <Icon name="check" size={12} />}</span>
                 <span className="branch-name">{b.name}</span>
                 {b.remote && <span className="branch-tag">{t.git.remote}</span>}
                 {b.heldBy && <span className="branch-tag">{t.git.heldBy(b.heldBy)}</span>}
