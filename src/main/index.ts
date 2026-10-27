@@ -101,6 +101,7 @@ const settingsFile = join(dataDir, 'settings.json')
 let lang: Lang = 'en'
 const t = () => DICTS[lang]
 let maxRunning = DEFAULT_MAX_RUNNING
+let autoContinue = false
 let theme: Theme = DEFAULT_THEME
 let notificationPrefs: NotificationPrefs = normalizePrefs(undefined)
 /** Agent on screen, as the renderer last said. */
@@ -136,6 +137,21 @@ function applyTheme(next: Theme): void {
 function loadMaxRunning(): number {
   const stored = readSettings().maxRunningAgents
   return typeof stored === 'number' && Number.isInteger(stored) && stored >= 0 ? stored : DEFAULT_MAX_RUNNING
+}
+
+/** Agents the usage limit stopped each get a thread that sums up their work and carries on. */
+async function continueLimited(stopped: Feature[]): Promise<void> {
+  if (!autoContinue) return
+  for (const f of stopped) {
+    // Nothing was said to the agent yet: there is nothing to sum up.
+    if (!f.sessionId) continue
+    try {
+      const draft = await draftHandoff(f.worktreePath, t().handoff.title(f.title), manager.getEvents(f.id), new AbortController())
+      if (draft.summary) await manager.continueFeature(f.id, draft)
+    } catch (err) {
+      console.error(`auto-continue of ${f.title} failed`, err)
+    }
+  }
 }
 
 let usageWarning: UsageWarning | null = null
@@ -535,6 +551,11 @@ function registerIpc(): void {
     applyTheme(next)
     writeSettings({ theme: id })
   })
+  ipcMain.handle('settings:autoContinue', () => autoContinue)
+  ipcMain.handle('settings:setAutoContinue', (_e, enabled: boolean) => {
+    autoContinue = enabled === true
+    writeSettings({ autoContinue })
+  })
   ipcMain.handle('settings:maxRunning', () => maxRunning)
   ipcMain.handle('settings:setMaxRunning', (_e, max: number) => {
     if (!Number.isInteger(max) || max < 0) return
@@ -747,6 +768,7 @@ void app.whenReady().then(() => {
   lang = loadLanguage()
   applyTheme(themeById(readSettings().theme))
   maxRunning = loadMaxRunning()
+  autoContinue = readSettings().autoContinue === true
   notificationPrefs = normalizePrefs(readSettings().notifications)
   store = new Store(join(dataDir, 'state.db'))
   qaMonitor = new QaMonitor(store, () => lang, (run) => send('qa:run', run))
@@ -762,7 +784,8 @@ void app.whenReady().then(() => {
       if (f.status === 'done') void qaMonitor.featureDone(f)
     },
     usageWarning: warnUsage,
-    usageWindows: setUsageWindows
+    usageWindows: setUsageWindows,
+    limitLifted: (stopped) => void continueLimited(stopped)
   })
   // In development the Dock shows the icon of the Electron bundle, not the app's.
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))

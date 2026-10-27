@@ -24,6 +24,7 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
   const t = useT()
   const lang = useLang()
   const [maxRunning, setMaxRunning] = useState<number | null>(null)
+  const [autoContinue, setAutoContinue] = useState<boolean | null>(null)
   const [themeId, setThemeId] = useState(() => cachedTheme().id)
   const [checking, setChecking] = useState(false)
   const [result, setResult] = useState<'upToDate' | null>(null)
@@ -35,9 +36,15 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
     void window.api.getNotificationPrefs().then(setPrefs)
     void window.api.trashList().then(setTrash)
     void window.api.getMaxRunning().then(setMaxRunning)
+    void window.api.getAutoContinue().then(setAutoContinue)
     // The stored choice wins over the cached one, which may come from another data folder.
     void window.api.getTheme().then(setThemeId)
   }, [])
+
+  function changeAutoContinue(enabled: boolean) {
+    setAutoContinue(enabled)
+    void window.api.setAutoContinue(enabled)
+  }
 
   function changeMaxRunning(max: number) {
     setMaxRunning(max)
@@ -116,6 +123,12 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
               ))}
             </span>
           </div>
+        )}
+        {autoContinue !== null && (
+          <label className="settings-check" title={t.statusbar.autoContinueHint}>
+            <input type="checkbox" checked={autoContinue} onChange={(e) => changeAutoContinue(e.target.checked)} />
+            {t.statusbar.autoContinue}
+          </label>
         )}
         {prefs && (
           <>

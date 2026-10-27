@@ -454,6 +454,8 @@ export interface CreateFeatureInput {
   permissionMode: PermissionMode
   agentModel: AgentModel
   linearIssue?: LinearIssue
+  /** Keeps an agent on an issue already linked, as when a thread carries on another's work. */
+  linear?: LinearLink
 }
 
 export type ContextMenuSpec =
@@ -667,6 +669,9 @@ export interface Api {
   setPermissionMode(featureId: string, mode: PermissionMode): Promise<void>
   /** Applies from the agent's next request. */
   setAgentModel(featureId: string, model: AgentModel): Promise<void>
+  /** Whether agents stopped by the usage limit get a summarizing thread once it resets. */
+  getAutoContinue(): Promise<boolean>
+  setAutoContinue(enabled: boolean): Promise<void>
   getMaxRunning(): Promise<number>
   /** 0 lifts the limit. */
   setMaxRunning(max: number): Promise<void>
