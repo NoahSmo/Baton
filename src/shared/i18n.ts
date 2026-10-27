@@ -135,6 +135,8 @@ const en = {
     queued: (n: number) => `${n} queued`,
     maxRunning: 'At once',
     maxRunningHint: 'Agents allowed to run at the same time; the others wait in line. ∞ for no limit.',
+    autoContinue: 'Continue when the limit resets',
+    autoContinueHint: 'Once the usage limit resets, each agent it stopped gets a new thread: Claude sums up its work and the thread carries on, on the same Linear issue.',
     usageNear: (time?: string, used?: number, type?: string) =>
       `${limitWindow(type) === 'weekly' ? 'Weekly' : limitWindow(type) === 'daily' ? 'Daily' : 'Usage'} limit near${used !== undefined ? ` (${Math.round(used * 100)}%)` : ''}${time ? ` · resets ${time}` : ''}`,
     total: 'Total',
@@ -743,6 +745,8 @@ const fr: Dict = {
     queued: (n) => `${n} en file`,
     maxRunning: 'En parallèle',
     maxRunningHint: "Agents autorisés à tourner en même temps ; les autres attendent leur tour. ∞ pour aucune limite.",
+    autoContinue: 'Reprendre au reset de la limite',
+    autoContinueHint: "Quand la limite d'usage est remise à zéro, chaque agent qu'elle a arrêté obtient un nouveau thread : Claude résume son travail et le thread continue, sur la même issue Linear.",
     usageNear: (time, used, type) =>
       `Limite ${limitWindow(type) === 'weekly' ? 'hebdo ' : limitWindow(type) === 'daily' ? 'journalière ' : ''}bientôt atteinte${used !== undefined ? ` (${Math.round(used * 100)} %)` : ''}${time ? ` · reset à ${time}` : ''}`,
     total: 'Total',

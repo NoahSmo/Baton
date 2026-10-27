@@ -35,6 +35,7 @@ function setup(maxRunning = 1) {
   const store = new Store(':memory:')
   store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearLabel: null, commands: [], templates: [], worktrees: true, qa: { enabled: false, command: '' } })
   const warnings: (UsageWarning | null)[] = []
+  const lifted: string[][] = []
   const sink: ManagerSink = {
     event: () => {},
     feature: () => {},
@@ -44,7 +45,8 @@ function setup(maxRunning = 1) {
     backgroundTasks: () => {},
     attention: () => {},
     usageWarning: (w) => warnings.push(w),
-    usageWindows: () => {}
+    usageWindows: () => {},
+    limitLifted: (stopped) => lifted.push(stopped.map((f) => f.id))
   }
   let max = maxRunning
   const manager = new Manager(store, join(dir, 'wt'), join(dir, 'att'), join(dir, 'trash'), {} as never, () => DICTS.en, () => max, sink)
@@ -80,7 +82,7 @@ function setup(maxRunning = 1) {
       type: 'event',
       event: { kind: 'result', isError: false, interrupted: false, text: '', turnCostUsd: 0 }
     })
-  return { store, manager, add, finish, warnings, setMax: (n: number) => (max = n) }
+  return { store, manager, add, finish, warnings, lifted, setMax: (n: number) => (max = n) }
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
@@ -165,6 +167,16 @@ describe('agent slots', () => {
   const reject = (id: string, resetsAt = Math.floor(Date.now() / 1000) + 3600) =>
     agents.get(id)!.emit({ type: 'event', event: { kind: 'rate_limit', status: 'rejected', resetsAt, limitType: 'five_hour' } })
 
+  it('hands the agents the limit stopped to the sink once it lifts', () => {
+    const { manager, add, lifted } = setup(0)
+    add('a')
+    add('b')
+    manager.send('a', 'go')
+    reject('a')
+    agents.get('a')!.emit({ type: 'event', event: { kind: 'rate_limit', status: 'allowed', limitType: 'five_hour' } })
+    expect(lifted).toEqual([['a']])
+  })
+
   it('queues a new message instead of sending it into the limit', () => {
     const { store, manager, add } = setup(0)
     add('a')
@@ -219,7 +231,8 @@ describe('agent slots', () => {
     backgroundTasks: () => {},
       attention: () => {},
       usageWarning: () => {},
-      usageWindows: () => {}
+      usageWindows: () => {},
+    limitLifted: () => {}
     })
     expect(store.getFeature('a')!.status).toBe('idle')
     expect(store.getFeature('b')!.status).toBe('limited')

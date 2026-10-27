@@ -87,6 +87,8 @@ export interface ManagerSink {
   usageWarning(warning: UsageWarning | null): void
   /** What the agents last reported of each usage window; empty once the limit lifted. */
   usageWindows(windows: UsageWindow[]): void
+  /** The usage limit reset: these agents were stopped by it and may need a thread to carry on. */
+  limitLifted(stopped: Feature[]): void
 }
 
 export class Manager {
@@ -419,7 +421,7 @@ export class Manager {
       id: randomUUID(),
       projectId: project.id,
       title: input.title.trim(),
-      linear: issue ? { issueId: issue.id, identifier: issue.identifier, url: issue.url } : null,
+      linear: issue ? { issueId: issue.id, identifier: issue.identifier, url: issue.url } : (input.linear ?? null),
       branch: worktree.branch,
       worktreePath: worktree.path,
       status: 'idle',
@@ -464,7 +466,8 @@ export class Manager {
         title,
         prompt: this.t().handoff.prompt(source.title, handoff.summary),
         permissionMode: source.permissionMode,
-        agentModel: source.agentModel
+        agentModel: source.agentModel,
+        linear: source.linear ?? undefined
       })
     }
     const worktree = await createWorktree(project.path, this.projectWorktrees(project), slugify(title), undefined, source.branch)
@@ -481,7 +484,8 @@ export class Manager {
       title,
       prompt: this.t().handoff.prompt(source.title, handoff.summary),
       permissionMode: source.permissionMode,
-      agentModel: source.agentModel
+      agentModel: source.agentModel,
+      linear: source.linear ?? undefined
     })
   }
 
@@ -826,14 +830,18 @@ export class Manager {
     this.limitedType = undefined
     if (this.limitTimer) clearTimeout(this.limitTimer)
     this.limitTimer = null
+    const stopped: Feature[] = []
     for (const f of this.store.listFeatures()) {
-      if (f.status === 'limited') this.patch(f.id, { status: 'idle', limitResetsAt: null })
+      if (f.status !== 'limited') continue
+      stopped.push(f)
+      this.patch(f.id, { status: 'idle', limitResetsAt: null })
     }
     this.warnedWindows.clear()
     this.windows.clear()
     this.sink.usageWindows([])
     this.sink.usageWarning(null)
     this.startQueued()
+    if (stopped.length) this.sink.limitLifted(stopped)
   }
 
   private trackWindow(event: Extract<UiEvent, { kind: 'rate_limit' }>): void {
