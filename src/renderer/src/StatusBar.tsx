@@ -19,6 +19,24 @@ interface Props {
   onOpenUsage(): void
 }
 
+const WINDOWS_KEY = 'usageWindows'
+
+/** Both windows always show, empty until an agent reports on them. */
+const METERS = [
+  { kind: 'daily', type: 'five_hour', label: '5h' },
+  { kind: 'weekly', type: 'seven_day', label: '7d' }
+] as const
+
+/** The last readings, kept across restarts until their window resets. */
+function loadWindows(): UsageWindow[] {
+  try {
+    const stored = JSON.parse(localStorage.getItem(WINDOWS_KEY) ?? '[]') as UsageWindow[]
+    return stored.filter((w) => !w.resetsAt || w.resetsAt * 1000 > Date.now())
+  } catch {
+    return []
+  }
+}
+
 export function StatusBar({ features, linear, onOpenLinear, version, update, onOpenUpdate, terminal, onNextWaiting, nextWaitingShortcut, onOpenUsage }: Props) {
   const t = useT()
   const lang = useLang()
@@ -31,12 +49,14 @@ export function StatusBar({ features, linear, onOpenLinear, version, update, onO
     return window.api.onUsageWarning(setWarning)
   }, [])
 
-  const [windows, setWindows] = useState<UsageWindow[]>([])
+  const [windows, setWindows] = useState<UsageWindow[]>(loadWindows)
 
   useEffect(() => {
-    void window.api.getUsageWindows().then(setWindows)
+    void window.api.getUsageWindows().then((fresh) => setWindows((known) => (fresh.length ? fresh : known)))
     return window.api.onUsageWindows(setWindows)
   }, [])
+
+  useEffect(() => localStorage.setItem(WINDOWS_KEY, JSON.stringify(windows)), [windows])
 
   // A window that has reset is full again: its last reading no longer holds.
   useEffect(() => {
@@ -83,20 +103,26 @@ export function StatusBar({ features, linear, onOpenLinear, version, update, onO
         </span>
       )}
       <span className="statusbar-sep" />
-      {windows.map((w) => {
-        const kind = limitWindow(w.limitType)
+      {METERS.map(({ kind, type, label }) => {
+        const w = windows.find((x) => limitWindow(x.limitType) === kind)
+        if (!w) {
+          return (
+            <span key={type} className="credit-meter unknown" title={t.statusbar.creditUnknown(kind)} role="img" aria-label={t.statusbar.creditUnknown(kind)}>
+              {label}
+              <span className="credit-bar">
+                <span />
+              </span>
+              <span className="num">—</span>
+            </span>
+          )
+        }
         const used = Math.min(1, Math.max(0, w.utilization))
         const level = used >= 0.95 ? ' critical' : used >= 0.8 ? ' high' : ''
         const reset = formatReset(w.resetsAt, lang)
+        const text = t.statusbar.creditLeft(kind, Math.round((1 - used) * 100), reset)
         return (
-          <span
-            key={w.limitType ?? ''}
-            className={`credit-meter${level}`}
-            title={t.statusbar.creditLeft(kind, Math.round((1 - used) * 100), reset)}
-            role="img"
-            aria-label={t.statusbar.creditLeft(kind, Math.round((1 - used) * 100), reset)}
-          >
-            {kind === 'weekly' ? '7d' : kind === 'daily' ? '5h' : '∗'}
+          <span key={type} className={`credit-meter${level}`} title={text} role="img" aria-label={text}>
+            {label}
             <span className="credit-bar">
               <span style={{ width: `${(1 - used) * 100}%` }} />
             </span>

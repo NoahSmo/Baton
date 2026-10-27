@@ -142,6 +142,7 @@ const en = {
     total: 'Total',
     creditLeft: (kind: 'daily' | 'weekly' | undefined, left: number, time?: string) =>
       `${kind === 'weekly' ? 'Weekly' : kind === 'daily' ? 'Daily (5 h)' : 'Usage'} credit: ${left}% left${time ? ` · resets ${time}` : ''}`,
+    creditUnknown: (kind: 'daily' | 'weekly') => `${kind === 'weekly' ? 'Weekly' : 'Daily (5 h)'} credit: unknown until an agent reports`,
     connectLinear: 'Connect Linear',
     linearConnected: 'connected',
     language: 'Language',
@@ -752,6 +753,7 @@ const fr: Dict = {
     total: 'Total',
     creditLeft: (kind, left, time) =>
       `Crédit ${kind === 'weekly' ? 'hebdo' : kind === 'daily' ? 'journalier (5 h)' : 'd’usage'} : ${left} % restant${time ? ` · reset à ${time}` : ''}`,
+    creditUnknown: (kind) => `Crédit ${kind === 'weekly' ? 'hebdo' : 'journalier (5 h)'} : inconnu tant qu’un agent n’a rien reporté`,
     connectLinear: 'Connecter Linear',
     linearConnected: 'connecté',
     language: 'Langue',

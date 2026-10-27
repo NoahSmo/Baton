@@ -1541,6 +1541,11 @@ input.mono {
   background: var(--red);
 }
 
+.credit-meter.unknown {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
 .statusbar-warning {
   color: var(--amber);
 }
