@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Markdown from 'react-markdown'
 import type { PermissionDecision } from '../../shared/types'
 import { useT } from './i18n'
 import { asQuestions, toolSummary, type Item } from './transcript'
@@ -11,17 +12,35 @@ interface Props {
 export function PermissionCard({ item, onRespond }: Props) {
   const t = useT()
   const questions = item.toolName === 'AskUserQuestion' ? asQuestions(item.input) : []
+  const plan = item.toolName === 'ExitPlanMode' && typeof item.input.plan === 'string' ? item.input.plan : ''
 
   if (item.resolved) {
     return (
       <div className="permission-done">
-        {questions.length ? t.permission.question : item.toolName} ·{' '}
+        {questions.length ? t.permission.question : plan ? t.permission.plan : item.toolName} ·{' '}
         {item.resolved === 'allow' ? (questions.length ? t.permission.answered : t.permission.allowed) : t.permission.denied}
       </div>
     )
   }
 
   if (questions.length) return <QuestionCard item={item} onRespond={onRespond} />
+
+  if (plan) {
+    return (
+      <div className="card plan-card">
+        <p className="card-title">{t.permission.plan}</p>
+        <div className="plan-body">
+          <Markdown>{plan}</Markdown>
+        </div>
+        <div className="card-actions">
+          <button className="primary" onClick={() => onRespond({ behavior: 'allow' })}>
+            {t.permission.approvePlan}
+          </button>
+          <button onClick={() => onRespond({ behavior: 'deny' })}>{t.permission.deny}</button>
+        </div>
+      </div>
+    )
+  }
 
   const summary = toolSummary(item.input)
   return (
