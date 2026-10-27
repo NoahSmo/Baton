@@ -32,6 +32,7 @@ describe('resolveShortcut', () => {
     expect(resolveShortcut(key({ key: 'j', ...meta }), true)).toBe('nextWaiting')
     expect(resolveShortcut(key({ key: 'e', ...meta }), true)).toBe('toggleEditor')
     expect(resolveShortcut(key({ key: 'f', ...meta }), true)).toBe('searchConversation')
+    expect(resolveShortcut(key({ key: 'k', ...meta }), true)).toBe('palette')
     expect(resolveShortcut(key({ key: 'F', shiftKey: true, ...meta }), true)).toBe('searchSidebar')
   })
 

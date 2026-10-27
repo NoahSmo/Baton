@@ -7,6 +7,7 @@ export type ShortcutAction =
   | 'nextWaiting'
   | 'searchSidebar'
   | 'searchConversation'
+  | 'palette'
   | `project:${number}`
 
 export interface KeyLike {
@@ -28,7 +29,8 @@ export const SHORTCUT_LIST: ShortcutAction[] = [
   'toggleEditor',
   'approve',
   'searchSidebar',
-  'searchConversation'
+  'searchConversation',
+  'palette'
 ]
 
 /** The action a key press stands for. ⌘ on a Mac, Ctrl elsewhere. */
@@ -59,6 +61,8 @@ export function resolveShortcut(e: KeyLike, mac: boolean): ShortcutAction | null
       return 'nextWaiting'
     case 'f':
       return 'searchConversation'
+    case 'k':
+      return 'palette'
   }
   return null
 }
@@ -72,6 +76,7 @@ const KEYS: Record<string, string> = {
   nextWaiting: 'J',
   searchSidebar: '⇧F',
   searchConversation: 'F',
+  palette: 'K',
   'project:1': '1…9'
 }
 

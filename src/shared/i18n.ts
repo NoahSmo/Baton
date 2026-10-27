@@ -543,8 +543,24 @@ const en = {
       toggleEditor: 'Show or hide the editor',
       approve: 'Allow the first pending request',
       searchSidebar: 'Search agents',
-      searchConversation: 'Search the conversation'
+      searchConversation: 'Search the conversation',
+      palette: 'Command palette'
     }
+  },
+
+  palette: {
+    placeholder: 'Go to an agent or run a command',
+    label: 'Command palette',
+    none: 'Nothing matches',
+    agents: 'Agents',
+    commands: 'Commands',
+    projects: 'Projects',
+    editor: 'Show or hide the editor',
+    terminal: 'Show or hide the terminal',
+    settings: 'Open settings',
+    usage: 'Show usage',
+    linear: 'Open Linear',
+    waiting: 'Go to the next agent waiting for me'
   },
 
   search: {
@@ -1151,8 +1167,24 @@ const fr: Dict = {
       toggleEditor: "Afficher ou masquer l'éditeur",
       approve: 'Autoriser la première demande en attente',
       searchSidebar: 'Chercher un agent',
-      searchConversation: 'Chercher dans la conversation'
+      searchConversation: 'Chercher dans la conversation',
+      palette: 'Palette de commandes'
     }
+  },
+
+  palette: {
+    placeholder: 'Aller à un agent ou lancer une commande',
+    label: 'Palette de commandes',
+    none: 'Aucun résultat',
+    agents: 'Agents',
+    commands: 'Commandes',
+    projects: 'Projets',
+    editor: "Afficher ou masquer l'éditeur",
+    terminal: 'Afficher ou masquer le terminal',
+    settings: 'Ouvrir les réglages',
+    usage: "Voir l'utilisation",
+    linear: 'Ouvrir Linear',
+    waiting: "Aller au prochain agent qui m'attend"
   },
 
   search: {
