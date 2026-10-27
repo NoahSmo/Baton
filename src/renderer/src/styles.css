@@ -1018,6 +1018,93 @@ button.link:hover:not(:disabled) {
   overflow-wrap: anywhere;
 }
 
+.plan-card .card-title {
+  font-weight: 600;
+}
+
+.plan-body {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-radius: var(--r-md);
+  max-height: 55vh;
+  overflow: auto;
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.plan-body > :first-child {
+  margin-top: 0;
+}
+
+.plan-body > :last-child {
+  margin-bottom: 0;
+}
+
+.plan-body h1,
+.plan-body h2,
+.plan-body h3 {
+  margin: 1.1em 0 0.4em;
+  line-height: 1.3;
+}
+
+.plan-body h1 {
+  font-size: 1.25em;
+}
+
+.plan-body h2 {
+  font-size: 1.1em;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.plan-body h3 {
+  font-size: 1em;
+  color: var(--muted);
+}
+
+.plan-body p {
+  margin: 0.5em 0;
+}
+
+.plan-body ul,
+.plan-body ol {
+  margin: 0.4em 0;
+  padding-left: 22px;
+}
+
+.plan-body li + li {
+  margin-top: 3px;
+}
+
+.plan-body li::marker {
+  color: var(--muted);
+}
+
+.plan-body pre {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  max-height: none;
+}
+
+.plan-body :not(pre) > code {
+  background: var(--raised);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+}
+
+.plan-body table {
+  border-collapse: collapse;
+  margin: 0.6em 0;
+}
+
+.plan-body th,
+.plan-body td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+}
+
 .card-actions {
   display: flex;
   gap: 6px;
