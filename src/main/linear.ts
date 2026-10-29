@@ -174,13 +174,14 @@ export class LinearClient {
     )
   }
 
-  /** Creates an issue in a team, inside a Linear project. */
+  /** Creates an issue in a team, inside a Linear project, assigned to the connected user. */
   async createIssue(input: CreateLinearIssueInput): Promise<LinearIssue> {
+    const { viewer } = await this.request<{ viewer: { id: string } }>('query { viewer { id } }')
     const data = await this.request<{ issueCreate: { success: boolean; issue: RawIssue | null } }>(
       `mutation($input: IssueCreateInput!) {
         issueCreate(input: $input) { success issue { ${ISSUE_FIELDS} } }
       }`,
-      { input: { ...input, description: input.description || undefined } }
+      { input: { ...input, description: input.description || undefined, assigneeId: viewer.id } }
     )
     if (!data.issueCreate.success || !data.issueCreate.issue) throw new Error(this.t().errors.linearCreateFailed)
     return toIssue(data.issueCreate.issue)
