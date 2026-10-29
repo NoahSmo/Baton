@@ -4,6 +4,7 @@ import { arrangeFeatures, neighbour, nextWaiting, SIDEBAR_SORTS, type SidebarSor
 import { resolveShortcut, shortcutLabel } from '../../shared/shortcuts'
 import type { BackgroundTask, Feature, FeatureStatus, LinearIssue, LinearStatus, Project, QaRun, StoredEvent, UpdateInfo } from '../../shared/types'
 import { ContinueDialog } from './ContinueDialog'
+import { CommandPalette, type PaletteEntry } from './CommandPalette'
 import { ConfirmHost } from './ConfirmHost'
 import { ContextMenuHost } from './ContextMenuHost'
 import { EditorPane, type EditorPanel } from './EditorPane'
@@ -43,6 +44,7 @@ type Dialog =
   | { kind: 'qa'; project: Project }
   | { kind: 'templates'; project: Project }
   | { kind: 'usage' }
+  | { kind: 'palette' }
   | { kind: 'continue'; feature: Feature }
   | { kind: 'project'; project?: Project } | { kind: 'linear' } | null
 
@@ -202,8 +204,8 @@ export function App() {
   }
 
   // Keyboard shortcuts read the latest state through a ref: the listener is attached once.
-  const shortcutContext = useRef({ dialogOpen: false, linearShown: false, project, feature, listed, projects, events })
-  shortcutContext.current = { dialogOpen: dialog !== null, linearShown, project, feature, listed, projects, events }
+  const shortcutContext = useRef({ dialog: null as Dialog, dialogOpen: false, linearShown: false, project, feature, listed, projects, events })
+  shortcutContext.current = { dialog, dialogOpen: dialog !== null, linearShown, project, feature, listed, projects, events }
   const actions = useRef({ showFeature, goToProject, goToNextWaiting, toggleEditor, openNewFeature: () => setDialog({ kind: 'feature' }) })
   actions.current = { showFeature, goToProject, goToNextWaiting, toggleEditor, openNewFeature: () => setDialog({ kind: 'feature' }) }
 
@@ -216,7 +218,8 @@ export function App() {
       // Ctrl combos belong to the shell of a focused terminal, outside macOS; the editor keeps its own bracket and find keys.
       if (!IS_MAC && target?.closest('.xterm')) return
       if (target?.closest('.cm-editor') && ['prevFeature', 'nextFeature', 'searchConversation', 'approve'].includes(action)) return
-      if (ctx.dialogOpen) return
+      // The palette's own key closes it; every other dialog keeps the shortcuts to itself.
+      if (ctx.dialogOpen && !(action === 'palette' && ctx.dialog?.kind === 'palette')) return
       const run = (fn: () => void) => {
         e.preventDefault()
         e.stopPropagation()
@@ -228,6 +231,8 @@ export function App() {
         return
       }
       switch (action) {
+        case 'palette':
+          return run(() => setDialog((open) => (open?.kind === 'palette' ? null : { kind: 'palette' })))
         case 'newFeature':
           if (ctx.project && !ctx.linearShown) run(actions.current.openNewFeature)
           return
@@ -272,6 +277,37 @@ export function App() {
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
   }, [terminalKey, linearShown])
+
+  /** Everything the palette offers: agents of every project, other projects, and the app's commands. */
+  function paletteEntries(): PaletteEntry[] {
+    const name = (id: string) => projects.find((p) => p.id === id)?.name ?? ''
+    const agents = [...features].sort((a, b) => Number(a.archived ?? false) - Number(b.archived ?? false))
+    const commands: PaletteEntry[] = []
+    const command = (id: string, label: string, shortcut: string | null, run: () => void) =>
+      commands.push({ id: `cmd:${id}`, group: 'commands', label, hint: shortcut ?? undefined, run })
+    if (project && !linearShown) command('new', t.sidebar.newFeature, shortcutLabel('newFeature', IS_MAC), () => setDialog({ kind: 'feature' }))
+    if (features.some((f) => f.status === 'waiting')) command('waiting', t.palette.waiting, shortcutLabel('nextWaiting', IS_MAC), goToNextWaiting)
+    if (feature && !linearShown) command('editor', t.palette.editor, shortcutLabel('toggleEditor', IS_MAC), () => toggleEditor(feature.id))
+    if (project && !linearShown) command('terminal', t.palette.terminal, '⌃`', () => setTerminalOpen((open) => !open))
+    if (linear.connected) command('linear', t.palette.linear, null, () => setShowLinear(true))
+    command('usage', t.palette.usage, null, () => setDialog({ kind: 'usage' }))
+    command('settings', t.palette.settings, null, () => setDialog({ kind: 'settings' }))
+    return [
+      ...agents.map((f): PaletteEntry => ({
+        id: `feature:${f.id}`,
+        group: 'agents',
+        label: f.title,
+        keywords: `${f.branch} ${f.linear?.identifier ?? ''} ${name(f.projectId)}`,
+        hint: projects.length > 1 ? name(f.projectId) : undefined,
+        status: f.status,
+        run: () => showFeature(f)
+      })),
+      ...projects
+        .filter((p) => p.id !== activeProjectId || linearShown)
+        .map((p): PaletteEntry => ({ id: `project:${p.id}`, group: 'projects', label: p.name, run: () => goToProject(p.id) })),
+      ...commands
+    ]
+  }
 
   function upsertProject(saved: Project) {
     setProjects((list) => (list.some((p) => p.id === saved.id) ? list.map((p) => (p.id === saved.id ? saved : p)) : [...list, saved]))
@@ -517,6 +553,7 @@ export function App() {
       {dialog?.kind === 'update' && update && (
         <UpdateDialog update={update} currentVersion={version} onClose={() => setDialog(null)} />
       )}
+      {dialog?.kind === 'palette' && <CommandPalette entries={paletteEntries()} onClose={() => setDialog(null)} />}
       <ContextMenuHost />
       <ConfirmHost />
     </div>
