@@ -3155,6 +3155,7 @@ a.git-action:hover {
   height: 18px;
   margin: 0;
   padding: 0;
+  border: 0;
   border-radius: 9px;
   background: var(--border-strong);
   position: relative;
