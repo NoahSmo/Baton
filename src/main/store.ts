@@ -1,7 +1,19 @@
 import { DatabaseSync } from 'node:sqlite'
-import { AGENT_MODELS, DEFAULT_AGENT_MODEL, DEFAULT_QA, PROJECT_COLORS, type AgentModel, type Feature, type LaunchCommand, type Project, type QaConfig, type QaRun, type PromptTemplate, type StoredEvent, type TurnCost, type UiEvent } from '../shared/types'
+import { AGENT_MODELS, DEFAULT_AGENT_MODEL, DEFAULT_QA, PROJECT_COLORS, type AgentModel, type Feature, type LaunchCommand, type LinearLabel, type Project, type QaConfig, type QaRun, type PromptTemplate, type StoredEvent, type TurnCost, type UiEvent } from '../shared/types'
 
 type Row = Record<string, unknown>
+
+/** Labels a project maps to; databases from before several were allowed hold a single one in two plain columns. */
+function linearLabelsOf(r: Row): LinearLabel[] {
+  if (typeof r.linear_labels === 'string') {
+    try {
+      return JSON.parse(r.linear_labels) as LinearLabel[]
+    } catch {
+      return []
+    }
+  }
+  return r.linear_label_id ? [{ id: r.linear_label_id as string, name: r.linear_label_name as string }] : []
+}
 
 function toProject(r: Row): Project {
   return {
@@ -9,7 +21,7 @@ function toProject(r: Row): Project {
     name: r.name as string,
     path: r.path as string,
     color: (r.color as string | null) ?? PROJECT_COLORS[0],
-    linearLabel: r.linear_label_id ? { id: r.linear_label_id as string, name: r.linear_label_name as string } : null,
+    linearLabels: linearLabelsOf(r),
     commands: r.commands ? (JSON.parse(r.commands as string) as LaunchCommand[]) : [],
     templates: r.templates ? (JSON.parse(r.templates as string) as PromptTemplate[]) : [],
     worktrees: r.worktrees !== 0,
@@ -124,7 +136,7 @@ export class Store {
       'pr_url TEXT',
       'turn_base TEXT'
     ])
-    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'commands TEXT', 'templates TEXT', 'worktrees INTEGER', 'qa TEXT'])
+    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'linear_labels TEXT', 'commands TEXT', 'templates TEXT', 'worktrees INTEGER', 'qa TEXT'])
   }
 
   /** Columns added after the first release; databases created before them are upgraded in place. */
@@ -151,14 +163,14 @@ export class Store {
 
   insertProject(p: Project): void {
     this.db
-      .prepare('INSERT INTO projects (id, name, path, color, linear_label_id, linear_label_name, worktrees) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(p.id, p.name, p.path, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null, p.worktrees ? 1 : 0)
+      .prepare('INSERT INTO projects (id, name, path, color, linear_labels, worktrees) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(p.id, p.name, p.path, p.color, JSON.stringify(p.linearLabels), p.worktrees ? 1 : 0)
   }
 
   updateProject(p: Project): void {
     this.db
-      .prepare('UPDATE projects SET name = ?, color = ?, linear_label_id = ?, linear_label_name = ?, commands = ?, templates = ?, worktrees = ?, qa = ? WHERE id = ?')
-      .run(p.name, p.color, p.linearLabel?.id ?? null, p.linearLabel?.name ?? null, JSON.stringify(p.commands), JSON.stringify(p.templates), p.worktrees ? 1 : 0, JSON.stringify(p.qa), p.id)
+      .prepare('UPDATE projects SET name = ?, color = ?, linear_labels = ?, commands = ?, templates = ?, worktrees = ?, qa = ? WHERE id = ?')
+      .run(p.name, p.color, JSON.stringify(p.linearLabels), JSON.stringify(p.commands), JSON.stringify(p.templates), p.worktrees ? 1 : 0, JSON.stringify(p.qa), p.id)
   }
 
   deleteProject(id: string): void {

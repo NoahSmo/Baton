@@ -3,6 +3,7 @@ import { DICTS, langFromLocale, type Lang } from '../../shared/i18n'
 import { arrangeFeatures, neighbour, nextWaiting, SIDEBAR_SORTS, type SidebarSort } from '../../shared/features'
 import { resolveShortcut, shortcutLabel } from '../../shared/shortcuts'
 import type { BackgroundTask, Feature, FeatureStatus, LinearIssue, LinearStatus, Project, QaRun, StoredEvent, UpdateInfo } from '../../shared/types'
+import { BoardView } from './BoardView'
 import { ContinueDialog } from './ContinueDialog'
 import { CommandPalette, type PaletteEntry } from './CommandPalette'
 import { ConfirmHost } from './ConfirmHost'
@@ -13,10 +14,10 @@ import { LaunchDialog } from './LaunchDialog'
 import { QaDialog } from './QaDialog'
 import { LangContext } from './i18n'
 import { LinearDialog } from './LinearDialog'
-import { LinearView } from './LinearView'
 import { NewFeatureDialog } from './NewFeatureDialog'
 import { IS_MAC } from './platform'
 import { ProjectDialog } from './ProjectDialog'
+import { ProjectRail } from './ProjectRail'
 import { Sidebar } from './Sidebar'
 import { StatusBar } from './StatusBar'
 import { TemplatesDialog } from './TemplatesDialog'
@@ -32,7 +33,7 @@ import { useResize } from './useResize'
 
 /** Stable empty list, so features without background work do not re-render on every update. */
 const NO_TASKS: BackgroundTask[] = []
-const SIDEBAR_WIDTH = 300
+const SIDEBAR_WIDTH = 64 + 300
 /** Room the conversation keeps when the editor is dragged wide. */
 const MIN_CHAT_WIDTH = 340
 
@@ -60,11 +61,13 @@ export function App() {
   const [streams, setStreams] = useState<Record<string, string>>({})
   const [linear, setLinear] = useState<LinearStatus>({ connected: false })
   const [dialog, setDialog] = useState<Dialog>(null)
-  /** The Linear tab is showing instead of a project. */
-  const [showLinear, setShowLinear] = useState(false)
-  /** Features whose editor was opened; false once hidden again, which keeps its open files. */
+  /** The Kanban tab is showing instead of the conversation. */
+  const [showBoard, setShowBoard] = useState(false)
+  /** Features that got an editor; each stays mounted once shown, which keeps its open files. */
   const [editors, setEditors] = useState<Record<string, boolean>>({})
-  const [editorPanel, setEditorPanel] = useState<EditorPanel>('files')
+  /** The right panel is docked beside the conversation unless the user folds it. */
+  const [panelOpen, setPanelOpen] = useState(() => localStorage.getItem('panel-open') !== 'false')
+  const [editorPanel, setEditorPanel] = useState<EditorPanel>('changes')
   /** Whether each agent's terminal panel is up, keyed by feature, or by project when it has none. */
   const [terminalPanels, setTerminalPanels] = useState<Record<string, boolean>>({})
   /** Agent being linked to an issue. */
@@ -87,10 +90,8 @@ export function App() {
     edge: 'top'
   })
 
-  const linearShown = showLinear && linear.connected
-
   function goToProject(id: string) {
-    setShowLinear(false)
+    setShowBoard(false)
     setActiveProjectId(id)
   }
   // System language until the stored choice arrives from the main process.
@@ -189,10 +190,21 @@ export function App() {
 
   const git = useGitStatus(feature?.id ?? null)
 
-  const toggleEditor = (id: string) => setEditors((all) => ({ ...all, [id]: !all[id] }))
+  const boardShown = showBoard && project !== null
+
+  // Every agent shown gets its editor, mounted for good so open files survive a switch.
+  useEffect(() => {
+    if (feature && !(feature.id in editors)) setEditors((all) => ({ ...all, [feature.id]: true }))
+  }, [feature, editors])
+
+  const toggleEditor = (_id?: string) =>
+    setPanelOpen((open) => {
+      localStorage.setItem('panel-open', String(!open))
+      return !open
+    })
 
   // The main process decides whether a notification is worth it, and needs to know what is on screen.
-  const shownId = linearShown ? null : (feature?.id ?? null)
+  const shownId = boardShown ? null : (feature?.id ?? null)
   useEffect(() => window.api.reportShownFeature(shownId), [shownId])
 
   /** The agents in the order the sidebar lists them, which is the order ⌘[ and ⌘] walk through. */
@@ -204,8 +216,8 @@ export function App() {
   }
 
   // Keyboard shortcuts read the latest state through a ref: the listener is attached once.
-  const shortcutContext = useRef({ dialog: null as Dialog, dialogOpen: false, linearShown: false, project, feature, listed, projects, events })
-  shortcutContext.current = { dialog, dialogOpen: dialog !== null, linearShown, project, feature, listed, projects, events }
+  const shortcutContext = useRef({ dialog: null as Dialog, dialogOpen: false, boardShown: false, project, feature, listed, projects, events })
+  shortcutContext.current = { dialog, dialogOpen: dialog !== null, boardShown, project, feature, listed, projects, events }
   const actions = useRef({ showFeature, goToProject, goToNextWaiting, toggleEditor, openNewFeature: () => setDialog({ kind: 'feature' }) })
   actions.current = { showFeature, goToProject, goToNextWaiting, toggleEditor, openNewFeature: () => setDialog({ kind: 'feature' }) }
 
@@ -234,30 +246,30 @@ export function App() {
         case 'palette':
           return run(() => setDialog((open) => (open?.kind === 'palette' ? null : { kind: 'palette' })))
         case 'newFeature':
-          if (ctx.project && !ctx.linearShown) run(actions.current.openNewFeature)
+          if (ctx.project && !ctx.boardShown) run(actions.current.openNewFeature)
           return
         case 'nextWaiting':
           return run(actions.current.goToNextWaiting)
         case 'prevFeature':
         case 'nextFeature': {
           const to = neighbour(ctx.listed, ctx.feature?.id ?? null, action === 'nextFeature' ? 1 : -1)
-          if (to && !ctx.linearShown) run(() => actions.current.showFeature(to))
+          if (to && !ctx.boardShown) run(() => actions.current.showFeature(to))
           return
         }
         case 'toggleEditor':
-          if (ctx.feature && !ctx.linearShown) run(() => actions.current.toggleEditor(ctx.feature!.id))
+          if (ctx.feature && !ctx.boardShown) run(() => actions.current.toggleEditor(ctx.feature!.id))
           return
         case 'approve': {
           // Without a request to settle, the key keeps sending the message as before.
-          const pending = ctx.feature && !ctx.linearShown ? pendingRequest(ctx.events[ctx.feature.id] ?? []) : null
+          const pending = ctx.feature && !ctx.boardShown ? pendingRequest(ctx.events[ctx.feature.id] ?? []) : null
           if (pending && ctx.feature) run(() => void window.api.respondPermission(ctx.feature!.id, pending.requestId, { behavior: 'allow' }))
           return
         }
         case 'searchSidebar':
-          if (ctx.project && !ctx.linearShown) run(() => window.dispatchEvent(new Event('baton:search-sidebar')))
+          if (ctx.project && !ctx.boardShown) run(() => window.dispatchEvent(new Event('baton:search-sidebar')))
           return
         case 'searchConversation':
-          if (ctx.feature && !ctx.linearShown) run(() => window.dispatchEvent(new Event('baton:find')))
+          if (ctx.feature && !ctx.boardShown) run(() => window.dispatchEvent(new Event('baton:find')))
           return
       }
     }
@@ -267,7 +279,7 @@ export function App() {
 
   // Ctrl+` as in most editors. Captured, or a focused terminal would take the key.
   useEffect(() => {
-    if (!project || linearShown) return
+    if (!project || boardShown) return
     const onKey = (e: KeyboardEvent) => {
       if (!e.ctrlKey || e.metaKey || e.altKey || e.code !== 'Backquote') return
       e.preventDefault()
@@ -276,7 +288,7 @@ export function App() {
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [terminalKey, linearShown])
+  }, [terminalKey, boardShown])
 
   /** Everything the palette offers: agents of every project, other projects, and the app's commands. */
   function paletteEntries(): PaletteEntry[] {
@@ -285,11 +297,11 @@ export function App() {
     const commands: PaletteEntry[] = []
     const command = (id: string, label: string, shortcut: string | null, run: () => void) =>
       commands.push({ id: `cmd:${id}`, group: 'commands', label, hint: shortcut ?? undefined, run })
-    if (project && !linearShown) command('new', t.sidebar.newFeature, shortcutLabel('newFeature', IS_MAC), () => setDialog({ kind: 'feature' }))
+    if (project && !boardShown) command('new', t.sidebar.newFeature, shortcutLabel('newFeature', IS_MAC), () => setDialog({ kind: 'feature' }))
     if (features.some((f) => f.status === 'waiting')) command('waiting', t.palette.waiting, shortcutLabel('nextWaiting', IS_MAC), goToNextWaiting)
-    if (feature && !linearShown) command('editor', t.palette.editor, shortcutLabel('toggleEditor', IS_MAC), () => toggleEditor(feature.id))
-    if (project && !linearShown) command('terminal', t.palette.terminal, '⌃`', () => setTerminalOpen((open) => !open))
-    if (linear.connected) command('linear', t.palette.linear, null, () => setShowLinear(true))
+    if (feature && !boardShown) command('editor', t.palette.editor, shortcutLabel('toggleEditor', IS_MAC), () => toggleEditor(feature.id))
+    if (project && !boardShown) command('terminal', t.palette.terminal, '⌃`', () => setTerminalOpen((open) => !open))
+    if (project) command('kanban', t.palette.kanban, null, () => setShowBoard(true))
     command('usage', t.palette.usage, null, () => setDialog({ kind: 'usage' }))
     command('settings', t.palette.settings, null, () => setDialog({ kind: 'settings' }))
     return [
@@ -303,7 +315,7 @@ export function App() {
         run: () => showFeature(f)
       })),
       ...projects
-        .filter((p) => p.id !== activeProjectId || linearShown)
+        .filter((p) => p.id !== activeProjectId || boardShown)
         .map((p): PaletteEntry => ({ id: `project:${p.id}`, group: 'projects', label: p.name, run: () => goToProject(p.id) })),
       ...commands
     ]
@@ -323,14 +335,18 @@ export function App() {
     <LangContext.Provider value={lang}>
     <div className="app">
       <TopBar
+        project={project}
+        onSearch={() => setDialog({ kind: 'palette' })}
+        searchShortcut={shortcutLabel('palette', IS_MAC)}
+        editor={feature && !boardShown ? { open: panelOpen, toggle: toggleEditor } : undefined}
+      />
+      <ProjectRail
         projects={projects}
         features={features}
         activeId={activeProjectId}
-        linearAvailable={linear.connected}
-        linearActive={linearShown}
-        onSelectLinear={() => setShowLinear(true)}
         onSelect={goToProject}
         onNew={() => setDialog({ kind: 'project' })}
+        onOpenUsage={() => setDialog({ kind: 'usage' })}
         onOpenSettings={() => setDialog({ kind: 'settings' })}
         onMenuAction={(target, action) => {
           goToProject(target.id)
@@ -339,30 +355,18 @@ export function App() {
         }}
       />
 
-      {linearShown && (
-        <LinearView
-          linear={linear}
-          projects={projects}
-          features={features}
-          defaultProjectId={activeProjectId}
-          onConnect={() => setDialog({ kind: 'linear' })}
-          onStart={(issue, repos) => {
-            const repositories = repos.length ? repos : projects
-            const target = repositories.find((p) => p.id === activeProjectId) ?? repositories[0]
-            setDialog({ kind: 'feature', project: target, issue, repositories })
-          }}
-          onOpenFeature={showFeature}
-          onStarted={(started) => showFeature(started[0])}
-        />
-      )}
       {project ? (
-        // Kept mounted behind the Linear tab: editors hold unsaved changes.
-        <div className="project-view" hidden={linearShown}>
+        <div className="project-view">
           <Sidebar
             project={project}
             features={projectFeatures}
             selectedId={feature?.id ?? null}
-            onSelect={showFeature}
+            board={boardShown}
+            onBoard={setShowBoard}
+            onSelect={(f) => {
+              setShowBoard(false)
+              showFeature(f)
+            }}
             onNew={() => setDialog({ kind: 'feature' })}
             onLink={(f) => {
               showFeature(f)
@@ -384,7 +388,34 @@ export function App() {
             linearConnected={linear.connected}
           />
           <main className="main">
-            <div className="workspace">
+            {boardShown && (
+              <BoardView
+                project={project}
+                projectFeatures={projectFeatures}
+                selectedId={feature?.id ?? null}
+                linear={linear}
+                projects={projects}
+                features={features}
+                defaultProjectId={activeProjectId}
+                onConnect={() => setDialog({ kind: 'linear' })}
+                onStart={(issue, repos) => {
+                  // The board puts the repository to start in first.
+                  const repositories = repos.length ? repos : projects
+                  const target = repos.length ? repos[0] : (projects.find((p) => p.id === activeProjectId) ?? projects[0])
+                  setDialog({ kind: 'feature', project: target, issue, repositories })
+                }}
+                onOpenFeature={(f) => {
+                  setShowBoard(false)
+                  showFeature(f)
+                }}
+                onStarted={(started) => {
+                  setShowBoard(false)
+                  showFeature(started[0])
+                }}
+              />
+            )}
+            {/* Kept mounted behind the board: editors hold unsaved changes. */}
+            <div className="workspace" hidden={boardShown}>
               {feature ? (
                 <FeatureView
                   key={feature.id}
@@ -394,10 +425,8 @@ export function App() {
                   stream={streams[feature.id] ?? ''}
                   background={background[feature.id] ?? NO_TASKS}
                   git={git}
-                  editorOpen={Boolean(editors[feature.id])}
-                  onToggleEditor={() => toggleEditor(feature.id)}
                   onShowChanges={() => {
-                    setEditors((all) => ({ ...all, [feature.id]: true }))
+                    setPanelOpen(true)
                     setEditorPanel('changes')
                   }}
                   linearConnected={linear.connected}
@@ -414,14 +443,14 @@ export function App() {
                   </button>
                 </div>
               )}
-              {feature && editors[feature.id] && <div className="resizer vertical" onPointerDown={startEditorResize} />}
+              {feature && panelOpen && <div className="resizer vertical" onPointerDown={startEditorResize} />}
               {features
                 .filter((f) => f.id in editors)
                 .map((f) => (
                   <EditorPane
                     key={f.id}
                     feature={f}
-                    visible={f.id === feature?.id && editors[f.id]}
+                    visible={f.id === feature?.id && panelOpen && !boardShown}
                     width={editorWidth}
                     git={f.id === feature?.id ? git : null}
                     panel={editorPanel}
@@ -444,7 +473,6 @@ export function App() {
           </main>
         </div>
       ) : (
-        !linearShown && (
         <main className="main wide">
           <div className="empty">
             <h1>{t.empty.firstProjectTitle}</h1>
@@ -454,7 +482,6 @@ export function App() {
             </button>
           </div>
         </main>
-        )
       )}
 
       <StatusBar
@@ -468,7 +495,7 @@ export function App() {
         nextWaitingShortcut={shortcutLabel('nextWaiting', IS_MAC)}
         onOpenUsage={() => setDialog({ kind: 'usage' })}
         terminal={
-          project && !linearShown ? { open: terminalOpen, toggle: () => setTerminalOpen((open) => !open) } : undefined
+          project && !boardShown ? { open: terminalOpen, toggle: () => setTerminalOpen((open) => !open) } : undefined
         }
       />
 

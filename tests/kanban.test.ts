@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { priorityColumns, sortByPriority, stateForColumn, statusColumns } from '../src/shared/kanban'
-import type { LinearIssue, LinearState } from '../src/shared/types'
+import { agentColumns, priorityColumns, sortByPriority, stateForColumn, statusColumns } from '../src/shared/kanban'
+import type { Feature, LinearIssue, LinearState } from '../src/shared/types'
 
 const issue = (id: string, stateName: string, stateType: string, priority: number, teamId = 't1'): LinearIssue => ({
   id,
@@ -65,5 +65,24 @@ describe('stateForColumn', () => {
     expect(stateForColumn(states, { key: 'In Review', type: 'started' })?.id).toBe('s3')
     expect(stateForColumn(states, { key: 'Doing', type: 'started' })?.id).toBe('s2')
     expect(stateForColumn(states, { key: 'Triage', type: 'triage' })).toBeUndefined()
+  })
+})
+
+describe('agentColumns', () => {
+  const agent = (id: string, status: Feature['status'], archived = false) => ({ id, status, archived }) as Feature
+
+  it('always shows running, waiting and done', () => {
+    expect(agentColumns([]).map((c) => c.key)).toEqual(['running', 'waiting', 'done'])
+  })
+
+  it('files queued agents with the running ones and stopped ones apart', () => {
+    const cols = agentColumns([agent('a', 'working'), agent('b', 'queued'), agent('c', 'error'), agent('d', 'limited')])
+    expect(cols.find((c) => c.key === 'running')?.features.map((f) => f.id)).toEqual(['a', 'b'])
+    expect(cols.find((c) => c.key === 'stopped')?.features.map((f) => f.id)).toEqual(['c', 'd'])
+  })
+
+  it('leaves archived agents out', () => {
+    const cols = agentColumns([agent('a', 'done', true)])
+    expect(cols.find((c) => c.key === 'done')?.features).toEqual([])
   })
 })

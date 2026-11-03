@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { LinearClient, pickStartedState } from '../src/main/linear'
-import { issuePrompt } from '../src/shared/linear'
-import type { LinearIssue } from '../src/shared/types'
+import { issuePrompt, reposForLabels } from '../src/shared/linear'
+import type { LinearIssue, Project } from '../src/shared/types'
 
 const issue: LinearIssue = {
   id: 'i1',
@@ -184,5 +184,16 @@ describe('LinearClient', () => {
 
   it('refuses to call Linear without a key', async () => {
     await expect(new LinearClient(() => null).myIssues()).rejects.toThrow('not connected')
+  })
+})
+
+describe('reposForLabels', () => {
+  const repo = (id: string, labels: string[]) => ({ id, linearLabels: labels.map((l) => ({ id: l, name: l })) }) as Project
+
+  it('returns every repository sharing a label, and repositories with several labels once', () => {
+    const repos = [repo('web', ['a', 'b']), repo('api', ['a']), repo('docs', ['c']), repo('none', [])]
+    expect(reposForLabels(repos, ['a']).map((r) => r.id)).toEqual(['web', 'api'])
+    expect(reposForLabels(repos, ['a', 'b']).map((r) => r.id)).toEqual(['web', 'api'])
+    expect(reposForLabels(repos, ['z'])).toEqual([])
   })
 })

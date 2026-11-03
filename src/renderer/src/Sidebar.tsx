@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { labelNames } from '../../shared/linear'
+import { shortcutLabel } from '../../shared/shortcuts'
 import { arrangeFeatures, SIDEBAR_SORTS, type SidebarSort } from '../../shared/features'
 import type { Feature, FeatureStatus, Project, QaRun, TerminalTarget } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { closeTerminal, inTarget, openTerminal, showTerminal, useTerminals } from './terminalStore'
+import { IS_MAC } from './platform'
 import { Icon } from './ui/Icon'
 
 /** Order of the filter chips: what needs the user first. */
@@ -15,10 +18,20 @@ function shortModel(model: string): string {
   return model.replace(/^claude-/, '').replace(/-\d{8}$/, '')
 }
 
+/** 72 000 → "72k", 1 200 000 → "1.2M". */
+function compact(tokens: number): string {
+  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`
+  if (tokens >= 1000) return `${Math.round(tokens / 1000)}k`
+  return String(tokens)
+}
+
 interface Props {
   project: Project
   features: Feature[]
   selectedId: string | null
+  /** The Kanban board is showing instead of a conversation. */
+  board: boolean
+  onBoard(board: boolean): void
   onSelect(feature: Feature): void
   onNew(): void
   /** Opens the dialog linking an agent to an issue. */
@@ -46,6 +59,8 @@ export function Sidebar({
   project,
   features,
   selectedId,
+  board,
+  onBoard,
   onSelect,
   onNew,
   onLink,
@@ -129,7 +144,7 @@ export function Sidebar({
         key={f.id}
         role="button"
         tabIndex={0}
-        className={`feature-row${f.id === selectedId ? ' selected' : ''}${f.archived ? ' archived' : ''}`}
+        className={`feature-row${f.id === selectedId && !board ? ' selected' : ''}${f.archived ? ' archived' : ''}`}
         onClick={() => onSelect(f)}
         onKeyDown={(e) => e.key === 'Enter' && e.target === e.currentTarget && onSelect(f)}
         onDoubleClick={() => setRenamingId(f.id)}
@@ -159,14 +174,18 @@ export function Sidebar({
               ★
             </span>
           )}
-          {f.status === 'queued' && f.queuePosition ? (
-            <span className="feature-row-status">{t.sidebar.queueRank(f.queuePosition)}</span>
-          ) : null}
+          <span className={`feature-row-status ${f.status}`}>
+            {f.status === 'queued' && f.queuePosition ? t.sidebar.queueRank(f.queuePosition) : t.status[f.status]}
+          </span>
         </span>
         <span className="feature-row-sub">
-          {f.linear && <span className="feature-row-issue">{f.linear.identifier}</span>}
+          <span className="chip">Claude</span>
           {f.model && <span>{shortModel(f.model)}</span>}
-          <span className="num">${f.costUsd.toFixed(2)}</span>
+          {f.linear && <span className="feature-row-issue">{f.linear.identifier}</span>}
+        </span>
+        <span className="feature-row-sub num">
+          {f.contextTokens > 0 && <span>{compact(f.contextTokens)}</span>}
+          <span>${f.costUsd.toFixed(3)}</span>
         </span>
       </div>
     )
@@ -174,14 +193,18 @@ export function Sidebar({
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-head">
-        <span className="sidebar-title">
-          {t.sidebar.features} <span className="num">{features.length}</span>
-        </span>
-        <button onClick={onNew}>
-          <span className="plus"><Icon name="plus" /></span> {t.sidebar.newFeature}
+      <div className="sidebar-tabs" role="tablist">
+        <button role="tab" aria-selected={!board} className={`sidebar-tab${board ? '' : ' selected'}`} onClick={() => onBoard(false)}>
+          <Icon name="chat" size={13} /> {t.sidebar.features} <span className="num">{features.length}</span>
+        </button>
+        <button role="tab" aria-selected={board} className={`sidebar-tab${board ? ' selected' : ''}`} onClick={() => onBoard(true)}>
+          <Icon name="kanban" size={13} /> {t.sidebar.kanban}
         </button>
       </div>
+      <button className="sidebar-new" onClick={onNew}>
+        <Icon name="plus" size={14} /> {t.sidebar.newFeature}
+        <kbd>{shortcutLabel('newFeature', IS_MAC)}</kbd>
+      </button>
 
       {features.length > 1 && (
         <div className="sidebar-search">
@@ -350,9 +373,9 @@ export function Sidebar({
         <p className="sidebar-path" title={project.path}>
           {project.path.replace(/^\/Users\/[^/]+/, '~')}
         </p>
-        {project.linearLabel ? (
+        {project.linearLabels.length ? (
           <p className="sidebar-linear">
-            <span className="dot done" /> Linear · {project.linearLabel.name}
+            <span className="dot done" /> Linear · {labelNames(project.linearLabels)}
           </p>
         ) : (
           linearConnected && (

@@ -43,10 +43,20 @@ const en = {
 
   common: { cancel: 'Cancel', save: 'Save', delete: 'Delete' },
 
-  topbar: { newProject: 'New project', waitingBadge: 'Agents waiting for an answer' },
+  topbar: { newProject: 'New project', waitingBadge: 'Agents waiting for an answer', search: 'Search', editor: 'Editor' },
+
+  rail: { projects: 'Projects' },
+
+  board: {
+    kinds: { agents: 'Agents', linear: 'Linear' } as Record<'agents' | 'linear', string>,
+    columns: { running: 'Running', waiting: 'Waiting', done: 'Done', stopped: 'Stopped', idle: 'Idle' } as Record<'running' | 'waiting' | 'done' | 'stopped' | 'idle', string>,
+    empty: 'Nothing here.'
+  },
+
 
   sidebar: {
     features: 'Agents',
+    kanban: 'Kanban',
     newFeature: 'New agent',
     filterByStatus: 'Filter by status',
     all: 'All',
@@ -128,6 +138,7 @@ const en = {
   },
 
   statusbar: {
+    agents: (n: number) => `${n} ${n === 1 ? 'agent' : 'agents'}`,
     working: (n: number) => `${n} working`,
     waiting: (n: number) => `${n} waiting`,
     done: (n: number) => `${n} done`,
@@ -159,6 +170,8 @@ const en = {
   },
 
   feature: {
+    context: 'Context',
+    cost: 'Cost',
     stop: 'Stop',
     stopHint: 'Stop the current message (Esc / Ctrl+C)',
     contextSize: 'Conversation size. Every request of the agent sends all of it again: past 100k, a new agent costs less.',
@@ -206,6 +219,12 @@ const en = {
 
   git: {
     changes: 'Changes',
+    tabUncommitted: 'Uncommitted',
+    tabFiles: 'Files',
+    tabPr: 'PR & CI',
+    viewDiff: 'View diff',
+    commitAll: 'Commit all…',
+    noPr: 'No pull request yet.',
     history: 'History',
     uncommitted: (n: number) => `${n} uncommitted ${n === 1 ? 'file' : 'files'}`,
     filterCommits: 'Filter commits, authors, branches…',
@@ -386,10 +405,11 @@ const en = {
     tabPreview: 'Tab preview',
     fallbackName: 'Project',
     color: 'Color',
-    linearLabel: 'Linear project label (optional)',
-    linearNone: 'None',
+    linearLabel: 'Linear project labels (optional)',
+    linearNone: 'No label in this Linear workspace. Add a project label in Linear to link it here.',
+    linearFilter: 'Filter labels',
     loading: 'Loading…',
-    linearHint: 'Issues of the Linear projects carrying this label start their agents in this repository.',
+    linearHint: 'Issues of the Linear projects carrying any ticked label start their agents in this repository. Several repositories can share a label: you pick which one when starting an issue.',
     create: 'Create project'
   },
 
@@ -441,6 +461,7 @@ const en = {
 
   linearView: {
     tab: 'Linear',
+    startIn: 'Start in',
     myIssues: 'My issues',
     projects: 'Projects',
     notConnectedTitle: 'Linear is not connected',
@@ -563,6 +584,7 @@ const en = {
     settings: 'Open settings',
     usage: 'Show usage',
     linear: 'Open Linear',
+    kanban: 'Open the Kanban board',
     waiting: 'Go to the next agent waiting for me'
   },
 
@@ -672,10 +694,20 @@ const fr: Dict = {
 
   common: { cancel: 'Annuler', save: 'Enregistrer', delete: 'Supprimer' },
 
-  topbar: { newProject: 'Nouveau projet', waitingBadge: 'Agents en attente de réponse' },
+  topbar: { newProject: 'Nouveau projet', waitingBadge: 'Agents en attente de réponse', search: 'Rechercher', editor: 'Éditeur' },
+
+  rail: { projects: 'Projets' },
+
+  board: {
+    kinds: { agents: 'Agents', linear: 'Linear' },
+    columns: { running: 'En cours', waiting: 'En attente', done: 'Terminés', stopped: 'Arrêtés', idle: 'Inactifs' },
+    empty: 'Rien ici.'
+  },
+
 
   sidebar: {
     features: 'Agents',
+    kanban: 'Kanban',
     newFeature: 'Nouvel agent',
     filterByStatus: 'Filtrer par statut',
     all: 'Tous',
@@ -757,6 +789,7 @@ const fr: Dict = {
   },
 
   statusbar: {
+    agents: (n) => `${n} agent${n > 1 ? 's' : ''}`,
     working: (n) => `${n} en cours`,
     waiting: (n) => `${n} en attente`,
     done: (n) => `${n} ${n > 1 ? 'terminés' : 'terminé'}`,
@@ -788,6 +821,8 @@ const fr: Dict = {
   },
 
   feature: {
+    context: 'Contexte',
+    cost: 'Coût',
     stop: 'Arrêter',
     stopHint: 'Annuler le message en cours (Échap / Ctrl+C)',
     contextSize: "Taille de la conversation. Chaque requête de l'agent la renvoie en entier : au-delà de 100k, un nouvel agent coûte moins cher.",
@@ -835,6 +870,12 @@ const fr: Dict = {
 
   git: {
     changes: 'Changements',
+    tabUncommitted: 'Non commités',
+    tabFiles: 'Fichiers',
+    tabPr: 'PR et CI',
+    viewDiff: 'Voir le diff',
+    commitAll: 'Commit tout…',
+    noPr: 'Pas encore de pull request.',
     history: 'Historique',
     uncommitted: (n) => `${n} ${n > 1 ? 'fichiers non commités' : 'fichier non commité'}`,
     filterCommits: 'Filtrer commits, auteurs, branches…',
@@ -1014,10 +1055,11 @@ const fr: Dict = {
     tabPreview: "Aperçu de l'onglet",
     fallbackName: 'Projet',
     color: 'Couleur',
-    linearLabel: 'Label de projet Linear (facultatif)',
-    linearNone: 'Aucun',
+    linearLabel: 'Labels de projet Linear (facultatif)',
+    linearNone: "Aucun label dans ce workspace Linear. Ajoutez un label de projet dans Linear pour le lier ici.",
+    linearFilter: 'Filtrer les labels',
     loading: 'Chargement…',
-    linearHint: 'Les issues des projets Linear portant ce label lancent leurs agents dans ce dépôt.',
+    linearHint: "Les issues des projets Linear portant l'un des labels cochés lancent leurs agents dans ce dépôt. Plusieurs dépôts peuvent partager un label : vous choisissez lequel au lancement d'une issue.",
     create: 'Créer le projet'
   },
 
@@ -1069,6 +1111,7 @@ const fr: Dict = {
 
   linearView: {
     tab: 'Linear',
+    startIn: 'Lancer dans',
     myIssues: 'Mes issues',
     projects: 'Projets',
     notConnectedTitle: "Linear n'est pas connecté",
@@ -1190,6 +1233,7 @@ const fr: Dict = {
     settings: 'Ouvrir les réglages',
     usage: "Voir l'utilisation",
     linear: 'Ouvrir Linear',
+    kanban: 'Ouvrir le Kanban',
     waiting: "Aller au prochain agent qui m'attend"
   },
 

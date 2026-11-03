@@ -9,10 +9,12 @@ import { Icon } from './ui/Icon'
 interface Props {
   feature: Feature
   git: GitStatus | null
+  /** `commit` is the commit button alone, `sync` everything but the commit, `inline` all of it as a line of text. */
+  variant?: 'inline' | 'commit' | 'sync'
 }
 
 /** Pull, push and commit of the feature's worktree, as buttons next to its branch. */
-export function GitActions({ feature, git }: Props) {
+export function GitActions({ feature, git, variant = 'inline' }: Props) {
   const t = useT()
   const [running, setRunning] = useState<'pull' | 'push' | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -52,9 +54,20 @@ export function GitActions({ feature, git }: Props) {
   // A branch without upstream is published by its first push.
   const canPush = (git.ahead > 0 || !git.upstream) && !running
 
+  const commitButton = (
+    <button
+      className={variant === 'commit' ? 'primary' : 'git-action'}
+      disabled={!git.changes.length || Boolean(running)}
+      onClick={() => setCommitting(true)}
+    >
+      {variant === 'commit' ? t.git.commitAll : t.git.commit}
+    </button>
+  )
+
   return (
     <>
-      <span className="sep">·</span>
+      {variant === 'inline' && <span className="sep">·</span>}
+      {variant === 'commit' ? commitButton : (
       <span className="git-actions">
         <button className="git-action" disabled={!canPull} title={git.upstream ? t.git.pullHint(git.upstream) : undefined} onClick={() => void run('pull')}>
           {running === 'pull' ? t.git.pulling : `↓ ${t.git.pull}${git.behind > 0 ? ` ${git.behind}` : ''}`}
@@ -62,9 +75,7 @@ export function GitActions({ feature, git }: Props) {
         <button className="git-action" disabled={!canPush} title={git.upstream ? t.git.pushHint : t.git.publishHint} onClick={() => void run('push')}>
           {running === 'push' ? t.git.pushing : `↑ ${t.git.push}${git.ahead > 0 ? ` ${git.ahead}` : ''}`}
         </button>
-        <button className="git-action" disabled={!git.changes.length || Boolean(running)} onClick={() => setCommitting(true)}>
-          {t.git.commit}
-        </button>
+        {variant === 'inline' && commitButton}
         {feature.prUrl ? (
           <a className="git-action" href={feature.prUrl} target="_blank" rel="noreferrer" title={t.pr.open}>
             PR ↗
@@ -75,6 +86,7 @@ export function GitActions({ feature, git }: Props) {
           </button>
         )}
       </span>
+      )}
       {error && (
         <span className="git-error" title={error} role="alert">
           {error}

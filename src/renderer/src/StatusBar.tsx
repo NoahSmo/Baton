@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { formatReset } from '../../shared/time'
-import type { Feature, LinearStatus, UpdateInfo, UsageWarning, UsageWindow } from '../../shared/types'
+import type { AppStats, Feature, LinearStatus, UpdateInfo, UsageWarning, UsageWindow } from '../../shared/types'
 import { limitWindow } from '../../shared/i18n'
 import { useLang, useT } from './i18n'
 
@@ -43,6 +43,14 @@ export function StatusBar({ features, linear, onOpenLinear, version, update, onO
   const count = (...statuses: Feature['status'][]) => features.filter((f) => statuses.includes(f.status)).length
   const cost = features.reduce((sum, f) => sum + f.costUsd, 0)
   const [warning, setWarning] = useState<UsageWarning | null>(null)
+  const [stats, setStats] = useState<AppStats | null>(null)
+
+  useEffect(() => {
+    const poll = () => void window.api.getAppStats().then(setStats, () => {})
+    poll()
+    const timer = setInterval(poll, 5000)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     void window.api.getUsageWarning().then(setWarning)
@@ -103,6 +111,18 @@ export function StatusBar({ features, linear, onOpenLinear, version, update, onO
         </span>
       )}
       <span className="statusbar-sep" />
+      <span>
+        {t.statusbar.agents(features.length)}
+        {stats && (
+          <>
+            {' · '}
+            <span className="num">{stats.memoryMb} MB</span>
+            {' · '}
+            <span className="num">{stats.cpuPercent} % CPU</span>
+          </>
+        )}
+      </span>
+      <span className="statusbar-spacer" />
       {METERS.map(({ kind, type, label }) => {
         const w = windows.find((x) => limitWindow(x.limitType) === kind)
         if (!w) {

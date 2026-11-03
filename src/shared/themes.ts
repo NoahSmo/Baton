@@ -41,6 +41,38 @@ export interface Theme {
 
 export const THEMES: Theme[] = [
   {
+    id: 'studio',
+    name: 'Studio',
+    dark: true,
+    colors: {
+      bg: '#0e0e12',
+      panel: '#14141a',
+      raised: '#1b1b23',
+      hover: '#23232d',
+      border: '#25252f',
+      borderStrong: '#34343f',
+      text: '#ececf1',
+      muted: '#9a9aa8',
+      faint: '#62626f',
+      accent: '#8b7cf6',
+      accentHover: '#9d90f8',
+      accentText: '#0d0a24',
+      blue: '#6aa7f0',
+      amber: '#e5a83b',
+      green: '#4cc38a',
+      red: '#f0787a',
+      redHover: '#f48f91',
+      dangerText: '#2a0f10',
+      purple: '#b49cf2',
+      cyan: '#2cc3d1',
+      orange: '#e0914f',
+      punct: '#c2c2d0',
+      comment: '#767684',
+      shadow: 'rgba(0, 0, 0, 0.55)',
+      overlay: 'rgba(0, 0, 0, 0.6)'
+    }
+  },
+  {
     id: 'baton',
     name: 'Baton',
     dark: true,

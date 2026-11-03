@@ -39,6 +39,7 @@ const api: Api = {
   answerConfirm: (id, confirmed) => ipcRenderer.invoke('confirm:answer', id, confirmed),
   onProjectRemoved: (cb) => subscribe('project:removed', cb),
   getVersion: () => ipcRenderer.invoke('app:version'),
+  getAppStats: () => ipcRenderer.invoke('app:stats'),
   getUpdate: () => ipcRenderer.invoke('update:get'),
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),

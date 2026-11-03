@@ -41,6 +41,14 @@ export interface UpdateInfo {
   command: string
 }
 
+/** What the app itself costs the machine. */
+export interface AppStats {
+  /** Resident memory, in megabytes. */
+  memoryMb: number
+  /** Share of one core, in percent. */
+  cpuPercent: number
+}
+
 export type FeatureStatus =
   | 'idle' // no turn running, nothing to report
   | 'working' // agent is running a turn
@@ -186,8 +194,8 @@ export interface Project {
   name: string
   path: string
   color: string
-  /** When set, the issues of every Linear project carrying this label belong to the repo. */
-  linearLabel: LinearLabel | null
+  /** The issues of every Linear project carrying one of these labels belong to the repo; a label can serve several repos. */
+  linearLabels: LinearLabel[]
   commands: LaunchCommand[]
   templates: PromptTemplate[]
   /** Each agent works in a worktree of its own. Off, they all work in the project folder itself. */
@@ -214,7 +222,7 @@ export interface ProjectInput {
   path: string
   name: string
   color: string
-  linearLabel: LinearLabel | null
+  linearLabels: LinearLabel[]
   /** Ignored for a folder that is not a git repository: agents can only work in place there. */
   worktrees: boolean
 }
@@ -691,6 +699,8 @@ export interface Api {
   answerConfirm(id: number, confirmed: boolean): Promise<void>
   onProjectRemoved(cb: (projectId: string) => void): () => void
   getVersion(): Promise<string>
+  /** Memory and processor load of the app, all its processes together. */
+  getAppStats(): Promise<AppStats>
   /** The newer release found by the last check, if any. */
   getUpdate(): Promise<UpdateInfo | null>
   /** Looks for a release now; `update` is null when the app is up to date or GitHub is unreachable. */
