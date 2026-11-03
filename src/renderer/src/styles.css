@@ -74,6 +74,33 @@ body {
   overflow: hidden;
 }
 
+/* The interface is not text to select; the conversation, the editor, the terminal and the names of agents, branches and tickets are. */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+.transcript,
+.cm-editor,
+.diff,
+.terminal-host,
+.feature-title h1,
+.feature-row-title,
+.feature-row-issue,
+.sidebar-path,
+.branch-name,
+.branch-list,
+.pr-branch,
+.issue-id,
+.issue-title,
+.kanban-card-title,
+.feature-meta a {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 button,
 input,
 textarea,
@@ -3128,6 +3155,7 @@ a.git-action:hover {
   height: 18px;
   margin: 0;
   padding: 0;
+  border: 0;
   border-radius: 9px;
   background: var(--border-strong);
   position: relative;
@@ -3143,7 +3171,8 @@ a.git-action:hover {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--text);
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
   transition: transform var(--dur-fast) var(--ease);
 }
 
@@ -3153,7 +3182,6 @@ a.git-action:hover {
 
 .switch:checked::after {
   transform: translateX(12px);
-  background: var(--accent-text);
 }
 
 .switch:focus-visible {

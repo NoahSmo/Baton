@@ -9,6 +9,7 @@ import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { closeTerminal, inTarget, openTerminal, showTerminal, useTerminals } from './terminalStore'
 import { IS_MAC } from './platform'
+import type { BoardKind } from '../../shared/kanban'
 import { Icon } from './ui/Icon'
 
 /** Order of the filter chips: what needs the user first. */
@@ -30,9 +31,9 @@ interface Props {
   project: Project
   features: Feature[]
   selectedId: string | null
-  /** The Kanban board is showing instead of a conversation. */
-  board: boolean
-  onBoard(board: boolean): void
+  /** The Kanban board or the Linear issues are showing instead of a conversation. */
+  board: BoardKind | null
+  onBoard(board: BoardKind | null): void
   /** Where the board puts its own list (Linear projects) while it replaces the agents. */
   onBoardSlot(el: HTMLDivElement | null): void
   onSelect(feature: Feature): void
@@ -183,7 +184,6 @@ export function Sidebar({
           </span>
         </span>
         <span className="feature-row-sub">
-          <span className="chip">Claude</span>
           {f.model && <span>{shortModel(f.model)}</span>}
           {f.linear && <span className="feature-row-issue">{f.linear.identifier}</span>}
         </span>
@@ -198,11 +198,14 @@ export function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar-tabs" role="tablist">
-        <button role="tab" aria-selected={!board} className={`sidebar-tab${board ? '' : ' selected'}`} onClick={() => onBoard(false)}>
+        <button role="tab" aria-selected={!board} className={`sidebar-tab${board ? '' : ' selected'}`} onClick={() => onBoard(null)}>
           <Icon name="chat" size={13} /> {t.sidebar.features} <span className="num">{features.length}</span>
         </button>
-        <button role="tab" aria-selected={board} className={`sidebar-tab${board ? ' selected' : ''}`} onClick={() => onBoard(true)}>
+        <button role="tab" aria-selected={board === 'kanban'} className={`sidebar-tab${board === 'kanban' ? ' selected' : ''}`} onClick={() => onBoard('kanban')}>
           <Icon name="kanban" size={13} /> {t.sidebar.kanban}
+        </button>
+        <button role="tab" aria-selected={board === 'linear'} className={`sidebar-tab${board === 'linear' ? ' selected' : ''}`} onClick={() => onBoard('linear')}>
+          <Icon name="linear" size={13} /> {t.sidebar.linear}
         </button>
       </div>
       {board ? (

@@ -73,3 +73,6 @@ export function stateForColumn(states: LinearState[], column: Pick<KanbanColumn,
     states.filter((s) => s.type === column.type).sort((a, b) => a.position - b.position)[0]
   )
 }
+
+/** What replaces the conversation: the Linear issues as a Kanban board, or as a list. */
+export type BoardKind = 'kanban' | 'linear'
