@@ -20,6 +20,16 @@ interface Props {
 
 const EVENTS = ['waiting', 'done', 'error', 'limited'] as const
 
+/** A labelled on/off row; the whole row toggles. */
+function Toggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange(value: boolean): void }) {
+  return (
+    <label className="settings-row" title={hint}>
+      <span>{label}</span>
+      <input type="checkbox" className="switch" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    </label>
+  )
+}
+
 export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored, onClose }: Props) {
   const t = useT()
   const lang = useLang()
@@ -92,97 +102,109 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog settings-dialog" role="dialog" aria-labelledby="settings-title">
         <h2 id="settings-title">{t.update.settings}</h2>
-        <div className="settings-row">
-          <span>{t.statusbar.language}</span>
-          <span className="lang-switch" role="group" aria-label={t.statusbar.language}>
-            {LANGS.map((l) => (
-              <button key={l} className={l === lang ? 'selected' : ''} aria-pressed={l === lang} onClick={() => onLanguage(l)}>
-                {l.toUpperCase()}
-              </button>
-            ))}
-          </span>
-        </div>
-        <div className="settings-row">
-          <span>{t.statusbar.theme}</span>
-          <select value={themeId} aria-label={t.statusbar.theme} onChange={(e) => changeTheme(e.target.value)}>
-            {THEMES.map((theme) => (
-              <option key={theme.id} value={theme.id}>
-                {theme.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        {maxRunning !== null && (
-          <div className="settings-row" title={t.statusbar.maxRunningHint}>
-            <span>{t.statusbar.maxRunning}</span>
-            <span className="lang-switch" role="group" aria-label={t.statusbar.maxRunning}>
-              {[1, 2, 3, 0].map((n) => (
-                <button key={n} className={n === maxRunning ? 'selected' : ''} aria-pressed={n === maxRunning} onClick={() => changeMaxRunning(n)}>
-                  {n || '∞'}
-                </button>
-              ))}
-            </span>
-          </div>
-        )}
-        {autoContinue !== null && (
-          <label className="settings-check" title={t.statusbar.autoContinueHint}>
-            <input type="checkbox" checked={autoContinue} onChange={(e) => changeAutoContinue(e.target.checked)} />
-            {t.statusbar.autoContinue}
-          </label>
-        )}
-        {prefs && (
-          <>
-            <h3 className="settings-title">{t.notifications.title}</h3>
-            {EVENTS.map((event) => (
-              <label key={event} className="settings-check">
-                <input type="checkbox" checked={prefs[event]} onChange={(e) => changePrefs({ [event]: e.target.checked })} />
-                {t.notifications.events[event]}
-              </label>
-            ))}
-            <label className="settings-check">
-              <input type="checkbox" checked={prefs.sound} onChange={(e) => changePrefs({ sound: e.target.checked })} />
-              {t.notifications.sound}
-            </label>
-            <label className="settings-check" title={t.notifications.whenFocusedHint}>
-              <input type="checkbox" checked={prefs.whenFocused} onChange={(e) => changePrefs({ whenFocused: e.target.checked })} />
-              {t.notifications.whenFocused}
-            </label>
-          </>
-        )}
-
-        <h3 className="settings-title">{t.shortcuts.title}</h3>
-        <div className="shortcut-list">
-          {SHORTCUT_LIST.map((action) => (
-            <div key={action} className="shortcut-row">
-              <span>{t.shortcuts.actions[action.startsWith('project:') ? 'project' : (action as keyof typeof t.shortcuts.actions)]}</span>
-              <kbd>{shortcutLabel(action, IS_MAC)}</kbd>
+        <div className="settings-body">
+          <section className="settings-section">
+            <h3 className="settings-title">{t.update.settings}</h3>
+            <div className="settings-card">
+              <div className="settings-row">
+                <span>{t.statusbar.language}</span>
+                <span className="lang-switch" role="group" aria-label={t.statusbar.language}>
+                  {LANGS.map((l) => (
+                    <button key={l} className={l === lang ? 'selected' : ''} aria-pressed={l === lang} onClick={() => onLanguage(l)}>
+                      {l.toUpperCase()}
+                    </button>
+                  ))}
+                </span>
+              </div>
+              <div className="settings-row">
+                <span>{t.statusbar.theme}</span>
+                <select value={themeId} aria-label={t.statusbar.theme} onChange={(e) => changeTheme(e.target.value)}>
+                  {THEMES.map((theme) => (
+                    <option key={theme.id} value={theme.id}>
+                      {theme.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          ))}
+          </section>
+
+          {(maxRunning !== null || autoContinue !== null) && (
+            <section className="settings-section">
+              <h3 className="settings-title">{t.statusbar.maxRunning}</h3>
+              <div className="settings-card">
+                {maxRunning !== null && (
+                  <div className="settings-row" title={t.statusbar.maxRunningHint}>
+                    <span>{t.statusbar.maxRunning}</span>
+                    <span className="lang-switch" role="group" aria-label={t.statusbar.maxRunning}>
+                      {[1, 2, 3, 0].map((n) => (
+                        <button key={n} className={n === maxRunning ? 'selected' : ''} aria-pressed={n === maxRunning} onClick={() => changeMaxRunning(n)}>
+                          {n || '∞'}
+                        </button>
+                      ))}
+                    </span>
+                  </div>
+                )}
+                {autoContinue !== null && <Toggle label={t.statusbar.autoContinue} hint={t.statusbar.autoContinueHint} checked={autoContinue} onChange={changeAutoContinue} />}
+              </div>
+            </section>
+          )}
+
+          {prefs && (
+            <section className="settings-section">
+              <h3 className="settings-title">{t.notifications.title}</h3>
+              <div className="settings-card">
+                {EVENTS.map((event) => (
+                  <Toggle key={event} label={t.notifications.events[event]} checked={prefs[event]} onChange={(value) => changePrefs({ [event]: value })} />
+                ))}
+                <Toggle label={t.notifications.sound} checked={prefs.sound} onChange={(value) => changePrefs({ sound: value })} />
+                <Toggle label={t.notifications.whenFocused} hint={t.notifications.whenFocusedHint} checked={prefs.whenFocused} onChange={(value) => changePrefs({ whenFocused: value })} />
+              </div>
+            </section>
+          )}
+
+          <section className="settings-section">
+            <h3 className="settings-title">{t.shortcuts.title}</h3>
+            <div className="settings-card">
+              {SHORTCUT_LIST.map((action) => (
+                <div key={action} className="settings-row">
+                  <span>{t.shortcuts.actions[action.startsWith('project:') ? 'project' : (action as keyof typeof t.shortcuts.actions)]}</span>
+                  <kbd>{shortcutLabel(action, IS_MAC)}</kbd>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h3 className="settings-title">{t.trash.title}</h3>
+            <p className="hint">{t.trash.hint}</p>
+            <div className="settings-card">
+              {trash.length === 0 && <p className="hint settings-empty">{t.trash.empty}</p>}
+              {trash.map((entry) => (
+                <div key={entry.id} className="settings-row trash-row">
+                  <span className="trash-name" title={entry.branch}>
+                    {entry.title}
+                    <span className="hint">
+                      {' '}
+                      · {entry.projectName} · {t.trash.files(entry.files)}
+                    </span>
+                  </span>
+                  <button onClick={() => void restore(entry)}>{t.trash.restore}</button>
+                  <button className="danger" onClick={() => void discard(entry)}>
+                    {t.trash.discard}
+                  </button>
+                </div>
+              ))}
+            </div>
+            {trashError && <p className="form-error">{trashError}</p>}
+          </section>
         </div>
 
-        <h3 className="settings-title">{t.trash.title}</h3>
-        <p className="hint">{t.trash.hint}</p>
-        {trash.length === 0 && <p className="hint">{t.trash.empty}</p>}
-        {trash.map((entry) => (
-          <div key={entry.id} className="trash-row">
-            <span className="trash-name" title={entry.branch}>
-              {entry.title}
-              <span className="hint">
-                {' '}
-                · {entry.projectName} · {t.trash.files(entry.files)}
-              </span>
-            </span>
-            <button onClick={() => void restore(entry)}>{t.trash.restore}</button>
-            <button className="danger" onClick={() => void discard(entry)}>
-              {t.trash.discard}
-            </button>
-          </div>
-        ))}
-        {trashError && <p className="form-error">{trashError}</p>}
-
-        <p className="confirm-detail">{t.update.current(version)}</p>
-        {result && <p className="hint">{t.update.upToDate(version)}</p>}
-        <div className="dialog-actions">
+        <div className="dialog-actions settings-foot">
+          <span className="hint">
+            {t.update.current(version)}
+            {result && ` · ${t.update.upToDate(version)}`}
+          </span>
           <span className="spacer" />
           <button onClick={onClose}>{t.update.close}</button>
           <button className="primary" onClick={() => void check()} disabled={checking}>
