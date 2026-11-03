@@ -17,6 +17,7 @@ import { AttachButton, DraftAttachments, SentAttachments } from './Attachments'
 import { BranchPicker } from './BranchPicker'
 import { ConversationSearch } from './ConversationSearch'
 import { loadDraft, saveDraft } from './drafts'
+import { GitActions } from './GitActions'
 import { openContextMenu } from './contextMenu'
 import { useLang, useT } from './i18n'
 import { LinkIssueDialog } from './LinkIssueDialog'
@@ -147,7 +148,6 @@ export function FeatureView({
               <span className={`dot ${feature.status}`} />
               {t.status[feature.status]}
             </span>
-            <span className="chip">Claude Code</span>
           </div>
           <p className="feature-meta">
             {project?.name}
@@ -171,6 +171,7 @@ export function FeatureView({
                 </button>
               </>
             )}
+            <GitActions feature={feature} git={git} />
             {feature.linear ? (
               <>
                 <span className="sep">·</span>

@@ -184,7 +184,6 @@ export function Sidebar({
           </span>
         </span>
         <span className="feature-row-sub">
-          <span className="chip">Claude</span>
           {f.model && <span>{shortModel(f.model)}</span>}
           {f.linear && <span className="feature-row-issue">{f.linear.identifier}</span>}
         </span>
