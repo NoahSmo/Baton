@@ -77,9 +77,12 @@ jobs:
     needs: version
     strategy:
       matrix:
+        # One job per package format: each repackages the same app, so they run in parallel.
+        # Runners are pinned, not ubuntu-latest: node-pty is compiled here and links against
+        # the runner's glibc, so a newer runner makes the app fail to start on older distros.
+        arch: [x64, arm64]
+        target: [deb, rpm, tar.gz]
         include:
-          # Pinned, not ubuntu-latest: node-pty is compiled here and links against the
-          # runner's glibc, so a newer runner makes the app fail to start on older distros.
           - arch: x64
             runner: ubuntu-22.04
           - arch: arm64
@@ -99,10 +102,11 @@ jobs:
           key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
           restore-keys: electron-${{ runner.os }}-${{ runner.arch }}-
       - name: Install rpm tooling
+        if: matrix.target == 'rpm'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq rpm
       - run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm ci
-      - run: npm run dist:linux
+      - run: npx electron-vite build && npx electron-builder --linux ${{ matrix.target }} --publish never
       - name: Check the native module loads on glibc 2.35 (Ubuntu 22.04, Debian 12)
         run: |
           pty=$(find dist -path '*/node-pty/build/Release/pty.node' | head -n 1)
@@ -112,7 +116,7 @@ jobs:
           test "$(printf '%s\nGLIBC_2.35\n' "$max" | sort -V | tail -n 1)" = GLIBC_2.35
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-${{ matrix.arch }}
+          name: linux-${{ matrix.arch }}-${{ matrix.target }}
           path: |
             dist/*.deb
             dist/*.rpm
