@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { formatReset } from '../../shared/time'
 import type { AppStats, Feature, LinearStatus, UpdateInfo, UsageWarning, UsageWindow } from '../../shared/types'
+import { formatUsd } from '../../shared/format'
 import { limitWindow } from '../../shared/i18n'
 import { useLang, useT } from './i18n'
 
@@ -23,8 +24,8 @@ const WINDOWS_KEY = 'usageWindows'
 
 /** Both windows always show, empty until an agent reports on them. */
 const METERS = [
-  { kind: 'daily', type: 'five_hour', label: '5h' },
-  { kind: 'weekly', type: 'seven_day', label: '7d' }
+  { kind: 'daily', type: 'five_hour' },
+  { kind: 'weekly', type: 'seven_day' }
 ] as const
 
 /** The last readings, kept across restarts until their window resets. */
@@ -123,12 +124,12 @@ export function StatusBar({ features, linear, onOpenLinear, version, update, onO
         )}
       </span>
       <span className="statusbar-spacer" />
-      {METERS.map(({ kind, type, label }) => {
+      {METERS.map(({ kind, type }) => {
         const w = windows.find((x) => limitWindow(x.limitType) === kind)
         if (!w) {
           return (
             <span key={type} className="credit-meter unknown" title={t.statusbar.creditUnknown(kind)} role="img" aria-label={t.statusbar.creditUnknown(kind)}>
-              {label}
+              <span className="credit-label">{t.statusbar.meterLabel(kind)}</span>
               <span className="credit-bar">
                 <span />
               </span>
@@ -139,20 +140,21 @@ export function StatusBar({ features, linear, onOpenLinear, version, update, onO
         const used = Math.min(1, Math.max(0, w.utilization))
         const level = used >= 0.95 ? ' critical' : used >= 0.8 ? ' high' : ''
         const reset = formatReset(w.resetsAt, lang)
-        const text = t.statusbar.creditLeft(kind, Math.round((1 - used) * 100), reset)
+        const text = t.statusbar.creditUsed(kind, Math.round(used * 100), reset)
         return (
           <span key={type} className={`credit-meter${level}`} title={text} role="img" aria-label={text}>
-            {label}
+            <span className="credit-label">{t.statusbar.meterLabel(kind)}</span>
             <span className="credit-bar">
-              <span style={{ width: `${(1 - used) * 100}%` }} />
+              <span style={{ width: `${used * 100}%` }} />
             </span>
-            <span className="num strong">{Math.round((1 - used) * 100)}%</span>
+            <span className="num strong">{Math.round(used * 100)}%</span>
+            {reset && <span className="credit-reset">{t.statusbar.creditReset(reset)}</span>}
           </span>
         )
       })}
       {warning && <span className="statusbar-warning">{t.statusbar.usageNear(resetTime, warning.utilization, warning.limitType)}</span>}
       <button className="statusbar-linear" title={t.usage.title} onClick={onOpenUsage}>
-        {t.statusbar.total} <span className="num strong">${cost.toFixed(2)}</span>
+        {t.statusbar.cost} <span className="num strong">{formatUsd(cost)}</span>
       </button>
       <span className="statusbar-right">
         {update ? (

@@ -151,9 +151,12 @@ const en = {
     usageNear: (time?: string, used?: number, type?: string) =>
       `${limitWindow(type) === 'weekly' ? 'Weekly' : limitWindow(type) === 'daily' ? 'Daily' : 'Usage'} limit near${used !== undefined ? ` (${Math.round(used * 100)}%)` : ''}${time ? ` · resets ${time}` : ''}`,
     total: 'Total',
-    creditLeft: (kind: 'daily' | 'weekly' | undefined, left: number, time?: string) =>
-      `${kind === 'weekly' ? 'Weekly' : kind === 'daily' ? 'Daily (5 h)' : 'Usage'} credit: ${left}% left${time ? ` · resets ${time}` : ''}`,
-    creditUnknown: (kind: 'daily' | 'weekly') => `${kind === 'weekly' ? 'Weekly' : 'Daily (5 h)'} credit: unknown until an agent reports`,
+    cost: 'Cost',
+    meterLabel: (kind: 'daily' | 'weekly'): string => (kind === 'weekly' ? 'Week' : 'Session'),
+    creditUsed: (kind: 'daily' | 'weekly', used: number, time?: string) =>
+      `${kind === 'weekly' ? 'Weekly limit (7 days)' : 'Session limit (5 hours)'}: ${used}% used${time ? ` · resets ${time}` : ''}`,
+    creditReset: (time: string) => `resets ${time}`,
+    creditUnknown: (kind: 'daily' | 'weekly') => `${kind === 'weekly' ? 'Weekly limit (7 days)' : 'Session limit (5 hours)'}: unknown until an agent reports`,
     connectLinear: 'Connect Linear',
     linearConnected: 'connected',
     language: 'Language',
@@ -802,9 +805,12 @@ const fr: Dict = {
     usageNear: (time, used, type) =>
       `Limite ${limitWindow(type) === 'weekly' ? 'hebdo ' : limitWindow(type) === 'daily' ? 'journalière ' : ''}bientôt atteinte${used !== undefined ? ` (${Math.round(used * 100)} %)` : ''}${time ? ` · reset à ${time}` : ''}`,
     total: 'Total',
-    creditLeft: (kind, left, time) =>
-      `Crédit ${kind === 'weekly' ? 'hebdo' : kind === 'daily' ? 'journalier (5 h)' : 'd’usage'} : ${left} % restant${time ? ` · reset à ${time}` : ''}`,
-    creditUnknown: (kind) => `Crédit ${kind === 'weekly' ? 'hebdo' : 'journalier (5 h)'} : inconnu tant qu’un agent n’a rien reporté`,
+    cost: 'Coût',
+    meterLabel: (kind) => (kind === 'weekly' ? 'Semaine' : 'Session'),
+    creditUsed: (kind, used, time) =>
+      `${kind === 'weekly' ? 'Limite hebdo (7 jours)' : 'Limite de session (5 heures)'} : ${used} % utilisé${time ? ` · reset à ${time}` : ''}`,
+    creditReset: (time) => `reset ${time}`,
+    creditUnknown: (kind) => `${kind === 'weekly' ? 'Limite hebdo (7 jours)' : 'Limite de session (5 heures)'} : inconnue tant qu’un agent n’a rien reporté`,
     connectLinear: 'Connecter Linear',
     linearConnected: 'connecté',
     language: 'Langue',

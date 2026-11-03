@@ -4,6 +4,7 @@ import { shortcutLabel } from '../../shared/shortcuts'
 import { arrangeFeatures, SIDEBAR_SORTS, type SidebarSort } from '../../shared/features'
 import type { Feature, FeatureStatus, Project, QaRun, TerminalTarget } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
+import { formatUsd } from '../../shared/format'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { closeTerminal, inTarget, openTerminal, showTerminal, useTerminals } from './terminalStore'
@@ -185,7 +186,7 @@ export function Sidebar({
         </span>
         <span className="feature-row-sub num">
           {f.contextTokens > 0 && <span>{compact(f.contextTokens)}</span>}
-          <span>${f.costUsd.toFixed(3)}</span>
+          <span>{formatUsd(f.costUsd)}</span>
         </span>
       </div>
     )

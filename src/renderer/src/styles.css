@@ -42,6 +42,9 @@
   --shadow-sm: 0 1px 2px var(--shadow), 0 0 0 1px rgba(255, 255, 255, 0.03);
   --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.12), 0 8px 24px var(--shadow);
   --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.16), 0 16px 48px var(--shadow);
+  --z-resizer: 2;
+  --z-overlay: 50;
+  --z-menu: 100;
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --dur-fast: 0.12s;
   --dur-base: 0.2s;
@@ -198,7 +201,7 @@ pre {
   padding-left: 14px;
 }
 
-.topbar > * {
+.topbar button {
   -webkit-app-region: no-drag;
 }
 
@@ -1548,6 +1551,7 @@ button.attach:hover:not(:disabled) {
 .overlay {
   position: fixed;
   inset: 0;
+  z-index: var(--z-overlay);
   background: var(--overlay);
   display: grid;
   place-items: center;
@@ -1775,7 +1779,7 @@ input.mono {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  padding: 0 12px 10px 16px;
+  padding: 0 var(--sp-4) var(--sp-3);
 }
 
 .filter {
@@ -1801,11 +1805,19 @@ input.mono {
 .credit-meter {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
+}
+
+.credit-label {
+  color: var(--muted);
+}
+
+.credit-reset {
+  color: var(--faint);
 }
 
 .credit-bar {
-  width: 48px;
+  width: 64px;
   height: 6px;
   border-radius: var(--r-sm);
   background: var(--raised);
@@ -2091,7 +2103,7 @@ input.mono {
 
 .ctx-menu {
   position: fixed;
-  z-index: 100;
+  z-index: var(--z-menu);
   min-width: 190px;
   max-width: 320px;
   padding: 5px;
@@ -2264,7 +2276,7 @@ button.toggled:hover:not(:disabled) {
 .resizer {
   flex: none;
   position: relative;
-  z-index: 2;
+  z-index: var(--z-resizer);
   background: var(--border);
   transition: background 0.12s;
 }
@@ -2895,8 +2907,8 @@ button.toggled:hover:not(:disabled) {
 
 .sidebar-search {
   display: flex;
-  gap: 6px;
-  padding: 0 12px 8px 16px;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4) var(--sp-3);
 }
 
 .sidebar-search input {
@@ -3693,7 +3705,7 @@ kbd {
 .sidebar-tabs {
   display: flex;
   gap: 4px;
-  margin: 12px 12px 8px;
+  margin: var(--sp-4) var(--sp-4) var(--sp-3);
   padding: 3px;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -3706,6 +3718,8 @@ kbd {
   align-items: center;
   justify-content: center;
   gap: 6px;
+  height: 28px;
+  padding: 0 var(--sp-3);
   background: transparent;
   border-color: transparent;
   color: var(--muted);
@@ -3720,8 +3734,10 @@ kbd {
 .sidebar-new {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 12px 10px;
+  gap: var(--sp-3);
+  height: 34px;
+  margin: 0 var(--sp-4) var(--sp-3);
+  padding: 0 var(--sp-4);
   background: var(--panel);
 }
 
@@ -3823,7 +3839,7 @@ button.kanban-card {
   background: var(--bg);
 }
 
-.label-option {
+.dialog label.label-option {
   display: flex;
   align-items: center;
   gap: 8px;

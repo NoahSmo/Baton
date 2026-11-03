@@ -1,5 +1,6 @@
 import { agentColumns } from '../../shared/kanban'
 import type { Feature } from '../../shared/types'
+import { formatUsd } from '../../shared/format'
 import { useT } from './i18n'
 
 interface Props {
@@ -32,7 +33,7 @@ export function AgentBoard({ features, selectedId, onOpen }: Props) {
                 <span className="kanban-card-foot">
                   {f.linear && <span className="feature-row-issue">{f.linear.identifier}</span>}
                   {f.model && <span>{shortModel(f.model)}</span>}
-                  <span className="num">${f.costUsd.toFixed(2)}</span>
+                  <span className="num">{formatUsd(f.costUsd)}</span>
                 </span>
               </button>
             ))}
