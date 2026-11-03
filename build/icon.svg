@@ -8,15 +8,43 @@
   <!-- macOS icon grid: 824px rounded square centred on a 1024px canvas. -->
   <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)"/>
   <rect x="103" y="103" width="818" height="818" rx="183" fill="none" stroke="#5a4838" stroke-width="6"/>
-  <!-- One conductor, three agents: each line is a feature on its own branch. -->
-  <g fill="none" stroke-width="40" stroke-linecap="round">
-    <path d="M300 512 C 500 512 500 316 716 316" stroke="#b392e6"/>
-    <path d="M300 512 C 500 512 500 708 716 708" stroke="#12b8bf"/>
-    <path d="M300 512 H 716" stroke="#e08e62"/>
+  <!-- A pixel-art stick: the baton, Minecraft style. 16x16 grid of 44px cells. -->
+  <g shape-rendering="crispEdges">
+    <rect x="248" y="732" width="44" height="44" fill="#8a6638"/>
+    <rect x="204" y="732" width="44" height="44" fill="#c29a5b"/>
+    <rect x="292" y="732" width="44" height="44" fill="#5e4224"/>
+    <rect x="292" y="688" width="44" height="44" fill="#8a6638"/>
+    <rect x="248" y="688" width="44" height="44" fill="#c29a5b"/>
+    <rect x="336" y="688" width="44" height="44" fill="#5e4224"/>
+    <rect x="336" y="644" width="44" height="44" fill="#a47c45"/>
+    <rect x="292" y="644" width="44" height="44" fill="#c29a5b"/>
+    <rect x="380" y="644" width="44" height="44" fill="#5e4224"/>
+    <rect x="380" y="600" width="44" height="44" fill="#a47c45"/>
+    <rect x="336" y="600" width="44" height="44" fill="#c29a5b"/>
+    <rect x="424" y="600" width="44" height="44" fill="#5e4224"/>
+    <rect x="424" y="556" width="44" height="44" fill="#a47c45"/>
+    <rect x="380" y="556" width="44" height="44" fill="#c29a5b"/>
+    <rect x="468" y="556" width="44" height="44" fill="#5e4224"/>
+    <rect x="468" y="512" width="44" height="44" fill="#a47c45"/>
+    <rect x="424" y="512" width="44" height="44" fill="#c29a5b"/>
+    <rect x="512" y="512" width="44" height="44" fill="#5e4224"/>
+    <rect x="512" y="468" width="44" height="44" fill="#a47c45"/>
+    <rect x="468" y="468" width="44" height="44" fill="#c29a5b"/>
+    <rect x="556" y="468" width="44" height="44" fill="#5e4224"/>
+    <rect x="556" y="424" width="44" height="44" fill="#a47c45"/>
+    <rect x="512" y="424" width="44" height="44" fill="#c29a5b"/>
+    <rect x="600" y="424" width="44" height="44" fill="#5e4224"/>
+    <rect x="600" y="380" width="44" height="44" fill="#a47c45"/>
+    <rect x="556" y="380" width="44" height="44" fill="#c29a5b"/>
+    <rect x="644" y="380" width="44" height="44" fill="#5e4224"/>
+    <rect x="644" y="336" width="44" height="44" fill="#a47c45"/>
+    <rect x="600" y="336" width="44" height="44" fill="#c29a5b"/>
+    <rect x="688" y="336" width="44" height="44" fill="#5e4224"/>
+    <rect x="688" y="292" width="44" height="44" fill="#8a6638"/>
+    <rect x="644" y="292" width="44" height="44" fill="#c29a5b"/>
+    <rect x="732" y="292" width="44" height="44" fill="#5e4224"/>
+    <rect x="732" y="248" width="44" height="44" fill="#8a6638"/>
+    <rect x="688" y="248" width="44" height="44" fill="#c29a5b"/>
+    <rect x="776" y="248" width="44" height="44" fill="#5e4224"/>
   </g>
-  <circle cx="724" cy="316" r="58" fill="#b392e6"/>
-  <circle cx="724" cy="708" r="58" fill="#12b8bf"/>
-  <circle cx="724" cy="512" r="58" fill="#e08e62"/>
-  <circle cx="300" cy="512" r="74" fill="#ece6df"/>
-  <circle cx="300" cy="512" r="30" fill="#1d1a17"/>
 </svg>
