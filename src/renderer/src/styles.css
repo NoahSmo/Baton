@@ -1942,15 +1942,21 @@ input.mono {
 
 .linear-view {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   flex-direction: unset;
 }
 
+.sidebar-board {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .linear-projects {
-  background: var(--panel);
-  border-right: 1px solid var(--border);
+  flex: 1;
   overflow-y: auto;
-  padding: 10px 8px;
+  padding: 0 var(--sp-3) var(--sp-3);
 }
 
 .linear-projects .sidebar-title {
@@ -3865,23 +3871,6 @@ kbd {
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-}
-
-.board-head {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--border);
-}
-
-.board-close {
-  margin-left: auto;
-}
-
-.board-head h1 {
-  margin: 0;
-  font-size: var(--fs-lg);
 }
 
 .board > .kanban,

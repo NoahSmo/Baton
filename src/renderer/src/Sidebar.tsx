@@ -33,6 +33,8 @@ interface Props {
   /** The Kanban board is showing instead of a conversation. */
   board: boolean
   onBoard(board: boolean): void
+  /** Where the board puts its own list (Linear projects) while it replaces the agents. */
+  onBoardSlot(el: HTMLDivElement | null): void
   onSelect(feature: Feature): void
   onNew(): void
   /** Opens the dialog linking an agent to an issue. */
@@ -62,6 +64,7 @@ export function Sidebar({
   selectedId,
   board,
   onBoard,
+  onBoardSlot,
   onSelect,
   onNew,
   onLink,
@@ -202,6 +205,10 @@ export function Sidebar({
           <Icon name="kanban" size={13} /> {t.sidebar.kanban}
         </button>
       </div>
+      {board ? (
+        <div className="sidebar-board" ref={onBoardSlot} />
+      ) : (
+        <>
       <button className="sidebar-new" onClick={onNew}>
         <Icon name="plus" size={14} /> {t.sidebar.newFeature}
         <kbd>{shortcutLabel('newFeature', IS_MAC)}</kbd>
@@ -388,6 +395,8 @@ export function Sidebar({
           )
         )}
       </div>
+        </>
+      )}
     </aside>
   )
 }

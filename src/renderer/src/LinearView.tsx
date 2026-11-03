@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { BOARD_GROUPINGS, stateForColumn, type BoardGrouping, type KanbanColumn } from '../../shared/kanban'
 import { issuePrompt, reposForLabels } from '../../shared/linear'
 import { DEFAULT_AGENT_MODEL, type Feature, type LinearIssue, type LinearProject, type LinearState, type LinearStatus, type Project } from '../../shared/types'
@@ -21,9 +22,11 @@ interface Props {
   onOpenFeature(feature: Feature): void
   /** An agent was started from each selected issue. */
   onStarted(features: Feature[]): void
+  /** Where the list of Linear projects is drawn: the sidebar, in place of the agents. */
+  slot: HTMLElement | null
 }
 
-export function LinearView({ linear, projects, features, defaultProjectId, onConnect, onStart, onOpenFeature, onStarted }: Props) {
+export function LinearView({ linear, projects, features, defaultProjectId, onConnect, onStart, onOpenFeature, onStarted, slot }: Props) {
   const t = useT()
   const [linearProjects, setLinearProjects] = useState<LinearProject[] | null>(null)
   /** Selected Linear project; null shows the issues assigned to the user. */
@@ -190,6 +193,8 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
 
   return (
     <div className="linear-view">
+      {slot &&
+        createPortal(
       <aside className="linear-projects">
         <button className={`linear-project${selectedId === null ? ' selected' : ''}`} onClick={() => setSelectedId(null)}>
           <span className="linear-project-name">{t.linearView.myIssues}</span>
@@ -233,7 +238,9 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
             </div>
           )
         })}
-      </aside>
+      </aside>,
+          slot
+        )}
 
       <section className="linear-issues">
         <header className="linear-head">
