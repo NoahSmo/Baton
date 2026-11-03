@@ -13,3 +13,8 @@ export function isNewer(candidate: string, current: string): boolean {
   }
   return false
 }
+
+/** Share of the download done, in percent; undefined while the size is unknown or nothing is downloading. */
+export function downloadPercent(progress: { phase: string; received?: number; total?: number } | null): number | undefined {
+  return progress?.phase === 'downloading' && progress.total ? Math.round(((progress.received ?? 0) / progress.total) * 100) : undefined
+}

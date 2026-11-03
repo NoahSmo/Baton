@@ -1,8 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, shell } from 'electron'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { fetchClaudeUsage } from './claudeUsage'
 import { DICTS, LANGS, langFromLocale, type Lang } from '../shared/i18n'
 import { normalizePrefs, shouldNotify } from '../shared/notifications'
@@ -40,6 +40,7 @@ import {
   type PullRequestDraft,
   type TerminalTarget,
   type UpdateInfo,
+  type UpdateProgress,
   type UsageWarning,
   type UsageWindow
 } from '../shared/types'
@@ -64,8 +65,10 @@ import {
   findOwningBrew,
   installScript,
   macAppPath,
+  macSwapScript,
   manualUpdateCommand,
   pickAsset,
+  prepareMacUpdate,
   runDetached,
   updateDir,
   upgradeWithBrew
@@ -411,6 +414,7 @@ async function refreshUpdate(manual = false): Promise<UpdateInfo | null> {
       update = { ...update, dismissed: false }
       send('update:available', update)
     }
+    downloadInBackground()
     return update
   }
   const env = currentEnv()
@@ -425,10 +429,60 @@ async function refreshUpdate(manual = false): Promise<UpdateInfo | null> {
     asset,
     canAutoInstall: installMode !== 'manual',
     dismissed: !manual && readSettings().skippedUpdate === found.version,
-    command: manualUpdateCommand()
+    command: manualUpdateCommand(),
+    progress: null
   }
   send('update:available', update)
+  downloadInBackground()
   return update
+}
+
+/** Records and broadcasts where the update stands; a late event from an older version is dropped. */
+function setProgress(progress: UpdateProgress, version = update?.version): void {
+  if (!update || update.version !== version) return
+  update = { ...update, progress }
+  send('update:progress', progress)
+}
+
+/** Forwards a download's progress once per percent: the renderer re-renders on each event. */
+function oncePerPercent(version: string): (p: UpdateProgress) => void {
+  let last = -1
+  return (p) => {
+    const percent = p.total ? Math.floor(((p.received ?? 0) / p.total) * 100) : -1
+    if (percent === last) return
+    last = percent
+    setProgress(p, version)
+  }
+}
+
+let downloading = false
+
+/**
+ * macOS: fetches and unpacks the new version while the app keeps running, so
+ * restarting later only has to swap the bundle. Starts on its own for a version
+ * the user did not decline, and again after a failure at the next check.
+ */
+function downloadInBackground(): void {
+  const target = update
+  if (downloading || !target?.asset || target.installMode !== 'mac-zip') return
+  if (target.dismissed && !target.progress) return
+  if (target.progress && target.progress.phase !== 'error') return
+  downloading = true
+  void (async () => {
+    try {
+      const file = await downloadAsset(target.asset!, updateDir(target.version), oncePerPercent(target.version))
+      setProgress({ phase: 'preparing' }, target.version)
+      await prepareMacUpdate(file, process.execPath)
+      rmSync(dirname(file), { recursive: true, force: true })
+      setProgress({ phase: 'ready' }, target.version)
+    } catch (err) {
+      setProgress({ phase: 'error', message: err instanceof Error ? err.message : String(err) }, target.version)
+    } finally {
+      downloading = false
+      // A newer release was found while this one downloaded.
+      if (update && update.version !== target.version) downloadInBackground()
+    }
+  })()
 }
 
 /** Quits, and forces the exit if shutdown hangs: the installer is waiting on us. */
@@ -441,24 +495,34 @@ async function installUpdate(): Promise<void> {
   if (!update || update.installMode === 'manual') return
   const log = join(dataDir, 'update.log')
   try {
+    if (update.installMode === 'mac-zip') {
+      if (update.progress?.phase !== 'ready') {
+        downloadInBackground()
+        return
+      }
+      setProgress({ phase: 'installing' })
+      runDetached(macSwapScript(process.pid, process.execPath), log)
+      quitForUpdate()
+      return
+    }
     if (update.installMode === 'brew') {
       const brew = findOwningBrew()
       if (!brew) throw new Error('Homebrew not found')
-      send('update:progress', { phase: 'downloading' })
+      setProgress({ phase: 'downloading' })
       await fetchWithBrew(brew)
-      send('update:progress', { phase: 'installing' })
+      setProgress({ phase: 'installing' })
       upgradeWithBrew(brew, log, process.pid, macAppPath(process.execPath))
       quitForUpdate()
       return
     }
     if (!update.asset) throw new Error('no package for this platform')
-    const file = await downloadAsset(update.asset, updateDir(update.version), (p) => send('update:progress', p))
-    send('update:progress', { phase: 'installing' })
+    const file = await downloadAsset(update.asset, updateDir(update.version), oncePerPercent(update.version))
+    setProgress({ phase: 'installing' })
     const env = currentEnv()
     runDetached(installScript(update.installMode, file, env, detectInstallMode(env).packager), log)
     quitForUpdate()
   } catch (err) {
-    send('update:progress', { phase: 'error', message: err instanceof Error ? err.message : String(err) })
+    setProgress({ phase: 'error', message: err instanceof Error ? err.message : String(err) })
   }
 }
 

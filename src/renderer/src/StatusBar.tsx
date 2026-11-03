@@ -3,6 +3,7 @@ import { formatReset } from '../../shared/time'
 import type { AppStats, Feature, LinearStatus, UpdateInfo, UsageWarning, UsageWindow } from '../../shared/types'
 import { formatUsd } from '../../shared/format'
 import { limitWindow } from '../../shared/i18n'
+import { downloadPercent } from '../../shared/version'
 import { useLang, useT } from './i18n'
 
 interface Props {
@@ -159,7 +160,20 @@ export function StatusBar({ features, linear, onOpenLinear, version, update, onO
       <span className="statusbar-right">
         {update ? (
           <button className="statusbar-update" onClick={onOpenUpdate}>
-            {t.update.available(update.version)}
+            {update.progress?.phase === 'downloading' || update.progress?.phase === 'preparing' ? (
+              <>
+                <progress
+                  className="statusbar-update-progress"
+                  value={downloadPercent(update.progress)}
+                  max={downloadPercent(update.progress) === undefined ? undefined : 100}
+                />
+                {update.progress.phase === 'preparing' ? t.update.preparing : t.update.downloadingShort(downloadPercent(update.progress))}
+              </>
+            ) : update.progress?.phase === 'ready' ? (
+              t.update.restartToUpdate
+            ) : (
+              t.update.available(update.version)
+            )}
           </button>
         ) : (
           version && <span>v{version}</span>
