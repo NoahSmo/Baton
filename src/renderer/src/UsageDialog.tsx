@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Feature, Project, TurnCost } from '../../shared/types'
 import { summarizeUsage, type CostRow } from '../../shared/usage'
+import { formatUsd } from '../../shared/format'
 import { useT } from './i18n'
 
 interface Props {
@@ -44,7 +45,7 @@ export function UsageDialog({ projects, features, onClose }: Props) {
           <span className="hint">
             {t.usage.lastDays(days)} · {t.usage.total}
           </span>{' '}
-          <span className="num strong">${summary.totalUsd.toFixed(2)}</span>
+          <span className="num strong">{formatUsd(summary.totalUsd)}</span>
         </p>
 
         {turns && summary.totalUsd === 0 ? (
@@ -54,7 +55,7 @@ export function UsageDialog({ projects, features, onClose }: Props) {
             <h3 className="usage-title">{t.usage.byDay}</h3>
             <div className="usage-days" role="img" aria-label={t.usage.byDay}>
               {summary.byDay.map((d) => (
-                <div key={d.day} className="usage-day" title={`${d.day} · $${d.costUsd.toFixed(2)}`}>
+                <div key={d.day} className="usage-day" title={`${d.day} · ${formatUsd(d.costUsd)}`}>
                   <span style={{ height: `${(d.costUsd / peak) * 100}%` }} />
                 </div>
               ))}
@@ -87,7 +88,7 @@ function Rows({ title, rows, total }: { title: string; rows: CostRow[]; total: n
             <span className="usage-bar">
               <span style={{ width: `${total ? (r.costUsd / total) * 100 : 0}%` }} />
             </span>
-            <span className="num">${r.costUsd.toFixed(2)}</span>
+            <span className="num">{formatUsd(r.costUsd)}</span>
           </div>
         ))}
       </div>
