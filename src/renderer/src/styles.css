@@ -2242,6 +2242,10 @@ button.danger-fill:hover:not(:disabled) {
   min-width: 0;
 }
 
+.workspace[hidden] {
+  display: none;
+}
+
 .workspace > .feature {
   flex: 1;
   min-width: 0;
@@ -3869,14 +3873,6 @@ kbd {
   gap: 16px;
   padding: 12px 20px;
   border-bottom: 1px solid var(--border);
-}
-
-.app.board-open .sidebar {
-  display: none;
-}
-
-.app.board-open > .project-view > .main {
-  grid-column: 2 / -1;
 }
 
 .board-close {

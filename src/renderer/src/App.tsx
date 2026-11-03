@@ -333,7 +333,7 @@ export function App() {
 
   return (
     <LangContext.Provider value={lang}>
-    <div className={`app${boardShown ? ' board-open' : ''}`}>
+    <div className="app">
       <TopBar
         project={project}
         onSearch={() => setDialog({ kind: 'palette' })}
