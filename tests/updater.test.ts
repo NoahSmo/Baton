@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { brewScript, checkForUpdate, detectInstallMode, downloadAsset, installScript, pickAsset, type InstallEnv } from '../src/main/updater'
+import { brewScript, checkForUpdate, detectInstallMode, downloadAsset, macSwapScript, pickAsset, type InstallEnv } from '../src/main/updater'
 import { isNewer } from '../src/shared/version'
 
 describe('isNewer', () => {
@@ -103,8 +103,9 @@ describe('detectInstallMode', () => {
     ...over
   })
 
-  it('prefers Homebrew on macOS', () => {
-    expect(detectInstallMode(env({ brew: '/opt/homebrew/bin/brew' })).mode).toBe('brew')
+  it('swaps the bundle on macOS even for a Homebrew install, which only serves as a fallback', () => {
+    expect(detectInstallMode(env({ brew: '/opt/homebrew/bin/brew' })).mode).toBe('mac-zip')
+    expect(detectInstallMode(env({ brew: '/opt/homebrew/bin/brew', writable: () => false })).mode).toBe('brew')
   })
 
   it('replaces the app bundle when it can be written', () => {
@@ -151,13 +152,15 @@ describe('install scripts', () => {
     has: () => true
   }
 
-  it('kills the old app before replacing it and opens the installed bundle', () => {
-    const script = installScript('mac-zip', '/tmp/u/Baton-1.0.0.zip', env, 'deb')
+  it('kills the old app before swapping in the prepared one, opens it, and only then cleans up', () => {
+    const script = macSwapScript(42, env.execPath)
     expect(script).toContain('kill -TERM')
     expect(script).toContain('kill -KILL')
     expect(script).toContain("pkill -f '/Applications/Baton.app/Contents/'")
     expect(script.indexOf('kill -KILL')).toBeLessThan(script.indexOf('mv '))
-    expect(script).toContain("open '/Applications/Baton.app'")
+    expect(script).toContain("mv '/Applications/.Baton-update/Baton.app' '/Applications/Baton.app'")
+    expect(script).not.toContain('ditto')
+    expect(script.lastIndexOf("open '/Applications/Baton.app'")).toBeLessThan(script.indexOf("rm -rf '/Applications/Baton.app.old' '/Applications/.Baton-update'"))
   })
 
   it('upgrades through brew only once the old app is gone, then opens it by path', () => {

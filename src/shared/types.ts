@@ -18,7 +18,8 @@ export interface UpdateAsset {
 }
 
 export interface UpdateProgress {
-  phase: 'downloading' | 'installing' | 'error'
+  /** `preparing` unpacks the download; `ready` waits for the user to restart (macOS). */
+  phase: 'downloading' | 'preparing' | 'ready' | 'installing' | 'error'
   received?: number
   total?: number
   message?: string
@@ -39,6 +40,8 @@ export interface UpdateInfo {
   dismissed: boolean
   /** What the user runs to update by hand otherwise. */
   command: string
+  /** Where the download or install stands; null before anything started. */
+  progress: UpdateProgress | null
 }
 
 /** What the app itself costs the machine. */

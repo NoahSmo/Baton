@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import type { UpdateInfo, UpdateProgress } from '../../shared/types'
+import { useState } from 'react'
+import type { UpdateInfo } from '../../shared/types'
+import { downloadPercent } from '../../shared/version'
 import { useT } from './i18n'
 
 interface Props {
@@ -11,21 +12,23 @@ interface Props {
 export function UpdateDialog({ update, currentVersion, onClose }: Props) {
   const t = useT()
   const [starting, setStarting] = useState(false)
-  const [progress, setProgress] = useState<UpdateProgress | null>(null)
+  const progress = update.progress
+  const phase = progress?.phase
   const command = update.command
-  const busy = starting && progress?.phase !== 'error'
-
-  useEffect(() => window.api.onUpdateProgress(setProgress), [])
+  // macOS downloads on its own: this dialog then only asks for the restart.
+  const background = update.installMode === 'mac-zip'
+  const ready = phase === 'ready'
+  const working = phase === 'downloading' || phase === 'preparing' || phase === 'installing'
+  const busy = working || (starting && phase !== 'error' && !ready)
 
   function install() {
     setStarting(true)
-    setProgress(null)
     void window.api.installUpdate()
   }
 
-  /** Declining is remembered: this version is not offered again on its own. */
+  /** Declining is remembered: this version is not offered again on its own. A finished download is not declined, only postponed. */
   function later() {
-    void window.api.dismissUpdate(update.version)
+    if (!ready) void window.api.dismissUpdate(update.version)
     onClose()
   }
 
@@ -36,19 +39,18 @@ export function UpdateDialog({ update, currentVersion, onClose }: Props) {
     'linux-user': t.update.installHintLinuxUser,
     manual: ''
   }[update.installMode]
-  const percent =
-    progress?.phase === 'downloading' && progress.total ? Math.round(((progress.received ?? 0) / progress.total) * 100) : undefined
+  const percent = downloadPercent(progress)
 
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && !busy && later()}>
       <div className="dialog" role="dialog" aria-labelledby="update-title">
-        <h2 id="update-title">{t.update.title(update.version)}</h2>
+        <h2 id="update-title">{ready ? t.update.readyTitle(update.version) : t.update.title(update.version)}</h2>
         <p className="confirm-detail">{t.update.current(currentVersion)}</p>
 
         {update.notes.trim() && <pre className="update-notes">{update.notes.trim()}</pre>}
 
         {update.canAutoInstall ? (
-          <p className="hint">{hint}</p>
+          <p className="hint">{ready ? t.update.readyHint : hint}</p>
         ) : (
           <>
             <p className="hint">{t.update.manualHint}</p>
@@ -56,13 +58,14 @@ export function UpdateDialog({ update, currentVersion, onClose }: Props) {
           </>
         )}
 
-        {busy && progress?.phase === 'downloading' && (
+        {busy && phase === 'downloading' && (
           <>
             <progress className="update-progress" value={percent} max={percent === undefined ? undefined : 100} />
             <p className="hint">{t.update.downloading(percent)}</p>
           </>
         )}
-        {busy && progress?.phase === 'installing' && <p className="hint">{t.update.installing}</p>}
+        {busy && phase === 'preparing' && <p className="hint">{t.update.preparing}</p>}
+        {busy && phase === 'installing' && <p className="hint">{t.update.installing}</p>}
         {progress?.phase === 'error' && <p className="update-error">{t.update.failed(progress.message ?? '')}</p>}
 
         <div className="dialog-actions">
@@ -75,7 +78,15 @@ export function UpdateDialog({ update, currentVersion, onClose }: Props) {
           </button>
           {update.canAutoInstall ? (
             <button className="primary" onClick={install} disabled={busy}>
-              {busy ? t.update.starting : progress?.phase === 'error' ? t.update.retry : t.update.install}
+              {busy
+                ? t.update.starting
+                : phase === 'error'
+                  ? t.update.retry
+                  : ready
+                    ? t.update.restartNow
+                    : background
+                      ? t.update.download
+                      : t.update.install}
             </button>
           ) : (
             <button className="primary" onClick={() => void navigator.clipboard.writeText(command)}>

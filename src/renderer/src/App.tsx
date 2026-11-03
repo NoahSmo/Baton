@@ -108,11 +108,21 @@ export function App() {
     void window.api.getLanguage().then(setLang)
     void window.api.getVersion().then(setVersion)
     void window.api.getUpdate().then(setUpdate)
-    return window.api.onUpdate((next) => {
+    const offUpdate = window.api.onUpdate((next) => {
       setUpdate(next)
       // Ask on our own, unless the user declined this version or is in the middle of something else.
-      if (!next.dismissed) setDialog((open) => open ?? { kind: 'update' })
+      // On macOS it downloads quietly first: the question is whether to restart, once it is ready.
+      const quiet = next.installMode === 'mac-zip' && next.progress?.phase !== 'ready'
+      if (!next.dismissed && !quiet) setDialog((open) => open ?? { kind: 'update' })
     })
+    const offProgress = window.api.onUpdateProgress((progress) => {
+      setUpdate((current) => current && { ...current, progress })
+      if (progress.phase === 'ready') setDialog((open) => open ?? { kind: 'update' })
+    })
+    return () => {
+      offUpdate()
+      offProgress()
+    }
   }, [])
 
   useEffect(() => {

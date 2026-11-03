@@ -1,10 +1,11 @@
-import { spawn } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { accessSync, closeSync, constants, createWriteStream, existsSync, mkdirSync, openSync, rmSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { delimiter, dirname, join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
+import { promisify } from 'node:util'
 import {
   APP_NAME,
   APP_SLUG,
@@ -58,6 +59,8 @@ export function manualUpdateCommand(platform: NodeJS.Platform = process.platform
   return platform === 'linux' ? LINUX_INSTALL_COMMAND : `brew upgrade --cask ${BREW_CASK}`
 }
 
+const run = promisify(execFile)
+
 const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
 
 /** Path of the Homebrew that installed this app, if it was installed that way. */
@@ -77,13 +80,13 @@ export function findOwningBrew(pathEnv = process.env.PATH ?? ''): string | null 
  */
 export function stopOldApp(pid: number, bundle?: string): string {
   const waitFor = (seconds: number) =>
-    `i=0; while kill -0 ${pid} 2>/dev/null && [ $i -lt ${seconds * 2} ]; do sleep 0.5; i=$((i+1)); done`
+    `i=0; while kill -0 ${pid} 2>/dev/null && [ $i -lt ${seconds * 20} ]; do sleep 0.05; i=$((i+1)); done`
   return [
     waitFor(10),
     `if kill -0 ${pid} 2>/dev/null; then kill -TERM ${pid}; ${waitFor(5)}; fi`,
     `if kill -0 ${pid} 2>/dev/null; then kill -KILL ${pid}; fi`,
     ...(bundle ? [`pkill -f ${quote(`${bundle}/Contents/`)} || true`] : []),
-    'sleep 1'
+    'sleep 0.2'
   ].join('\n')
 }
 
@@ -178,11 +181,10 @@ export function macAppPath(execPath: string): string {
 export function detectInstallMode(env: InstallEnv): { mode: UpdateInstallMode; packager: 'deb' | 'rpm' } {
   const none = { mode: 'manual' as const, packager: 'deb' as const }
   if (env.platform === 'darwin') {
-    if (env.brew) return { mode: 'brew', packager: 'deb' }
+    // Swapping the bundle is near instant, unlike `brew upgrade`: Homebrew is the fallback.
     const app = macAppPath(env.execPath)
-    return app.endsWith('.app') && env.writable(dirname(app)) && env.writable(app)
-      ? { mode: 'mac-zip', packager: 'deb' }
-      : none
+    if (app.endsWith('.app') && env.writable(dirname(app)) && env.writable(app)) return { mode: 'mac-zip', packager: 'deb' }
+    return env.brew ? { mode: 'brew', packager: 'deb' } : none
   }
   if (env.platform === 'linux') {
     if (env.execPath.startsWith(join(env.home, '.local', 'share', APP_SLUG))) return { mode: 'linux-user', packager: 'deb' }
@@ -224,25 +226,46 @@ export async function downloadAsset(
   }
 }
 
+/** Hidden folder next to the app, so the final swap is a rename on the same volume. */
+export const macStageDir = (execPath: string) => join(dirname(macAppPath(execPath)), `.${APP_NAME}-update`)
+
+/** Unpacks the downloaded zip next to the app while it keeps running, so the restart only has to rename. */
+export async function prepareMacUpdate(zip: string, execPath: string): Promise<void> {
+  const stage = macStageDir(execPath)
+  rmSync(stage, { recursive: true, force: true })
+  mkdirSync(stage, { recursive: true })
+  try {
+    await run('/usr/bin/ditto', ['-x', '-k', zip, stage])
+    const app = join(stage, `${APP_NAME}.app`)
+    if (!existsSync(app)) throw new Error(`${APP_NAME}.app is missing from the download`)
+    await run('/usr/bin/xattr', ['-dr', 'com.apple.quarantine', app]).catch(() => {})
+  } catch (err) {
+    rmSync(stage, { recursive: true, force: true })
+    throw err
+  }
+}
+
+/**
+ * Swaps in the app unpacked by `prepareMacUpdate` once this process is gone,
+ * and opens it before cleaning up so the gap is as short as it can be.
+ */
+export function macSwapScript(pid: number, execPath: string): string {
+  const app = macAppPath(execPath)
+  const stage = macStageDir(execPath)
+  return [
+    stopOldApp(pid, app),
+    'set -e',
+    `rm -rf ${quote(`${app}.old`)}; mv ${quote(app)} ${quote(`${app}.old`)}`,
+    `mv ${quote(`${stage}/${APP_NAME}.app`)} ${quote(app)} || { mv ${quote(`${app}.old`)} ${quote(app)}; open ${quote(app)}; exit 1; }`,
+    `open ${quote(app)}`,
+    `rm -rf ${quote(`${app}.old`)} ${quote(stage)}`
+  ].join('\n')
+}
+
 /** Shell script that waits for this process to exit, installs, then reopens the app. */
 export function installScript(mode: UpdateInstallMode, file: string, env: InstallEnv, packager: 'deb' | 'rpm'): string {
-  const bundle = mode === 'mac-zip' ? macAppPath(env.execPath) : undefined
-  const wait = stopOldApp(process.pid, bundle)
-  if (mode === 'mac-zip') {
-    const app = macAppPath(env.execPath)
-    const stage = `${dirname(file)}/stage`
-    return [
-      wait,
-      'set -e',
-      `rm -rf ${quote(stage)}; mkdir -p ${quote(stage)}`,
-      `/usr/bin/ditto -x -k ${quote(file)} ${quote(stage)}`,
-      `rm -rf ${quote(`${app}.old`)}; mv ${quote(app)} ${quote(`${app}.old`)}`,
-      `mv ${quote(`${stage}/${APP_NAME}.app`)} ${quote(app)} || { mv ${quote(`${app}.old`)} ${quote(app)}; exit 1; }`,
-      `rm -rf ${quote(`${app}.old`)}`,
-      `xattr -dr com.apple.quarantine ${quote(app)} || true`,
-      `open ${quote(app)}`
-    ].join('\n')
-  }
+  const wait = stopOldApp(process.pid)
+  if (mode === 'mac-zip') return macSwapScript(process.pid, env.execPath)
   if (mode === 'linux-user') {
     const dest = join(env.home, '.local', 'share', APP_SLUG)
     return [

@@ -509,6 +509,14 @@ const en = {
     starting: 'Updating…',
     downloading: (percent?: number) => (percent === undefined ? 'Downloading…' : `Downloading… ${percent}%`),
     installing: 'Installing, the app restarts…',
+    preparing: 'Preparing the update…',
+    downloadingShort: (percent?: number) => (percent === undefined ? 'Downloading update…' : `Downloading update ${percent}%`),
+    restartToUpdate: 'Restart to update',
+    readyTitle: (version: string) => `Version ${version} is ready`,
+    readyHint:
+      'The update is downloaded. Restart Baton to switch to it right away. Running agents are stopped; their conversations resume when you message them again.',
+    restartNow: 'Restart now',
+    download: 'Download',
     failed: (reason: string) => `Update failed: ${reason}`,
     retry: 'Retry',
     installHintMac:
@@ -1159,6 +1167,14 @@ const fr: Dict = {
     starting: 'Mise à jour…',
     downloading: (percent) => (percent === undefined ? 'Téléchargement…' : `Téléchargement… ${percent} %`),
     installing: "Installation, l'app redémarre…",
+    preparing: 'Préparation de la mise à jour…',
+    downloadingShort: (percent) => (percent === undefined ? 'Téléchargement de la mise à jour…' : `Téléchargement de la mise à jour ${percent} %`),
+    restartToUpdate: 'Relancer pour mettre à jour',
+    readyTitle: (version) => `La version ${version} est prête`,
+    readyHint:
+      "La mise à jour est téléchargée. Relance Baton pour passer dessus tout de suite. Les agents en cours sont arrêtés ; leurs conversations reprennent au prochain message.",
+    restartNow: 'Relancer maintenant',
+    download: 'Télécharger',
     failed: (reason) => `Échec de la mise à jour : ${reason}`,
     retry: 'Réessayer',
     installHintMac:

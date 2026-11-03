@@ -2213,6 +2213,18 @@ button.danger-fill:hover:not(:disabled) {
   font: inherit;
 }
 
+.statusbar-update {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.statusbar-update-progress {
+  width: 56px;
+  height: 4px;
+  accent-color: var(--accent);
+}
+
 .update-notes,
 .update-command {
   margin: 12px 0 0;
