@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { BOARD_GROUPINGS, stateForColumn, type BoardGrouping, type KanbanColumn } from '../../shared/kanban'
+import { BOARD_GROUPINGS, stateForColumn, type BoardGrouping, type BoardKind, type KanbanColumn } from '../../shared/kanban'
 import { issuePrompt, reposForLabels } from '../../shared/linear'
 import { DEFAULT_AGENT_MODEL, type Feature, type LinearIssue, type LinearProject, type LinearState, type LinearStatus, type Project } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
@@ -11,6 +11,8 @@ import { cleanError } from './NewFeatureDialog'
 import { usePersisted } from './usePersisted'
 
 interface Props {
+  /** `kanban` shows the issues as columns of cards, `linear` as a list to start agents from. */
+  mode: BoardKind
   linear: LinearStatus
   projects: Project[]
   features: Feature[]
@@ -26,7 +28,7 @@ interface Props {
   slot: HTMLElement | null
 }
 
-export function LinearView({ linear, projects, features, defaultProjectId, onConnect, onStart, onOpenFeature, onStarted, slot }: Props) {
+export function LinearView({ mode, linear, projects, features, defaultProjectId, onConnect, onStart, onOpenFeature, onStarted, slot }: Props) {
   const t = useT()
   const [linearProjects, setLinearProjects] = useState<LinearProject[] | null>(null)
   /** Selected Linear project; null shows the issues assigned to the user. */
@@ -34,7 +36,6 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
   const [issues, setIssues] = useState<LinearIssue[] | null>(null)
   const [teamStates, setTeamStates] = useState<Record<string, LinearState[]>>({})
   const [stateFilter, setStateFilter] = useState<string[]>([])
-  const [view, setView] = usePersisted<'list' | 'board'>('linear-view', 'board', ['list', 'board'])
   const [grouping, setGrouping] = usePersisted<BoardGrouping>('linear-board-grouping', 'status', BOARD_GROUPINGS)
   const [text, setText] = useState('')
   const [error, setError] = useState('')
@@ -253,20 +254,7 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
               ].join(' · ')}
             </p>
           </div>
-          <div className="filters" role="group">
-            {(['list', 'board'] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                className={`filter${view === v ? ' selected' : ''}`}
-                aria-pressed={view === v}
-                onClick={() => setView(v)}
-              >
-                {t.linearView[v]}
-              </button>
-            ))}
-          </div>
-          {view === 'board' && (
+          {mode === 'kanban' && (
             <div className="filters" role="group">
               {BOARD_GROUPINGS.map((g) => (
                 <button
@@ -289,7 +277,7 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
           {issues && <IssueStateFilter issues={issues} selected={stateFilter} onChange={setStateFilter} />}
         </div>
 
-        {startable.length > 0 && (
+        {mode === 'linear' && startable.length > 0 && (
           <div className="linear-bulk">
             <label className="linear-check">
               <input
@@ -319,7 +307,7 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
           <p className="hint linear-hint">{t.linearView.needRepository}</p>
         )}
 
-        {view === 'board' && issues && (
+        {mode === 'kanban' && issues && (
           <KanbanBoard
             issues={shown}
             teamStates={teamStates}
@@ -333,7 +321,7 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
           />
         )}
 
-        {view === 'list' && (
+        {mode === 'linear' && (
         <div className="linear-list">
           {shown.map((issue) => {
             const feature = features.find((f) => f.linear?.issueId === issue.id)

@@ -14,6 +14,7 @@ import { LaunchDialog } from './LaunchDialog'
 import { QaDialog } from './QaDialog'
 import { LangContext } from './i18n'
 import { LinearDialog } from './LinearDialog'
+import type { BoardKind } from '../../shared/kanban'
 import { NewFeatureDialog } from './NewFeatureDialog'
 import { IS_MAC } from './platform'
 import { ProjectDialog } from './ProjectDialog'
@@ -61,8 +62,8 @@ export function App() {
   const [streams, setStreams] = useState<Record<string, string>>({})
   const [linear, setLinear] = useState<LinearStatus>({ connected: false })
   const [dialog, setDialog] = useState<Dialog>(null)
-  /** The Kanban tab is showing instead of the conversation. */
-  const [showBoard, setShowBoard] = useState(false)
+  /** The Kanban or Linear tab is showing instead of the conversation. */
+  const [board, setBoard] = useState<BoardKind | null>(null)
   /** The sidebar's room for the board's Linear projects. */
   const [boardSlot, setBoardSlot] = useState<HTMLElement | null>(null)
   /** Features that got an editor; each stays mounted once shown, which keeps its open files. */
@@ -93,7 +94,7 @@ export function App() {
   })
 
   function goToProject(id: string) {
-    setShowBoard(false)
+    setBoard(null)
     setActiveProjectId(id)
   }
   // System language until the stored choice arrives from the main process.
@@ -192,7 +193,8 @@ export function App() {
 
   const git = useGitStatus(feature?.id ?? null)
 
-  const boardShown = showBoard && project !== null
+  const boardKind = project ? board : null
+  const boardShown = boardKind !== null
 
   // Every agent shown gets its editor, mounted for good so open files survive a switch.
   useEffect(() => {
@@ -303,7 +305,8 @@ export function App() {
     if (features.some((f) => f.status === 'waiting')) command('waiting', t.palette.waiting, shortcutLabel('nextWaiting', IS_MAC), goToNextWaiting)
     if (feature && !boardShown) command('editor', t.palette.editor, shortcutLabel('toggleEditor', IS_MAC), () => toggleEditor(feature.id))
     if (project && !boardShown) command('terminal', t.palette.terminal, '⌃`', () => setTerminalOpen((open) => !open))
-    if (project) command('kanban', t.palette.kanban, null, () => setShowBoard(true))
+    if (project) command('kanban', t.palette.kanban, null, () => setBoard('kanban'))
+    if (project) command('linear', t.palette.linear, null, () => setBoard('linear'))
     command('usage', t.palette.usage, null, () => setDialog({ kind: 'usage' }))
     command('settings', t.palette.settings, null, () => setDialog({ kind: 'settings' }))
     return [
@@ -363,11 +366,11 @@ export function App() {
             project={project}
             features={projectFeatures}
             selectedId={feature?.id ?? null}
-            board={boardShown}
-            onBoard={setShowBoard}
+            board={boardKind}
+            onBoard={setBoard}
             onBoardSlot={setBoardSlot}
             onSelect={(f) => {
-              setShowBoard(false)
+              setBoard(null)
               showFeature(f)
             }}
             onNew={() => setDialog({ kind: 'feature' })}
@@ -391,8 +394,9 @@ export function App() {
             linearConnected={linear.connected}
           />
           <main className="main">
-            {boardShown && (
+            {boardKind && (
               <BoardView
+                mode={boardKind}
                 slot={boardSlot}
                 linear={linear}
                 projects={projects}
@@ -406,11 +410,11 @@ export function App() {
                   setDialog({ kind: 'feature', project: target, issue, repositories })
                 }}
                 onOpenFeature={(f) => {
-                  setShowBoard(false)
+                  setBoard(null)
                   showFeature(f)
                 }}
                 onStarted={(started) => {
-                  setShowBoard(false)
+                  setBoard(null)
                   showFeature(started[0])
                 }}
               />

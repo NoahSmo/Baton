@@ -51,6 +51,7 @@ const en = {
   sidebar: {
     features: 'Agents',
     kanban: 'Kanban',
+    linear: 'Linear',
     newFeature: 'New agent',
     filterByStatus: 'Filter by status',
     all: 'All',
@@ -699,6 +700,7 @@ const fr: Dict = {
   sidebar: {
     features: 'Agents',
     kanban: 'Kanban',
+    linear: 'Linear',
     newFeature: 'Nouvel agent',
     filterByStatus: 'Filtrer par statut',
     all: 'Tous',
