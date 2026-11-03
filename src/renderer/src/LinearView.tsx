@@ -31,7 +31,7 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
   const [issues, setIssues] = useState<LinearIssue[] | null>(null)
   const [teamStates, setTeamStates] = useState<Record<string, LinearState[]>>({})
   const [stateFilter, setStateFilter] = useState<string[]>([])
-  const [view, setView] = usePersisted<'list' | 'board'>('linear-view', 'list', ['list', 'board'])
+  const [view, setView] = usePersisted<'list' | 'board'>('linear-view', 'board', ['list', 'board'])
   const [grouping, setGrouping] = usePersisted<BoardGrouping>('linear-board-grouping', 'status', BOARD_GROUPINGS)
   const [text, setText] = useState('')
   const [error, setError] = useState('')
