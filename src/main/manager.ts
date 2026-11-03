@@ -192,7 +192,7 @@ export class Manager {
       name: input.name.trim() || basename(input.path),
       path: input.path,
       color: input.color,
-      linearLabel: input.linearLabel,
+      linearLabels: input.linearLabels,
       commands: [],
       templates: [],
       worktrees: isGit && input.worktrees,
@@ -209,7 +209,7 @@ export class Manager {
       ...project,
       name: patch.name.trim() || project.name,
       color: patch.color,
-      linearLabel: patch.linearLabel,
+      linearLabels: patch.linearLabels,
       worktrees: patch.worktrees && (await repoState(project.path)).isGit
     }
     this.store.updateProject(updated)

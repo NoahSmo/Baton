@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { issuePrompt } from '../../shared/linear'
+import { issuePrompt, labelNames } from '../../shared/linear'
 import {
   AGENT_MODELS,
   DEFAULT_AGENT_MODEL,
@@ -14,6 +14,7 @@ import {
 import { AttachButton, DraftAttachments } from './Attachments'
 import { useT } from './i18n'
 import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
+import { issuesOfLabels } from './linearIssues'
 import { TemplateChips } from './TemplatesDialog'
 import { toMessageAttachments, useAttachments } from './useAttachments'
 
@@ -55,32 +56,34 @@ export function NewFeatureDialog({
   const [newTeamId, setNewTeamId] = useState('')
   const [creatingIssue, setCreatingIssue] = useState(false)
 
-  const linearLabel = project.linearLabel
+  const labels = project.linearLabels
+  const labelKey = labels.map((l) => l.id).join()
+  const hasLabels = labels.length > 0
 
   useEffect(() => {
     // A repository linked to a Linear label starts its agents from the issues of that label;
     // any other gets a title and a prompt written by hand.
-    if (!linearConnected || !linearLabel) return
+    if (!linearConnected || !hasLabels) return
     let stale = false
     setIssues(null)
     setIssuesError('')
-    window.api.linearLabelIssues(linearLabel.id).then(
+    issuesOfLabels(labels).then(
       (list) => !stale && setIssues(list),
       (err) => !stale && setIssuesError(cleanError(err))
     )
     return () => {
       stale = true
     }
-  }, [linearConnected, linearLabel?.id])
+  }, [linearConnected, labelKey])
 
-  // Linear projects carrying the label are where a new issue can go.
+  // Linear projects carrying one of the labels are where a new issue can go.
   useEffect(() => {
-    if (!linearConnected || !linearLabel) return
+    if (!linearConnected || !hasLabels) return
     let stale = false
     window.api.linearProjects().then(
       (list) => {
         if (stale) return
-        const matching = list.filter((p) => p.labels.some((l) => l.id === linearLabel.id))
+        const matching = list.filter((p) => p.labels.some((l) => labels.some((own) => own.id === l.id)))
         setLinearProjects(matching)
         setNewProjectId((current) => (matching.some((p) => p.id === current) ? current : (matching[0]?.id ?? '')))
       },
@@ -89,7 +92,7 @@ export function NewFeatureDialog({
     return () => {
       stale = true
     }
-  }, [linearConnected, linearLabel?.id])
+  }, [linearConnected, labelKey])
 
   const newProject = linearProjects.find((p) => p.id === newProjectId)
   const newTeam = newProject?.teams.find((tm) => tm.id === newTeamId) ?? newProject?.teams[0]
@@ -168,9 +171,9 @@ export function NewFeatureDialog({
           </>
         )}
 
-        {linearConnected && (linearLabel || issue) && (
+        {linearConnected && (hasLabels || issue) && (
           <>
-            <label>{linearLabel ? t.newFeature.issueOf(linearLabel.name) : t.newFeature.linearIssue}</label>
+            <label>{hasLabels ? t.newFeature.issueOf(labelNames(labels)) : t.newFeature.linearIssue}</label>
             {issue ? (
               <div className="issue-picked">
                 <span className="issue-id">{issue.identifier}</span>
@@ -199,13 +202,13 @@ export function NewFeatureDialog({
                       <span className="issue-state">{i.stateName}</span>
                     </button>
                   ))}
-                  {!shownIssues.length && linearLabel && (
-                    <p className="hint">{t.newFeature.noIssueIn(linearLabel.name)}</p>
+                  {!shownIssues.length && hasLabels && (
+                    <p className="hint">{t.newFeature.noIssueIn(labelNames(labels))}</p>
                   )}
                 </div>
               </>
             )}
-            {!issue && linearLabel && newProject && (
+            {!issue && hasLabels && newProject && (
               <div className="issue-create">
                 <p className="hint">{t.newFeature.newIssue}</p>
                 {linearProjects.length > 1 && (

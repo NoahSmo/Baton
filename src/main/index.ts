@@ -448,6 +448,14 @@ async function installUpdate(): Promise<void> {
 
 function registerIpc(): void {
   ipcMain.handle('app:version', () => app.getVersion())
+  ipcMain.handle('app:stats', () => {
+    const metrics = app.getAppMetrics()
+    return {
+      // workingSetSize is in kilobytes.
+      memoryMb: Math.round(metrics.reduce((sum, m) => sum + m.memory.workingSetSize, 0) / 1024),
+      cpuPercent: Math.round(metrics.reduce((sum, m) => sum + m.cpu.percentCPUUsage, 0) * 10) / 10
+    }
+  })
   ipcMain.handle('update:get', () => update)
   ipcMain.handle('update:check', async () => ({ update: await refreshUpdate(true), version: app.getVersion() }))
   ipcMain.handle('update:install', () => installUpdate())

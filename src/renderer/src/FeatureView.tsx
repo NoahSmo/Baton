@@ -17,7 +17,6 @@ import { AttachButton, DraftAttachments, SentAttachments } from './Attachments'
 import { BranchPicker } from './BranchPicker'
 import { ConversationSearch } from './ConversationSearch'
 import { loadDraft, saveDraft } from './drafts'
-import { GitActions } from './GitActions'
 import { openContextMenu } from './contextMenu'
 import { useLang, useT } from './i18n'
 import { LinkIssueDialog } from './LinkIssueDialog'
@@ -35,8 +34,6 @@ interface Props {
   background: BackgroundTask[]
   /** Null until the worktree's status has been read. */
   git: GitStatus | null
-  editorOpen: boolean
-  onToggleEditor(): void
   /** Opens the editor on the list of changed files. */
   onShowChanges(): void
   linearConnected: boolean
@@ -54,8 +51,6 @@ export function FeatureView({
   stream,
   background,
   git,
-  editorOpen,
-  onToggleEditor,
   onShowChanges,
   linearConnected,
   linking,
@@ -146,13 +141,17 @@ export function FeatureView({
     <div className="feature">
       <header className="feature-head">
         <div className="feature-head-main">
-          <h1>{feature.title}</h1>
+          <div className="feature-title">
+            <h1>{feature.title}</h1>
+            <span className={`status-pill ${feature.status}`}>
+              <span className={`dot ${feature.status}`} />
+              {t.status[feature.status]}
+            </span>
+            <span className="chip">Claude Code</span>
+          </div>
           <p className="feature-meta">
-            <span className={`dot ${feature.status}`} />
-            {t.status[feature.status]}
-            <span className="sep">·</span>
             {project?.name}
-            <span className="sep">·</span>
+            <span className="sep">/</span>
             {(feature.branch || git) && <BranchPicker feature={feature} git={git} />}
             {git && git.ahead > 0 && (
               <span className="num" title={t.git.ahead(git.ahead, git.upstream ?? '')}>
@@ -172,7 +171,6 @@ export function FeatureView({
                 </button>
               </>
             )}
-            <GitActions feature={feature} git={git} />
             {feature.linear ? (
               <>
                 <span className="sep">·</span>
@@ -190,37 +188,22 @@ export function FeatureView({
                 </>
               )
             )}
-            {feature.costUsd > 0 && (
-              <>
-                <span className="sep">·</span>
-                <span className="num">${feature.costUsd.toFixed(2)}</span>
-              </>
-            )}
-            {feature.contextTokens > 0 && (
-              <>
-                <span className="sep">·</span>
-                <span className={`num${feature.contextTokens > 100_000 ? ' heavy' : ''}`} title={t.feature.contextSize}>
-                  {kTokens(feature.contextTokens)} ctx
-                </span>
-                {feature.contextTokens > 100_000 && feature.sessionId && (
-                  <button className="link" title={t.handoff.heavy} onClick={onContinue}>
-                    {t.handoff.button}
-                  </button>
-                )}
-              </>
-            )}
           </p>
         </div>
-        <div className="feature-actions">
-          <button
-            className={editorOpen ? 'toggled' : ''}
-            aria-pressed={editorOpen}
-            title={t.feature.editor}
-            aria-label={t.feature.editor}
-            onClick={onToggleEditor}
-          >
-            {'</>'}
-          </button>
+        <div className="feature-stats">
+          <div className="stat" title={t.feature.contextSize}>
+            <span className="stat-label">{t.feature.context}</span>
+            <span className={`stat-value num${feature.contextTokens > 100_000 ? ' heavy' : ''}`}>{kTokens(feature.contextTokens)}</span>
+            {feature.contextTokens > 100_000 && feature.sessionId && (
+              <button className="link" title={t.handoff.heavy} onClick={onContinue}>
+                {t.handoff.button}
+              </button>
+            )}
+          </div>
+          <div className="stat">
+            <span className="stat-label">{t.feature.cost}</span>
+            <span className="stat-value num">≈ ${feature.costUsd.toFixed(2)}</span>
+          </div>
         </div>
       </header>
 

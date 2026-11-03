@@ -24,8 +24,11 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
   const [repo, setRepo] = useState<RepoInfo | null>(null)
   const [name, setName] = useState(project?.name ?? '')
   const [color, setColor] = useState<string>(project?.color ?? PROJECT_COLORS[0])
-  const [linearLabel, setLinearLabel] = useState<LinearLabel | null>(project?.linearLabel ?? null)
+  /** Labels ticked for this repository. */
+  const [chosen, setChosen] = useState<LinearLabel[]>(project?.linearLabels ?? [])
+  /** Every label of the workspace; null while loading. */
   const [linearLabels, setLinearLabels] = useState<LinearLabel[] | null>(null)
+  const [labelFilter, setLabelFilter] = useState('')
   const [linearError, setLinearError] = useState('')
   const [worktrees, setWorktrees] = useState(project?.worktrees ?? true)
   const [busy, setBusy] = useState(false)
@@ -55,7 +58,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
     setBusy(true)
     setError('')
     try {
-      const patch = { name, color, linearLabel, worktrees }
+      const patch = { name, color, linearLabels: chosen, worktrees }
       onSaved(
         project
           ? await window.api.updateProject(project.id, patch)
@@ -68,10 +71,10 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
   }
 
   // A linked label that no longer shows up in Linear still has to stay selectable.
-  const options = [
-    ...(linearLabel && !linearLabels?.some((l) => l.id === linearLabel.id) ? [linearLabel] : []),
-    ...(linearLabels ?? [])
-  ]
+  const options = [...chosen.filter((c) => !linearLabels?.some((l) => l.id === c.id)), ...(linearLabels ?? [])]
+  const visible = options.filter((l) => l.name.toLowerCase().includes(labelFilter.trim().toLowerCase()))
+  const toggleLabel = (label: LinearLabel) =>
+    setChosen((list) => (list.some((l) => l.id === label.id) ? list.filter((l) => l.id !== label.id) : [...list, label]))
 
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -138,24 +141,24 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
         </div>
 
         {/* Linear is optional: the section only exists for those who connected it. */}
-        {linear.connected && <label htmlFor="pd-linear">{t.project.linearLabel}</label>}
+        {linear.connected && <label htmlFor="pd-linear-filter">{t.project.linearLabel}</label>}
         {!linear.connected ? null : linearError ? (
           <p className="form-error">{linearError}</p>
         ) : (
           <>
-            <select
-              id="pd-linear"
-              value={linearLabel?.id ?? ''}
-              disabled={!linearLabels}
-              onChange={(e) => setLinearLabel(options.find((l) => l.id === e.target.value) ?? null)}
-            >
-              <option value="">{linearLabels ? t.project.linearNone : t.project.loading}</option>
-              {options.map((l) => (
-                <option key={l.id} value={l.id}>
+            {options.length > 6 && (
+              <input id="pd-linear-filter" value={labelFilter} placeholder={t.project.linearFilter} onChange={(e) => setLabelFilter(e.target.value)} />
+            )}
+            <div className="label-list" role="group" aria-label={t.project.linearLabel}>
+              {!linearLabels && <p className="hint">{t.project.loading}</p>}
+              {linearLabels && !options.length && <p className="hint">{t.project.linearNone}</p>}
+              {visible.map((l) => (
+                <label key={l.id} className="label-option">
+                  <input type="checkbox" checked={chosen.some((c) => c.id === l.id)} onChange={() => toggleLabel(l)} />
                   {l.name}
-                </option>
+                </label>
               ))}
-            </select>
+            </div>
             <p className="hint">{t.project.linearHint}</p>
           </>
         )}

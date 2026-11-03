@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BOARD_GROUPINGS, stateForColumn, type BoardGrouping, type KanbanColumn } from '../../shared/kanban'
-import { issuePrompt } from '../../shared/linear'
+import { issuePrompt, reposForLabels } from '../../shared/linear'
 import { DEFAULT_AGENT_MODEL, type Feature, type LinearIssue, type LinearProject, type LinearState, type LinearStatus, type Project } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
 import { useT } from './i18n'
@@ -38,6 +38,20 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
   const [reload, setReload] = useState(0)
   const [selection, setSelection] = useState<string[]>([])
   const [starting, setStarting] = useState(false)
+  /** Repository the user picked for a Linear project several repositories point at, by Linear project id. */
+  const [repoChoice, setRepoChoice] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('linear-repo-choice') ?? '{}') as Record<string, string>
+    } catch {
+      return {}
+    }
+  })
+
+  function chooseRepo(linearProjectId: string, repoId: string) {
+    const next = { ...repoChoice, [linearProjectId]: repoId }
+    setRepoChoice(next)
+    localStorage.setItem('linear-repo-choice', JSON.stringify(next))
+  }
 
   useEffect(() => {
     if (!linear.connected) return
@@ -72,7 +86,7 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
 
   if (!linear.connected) {
     return (
-      <main className="main wide">
+      <div className="board-empty">
         <div className="empty">
           <h1>{t.linearView.notConnectedTitle}</h1>
           <p>{t.linearView.notConnectedBody}</p>
@@ -80,14 +94,15 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
             {t.statusbar.connectLinear}
           </button>
         </div>
-      </main>
+      </div>
     )
   }
 
-  /** Repositories linked to one of the labels the Linear project carries. */
+  /** Repositories linked to one of the labels the Linear project carries, the one to start in first: the user's pick, else the repository being worked in. */
   const reposFor = (linearProjectId: string | null) => {
     const labels = linearProjects?.find((p) => p.id === linearProjectId)?.labels ?? []
-    return projects.filter((p) => labels.some((l) => l.id === p.linearLabel?.id))
+    const preferred = (linearProjectId && repoChoice[linearProjectId]) || defaultProjectId
+    return reposForLabels(projects, labels.map((l) => l.id)).sort((a, b) => Number(b.id === preferred) - Number(a.id === preferred))
   }
   const selectedProject = linearProjects?.find((p) => p.id === selectedId) ?? null
 
@@ -136,12 +151,10 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
 
   const toggle = (id: string) => setSelection((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
 
-  /** The only repository the issue points at, else the one being worked in. */
+  /** The repository the issue's Linear project starts in, else the one being worked in. */
   function repoFor(issue: LinearIssue): Project {
-    const repos = reposFor(issue.linearProjectId)
-    if (repos.length === 1) return repos[0]
-    const candidates = repos.length ? repos : projects
-    return candidates.find((p) => p.id === defaultProjectId) ?? candidates[0]
+    const repo = reposFor(issue.linearProjectId)[0]
+    return repo ?? projects.find((p) => p.id === defaultProjectId) ?? projects[0]
   }
 
   /** One agent per selected issue, with the default settings; failures stay selected. */
@@ -176,7 +189,7 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
   }
 
   return (
-    <main className="main wide linear-view">
+    <div className="linear-view">
       <aside className="linear-projects">
         <button className={`linear-project${selectedId === null ? ' selected' : ''}`} onClick={() => setSelectedId(null)}>
           <span className="linear-project-name">{t.linearView.myIssues}</span>
@@ -186,8 +199,8 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
         {linearProjects?.map((p) => {
           const repos = reposFor(p.id)
           return (
+            <div key={p.id} className="linear-project-wrap">
             <button
-              key={p.id}
               className={`linear-project${selectedId === p.id ? ' selected' : ''}`}
               onClick={() => {
                 setSelectedId(p.id)
@@ -205,6 +218,19 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
                 </span>
               ))}
             </button>
+            {repos.length > 1 && (
+              <label className="linear-project-start">
+                {t.linearView.startIn}
+                <select value={repos[0].id} onChange={(e) => chooseRepo(p.id, e.target.value)}>
+                  {[...repos].sort((a, b) => a.name.localeCompare(b.name)).map((repo) => (
+                    <option key={repo.id} value={repo.id}>
+                      {repo.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            </div>
           )
         })}
       </aside>
@@ -363,6 +389,6 @@ export function LinearView({ linear, projects, features, defaultProjectId, onCon
         </div>
         )}
       </section>
-    </main>
+    </div>
   )
 }

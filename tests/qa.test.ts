@@ -35,7 +35,7 @@ describe('runTests', () => {
 
 function setup(runner: QaRunner, qa = { enabled: true, command: 'npm test' }) {
   const store = new Store(':memory:')
-  store.insertProject({ id: 'p', name: 'P', path: '/p', color: '#fff', linearLabel: null, commands: [], templates: [], worktrees: true, qa })
+  store.insertProject({ id: 'p', name: 'P', path: '/p', color: '#fff', linearLabels: [], commands: [], templates: [], worktrees: true, qa })
   store.updateProject({ ...store.getProject('p')!, qa })
   const feature = { id: 'f', projectId: 'p', title: 'Login', worktreePath: '/wt' } as Feature
   const published: QaRun[] = []

@@ -7,6 +7,7 @@ import { basicSetup } from 'codemirror'
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Feature, FileEntry, GitChange, GitChangeKind, GitStatus } from '../../shared/types'
 import { DiffView } from './DiffView'
+import { GitActions } from './GitActions'
 import { editorTheme } from './editorTheme'
 import { HistoryGraph } from './HistoryGraph'
 import { useT } from './i18n'
@@ -25,7 +26,7 @@ interface Props {
   onPanel(panel: EditorPanel): void
 }
 
-export type EditorPanel = 'files' | 'changes' | 'history'
+export type EditorPanel = 'files' | 'changes' | 'history' | 'pr'
 
 /** Letter a changed file is tagged with, as git and most editors do. */
 const CHANGE_MARK: Record<GitChangeKind, string> = {
@@ -317,36 +318,42 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
     <section className="editor" hidden={!visible} style={{ width }}>
       <nav className="editor-tree" aria-label={t.editor.files}>
         <div className="editor-tree-head" role="tablist">
-          <button
-            role="tab"
-            aria-selected={panel === 'files'}
-            className={`sidebar-title tree-tab${panel === 'files' ? ' selected' : ''}`}
-            onClick={() => onPanel('files')}
-          >
-            {t.editor.files}
-          </button>
-          <button
-            role="tab"
-            aria-selected={panel === 'changes'}
-            className={`sidebar-title tree-tab${panel === 'changes' ? ' selected' : ''}`}
-            onClick={() => onPanel('changes')}
-          >
-            {t.git.changes} {commitChanges.length > 0 && <span className="num">{commitChanges.length}</span>}
-          </button>
-          <button
-            role="tab"
-            aria-selected={panel === 'history'}
-            className={`sidebar-title tree-tab${panel === 'history' ? ' selected' : ''}`}
-            onClick={() => {
-              onPanel('history')
-              setDiffPath(null)
-            }}
-          >
-            {t.git.history}
-          </button>
+          {(
+            [
+              ['changes', t.git.tabUncommitted, commitChanges.length],
+              ['history', t.git.history, 0],
+              ['files', t.git.tabFiles, 0],
+              ['pr', t.git.tabPr, 0]
+            ] as const
+          ).map(([id, label, count]) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={panel === id}
+              className={`tree-tab${panel === id ? ' selected' : ''}`}
+              onClick={() => {
+                onPanel(id)
+                if (id === 'history') setDiffPath(null)
+              }}
+            >
+              {label} {count > 0 && <span className="num">{count}</span>}
+            </button>
+          ))}
         </div>
         {panel === 'files' ? (
           <div className="editor-tree-list">{renderDir('', 0)}</div>
+        ) : panel === 'pr' ? (
+          <div className="editor-tree-list pr-panel">
+            <p className="pr-branch">
+              <Icon name="branch" size={13} /> {git?.branch ?? feature.branch}
+              {git && git.ahead > 0 && <span className="num">↑{git.ahead}</span>}
+              {git && git.behind > 0 && <span className="num">↓{git.behind}</span>}
+            </p>
+            {!feature.prUrl && <p className="tree-empty">{t.git.noPr}</p>}
+            <div className="pr-actions">
+              <GitActions feature={feature} git={git} variant="sync" />
+            </div>
+          </div>
         ) : (
           <div className="editor-tree-list">
             <div className="filters" role="group" aria-label={t.git.changes}>
@@ -383,6 +390,14 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
               </button>
             ))}
           </div>
+        )}
+        {panel === 'changes' && (
+          <footer className="editor-tree-foot">
+            <button disabled={!changes.length} onClick={() => setDiffPath(changes[0]?.path ?? null)}>
+              {t.git.viewDiff}
+            </button>
+            <GitActions feature={feature} git={git} variant="commit" />
+          </footer>
         )}
       </nav>
 

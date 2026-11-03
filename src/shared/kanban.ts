@@ -1,4 +1,4 @@
-import type { LinearIssue, LinearState } from './types'
+import type { Feature, FeatureStatus, LinearIssue, LinearState } from './types'
 
 /** How the board splits issues into columns. */
 export type BoardGrouping = 'status' | 'priority'
@@ -72,4 +72,31 @@ export function stateForColumn(states: LinearState[], column: Pick<KanbanColumn,
     states.find((s) => s.name === column.key) ??
     states.filter((s) => s.type === column.type).sort((a, b) => a.position - b.position)[0]
   )
+}
+
+/** Columns of the agents board, in the order work moves. */
+export type AgentColumnKey = 'running' | 'waiting' | 'done' | 'stopped' | 'idle'
+
+export interface AgentColumn {
+  key: AgentColumnKey
+  features: Feature[]
+}
+
+const AGENT_COLUMN_OF: Record<FeatureStatus, AgentColumnKey> = {
+  working: 'running',
+  queued: 'running',
+  waiting: 'waiting',
+  done: 'done',
+  error: 'stopped',
+  limited: 'stopped',
+  idle: 'idle'
+}
+
+/** Running, waiting and done always show; stopped and idle only when an agent is in them. Archived agents stay out. */
+export function agentColumns(features: Feature[]): AgentColumn[] {
+  const keys: AgentColumnKey[] = ['running', 'waiting', 'done', 'stopped', 'idle']
+  const live = features.filter((f) => !f.archived)
+  return keys
+    .map((key) => ({ key, features: live.filter((f) => AGENT_COLUMN_OF[f.status] === key) }))
+    .filter((col) => col.features.length > 0 || col.key === 'running' || col.key === 'waiting' || col.key === 'done')
 }
