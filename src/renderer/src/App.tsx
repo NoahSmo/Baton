@@ -63,6 +63,8 @@ export function App() {
   const [dialog, setDialog] = useState<Dialog>(null)
   /** The Kanban tab is showing instead of the conversation. */
   const [showBoard, setShowBoard] = useState(false)
+  /** The sidebar's room for the board's Linear projects. */
+  const [boardSlot, setBoardSlot] = useState<HTMLElement | null>(null)
   /** Features that got an editor; each stays mounted once shown, which keeps its open files. */
   const [editors, setEditors] = useState<Record<string, boolean>>({})
   /** The right panel is docked beside the conversation unless the user folds it. */
@@ -363,6 +365,7 @@ export function App() {
             selectedId={feature?.id ?? null}
             board={boardShown}
             onBoard={setShowBoard}
+            onBoardSlot={setBoardSlot}
             onSelect={(f) => {
               setShowBoard(false)
               showFeature(f)
@@ -390,8 +393,7 @@ export function App() {
           <main className="main">
             {boardShown && (
               <BoardView
-                project={project}
-                onClose={() => setShowBoard(false)}
+                slot={boardSlot}
                 linear={linear}
                 projects={projects}
                 features={features}

@@ -48,8 +48,6 @@ const en = {
   rail: { projects: 'Projects' },
 
 
-  board: { close: 'Back to agents' },
-
   sidebar: {
     features: 'Agents',
     kanban: 'Kanban',
@@ -697,8 +695,6 @@ const fr: Dict = {
 
   rail: { projects: 'Projets' },
 
-
-  board: { close: 'Retour aux agents' },
 
   sidebar: {
     features: 'Agents',
