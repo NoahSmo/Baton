@@ -333,7 +333,7 @@ export function App() {
 
   return (
     <LangContext.Provider value={lang}>
-    <div className="app">
+    <div className={`app${boardShown ? ' board-open' : ''}`}>
       <TopBar
         project={project}
         onSearch={() => setDialog({ kind: 'palette' })}
@@ -391,8 +391,7 @@ export function App() {
             {boardShown && (
               <BoardView
                 project={project}
-                projectFeatures={projectFeatures}
-                selectedId={feature?.id ?? null}
+                onClose={() => setShowBoard(false)}
                 linear={linear}
                 projects={projects}
                 features={features}
