@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
+import { fetchClaudeUsage } from './claudeUsage'
 import { DICTS, LANGS, langFromLocale, type Lang } from '../shared/i18n'
 import { normalizePrefs, shouldNotify } from '../shared/notifications'
 import { formatReset } from '../shared/time'
@@ -157,9 +158,23 @@ async function continueLimited(stopped: Feature[]): Promise<void> {
 let usageWarning: UsageWarning | null = null
 let usageWindows: UsageWindow[] = []
 
+/** What the account reports itself, and what agents reported; the agents' readings are the fresher. */
+let polledWindows: UsageWindow[] = []
+let reportedWindows: UsageWindow[] = []
+
 function setUsageWindows(windows: UsageWindow[]): void {
-  usageWindows = windows
-  send('usage:windows', windows)
+  reportedWindows = windows
+  usageWindows = [...polledWindows.filter((p) => !windows.some((w) => w.limitType === p.limitType)), ...windows]
+  send('usage:windows', usageWindows)
+}
+
+const USAGE_POLL_MS = 2 * 60_000
+
+async function pollUsage(): Promise<void> {
+  const fresh = await fetchClaudeUsage()
+  if (!fresh) return
+  polledWindows = fresh
+  setUsageWindows(reportedWindows)
 }
 
 /** Shown even with the window in front: the next agents started could hit the limit. */
@@ -233,7 +248,7 @@ function createWindow(): void {
     minHeight: 560,
     title: APP_NAME,
     // Elsewhere the system draws its own title bar.
-    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 13 } } : {}),
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 16 } } : {}),
     // Linux has no bundle to take the window icon from.
     ...(process.platform === 'linux' ? { icon: app.isPackaged ? join(process.resourcesPath, 'icon.png') : join(app.getAppPath(), 'build/icons/512x512.png') } : {}),
     backgroundColor: theme.colors.bg,
@@ -799,6 +814,8 @@ void app.whenReady().then(() => {
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
   registerIpc()
   createWindow()
+  void pollUsage()
+  setInterval(() => void pollUsage(), USAGE_POLL_MS)
   setTimeout(() => void refreshUpdate(), 5000)
   setInterval(() => void refreshUpdate(), UPDATE_CHECK_INTERVAL_MS)
   void manager.trashList()

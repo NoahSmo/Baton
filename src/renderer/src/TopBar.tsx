@@ -17,10 +17,7 @@ export function TopBar({ project, onSearch, searchShortcut, editor }: Props) {
     <header className="topbar">
       <div className="topbar-project">
         {project && (
-          <>
-            <span className="swatch" style={{ background: project.color }} />
-            <span className="topbar-name">{project.name}</span>
-          </>
+          <span className="topbar-name">{project.name}</span>
         )}
       </div>
       <button className="topbar-search" onClick={onSearch} aria-label={t.topbar.search}>
