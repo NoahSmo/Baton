@@ -47,12 +47,8 @@ const en = {
 
   rail: { projects: 'Projects' },
 
-  board: {
-    kinds: { agents: 'Agents', linear: 'Linear' } as Record<'agents' | 'linear', string>,
-    columns: { running: 'Running', waiting: 'Waiting', done: 'Done', stopped: 'Stopped', idle: 'Idle' } as Record<'running' | 'waiting' | 'done' | 'stopped' | 'idle', string>,
-    empty: 'Nothing here.'
-  },
 
+  board: { close: 'Back to agents' },
 
   sidebar: {
     features: 'Agents',
@@ -701,12 +697,8 @@ const fr: Dict = {
 
   rail: { projects: 'Projets' },
 
-  board: {
-    kinds: { agents: 'Agents', linear: 'Linear' },
-    columns: { running: 'En cours', waiting: 'En attente', done: 'Terminés', stopped: 'Arrêtés', idle: 'Inactifs' },
-    empty: 'Rien ici.'
-  },
 
+  board: { close: 'Retour aux agents' },
 
   sidebar: {
     features: 'Agents',

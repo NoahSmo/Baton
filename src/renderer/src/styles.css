@@ -3580,6 +3580,8 @@ kbd {
 
 .priority-icon.p3 i.lit {
   background: var(--amber);
+}
+
 .dialog.conflict-dialog {
   width: 680px;
 }
@@ -3867,6 +3869,18 @@ kbd {
   gap: 16px;
   padding: 12px 20px;
   border-bottom: 1px solid var(--border);
+}
+
+.app.board-open .sidebar {
+  display: none;
+}
+
+.app.board-open > .project-view > .main {
+  grid-column: 2 / -1;
+}
+
+.board-close {
+  margin-left: auto;
 }
 
 .board-head h1 {
