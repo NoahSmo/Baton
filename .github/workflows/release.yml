@@ -32,9 +32,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - id: version
         run: echo "version=$(node scripts/ci-version.mjs)" >> "$GITHUB_OUTPUT"
+
+  # Runs alongside the builds instead of before them; publish waits for it.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
@@ -48,6 +57,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: electron-${{ runner.os }}-${{ runner.arch }}-
       - run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm ci
       - run: npm run dist
@@ -62,10 +78,12 @@ jobs:
     strategy:
       matrix:
         include:
+          # Pinned, not ubuntu-latest: node-pty is compiled here and links against the
+          # runner's glibc, so a newer runner makes the app fail to start on older distros.
           - arch: x64
-            runner: ubuntu-latest
+            runner: ubuntu-22.04
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-22.04-arm
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -73,11 +91,25 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: electron-${{ runner.os }}-${{ runner.arch }}-
       - name: Install rpm tooling
         run: sudo apt-get update -qq && sudo apt-get install -y -qq rpm
       - run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm ci
       - run: npm run dist:linux
+      - name: Check the native module loads on glibc 2.35 (Ubuntu 22.04, Debian 12)
+        run: |
+          pty=$(find dist -path '*/node-pty/build/Release/pty.node' | head -n 1)
+          test -n "$pty"
+          max=$(objdump -T "$pty" | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1)
+          echo "pty.node needs up to $max"
+          test "$(printf '%s\nGLIBC_2.35\n' "$max" | sort -V | tail -n 1)" = GLIBC_2.35
       - uses: actions/upload-artifact@v4
         with:
           name: linux-${{ matrix.arch }}
@@ -88,7 +120,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [version, macos, linux]
+    needs: [version, check, macos, linux]
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.version.outputs.version }}
