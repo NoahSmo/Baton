@@ -74,7 +74,7 @@ export function contextMenuTemplate(spec: ContextMenuSpec, ctx: MenuContext): Me
         { label: feature.pinned ? t.menu.unpin : t.menu.pin, click: () => manager.setPinned(feature.id, !feature.pinned) },
         {
           label: feature.archived ? t.menu.unarchive : t.menu.archive,
-          click: () => manager.setArchived(feature.id, !feature.archived)
+          click: () => void manager.setArchived(feature.id, !feature.archived)
         },
         { label: t.menu.continueNew, enabled: Boolean(feature.sessionId), click: () => ctx.choose('continue-feature') },
         separator,

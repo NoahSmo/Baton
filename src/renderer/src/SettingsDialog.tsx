@@ -35,6 +35,7 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
   const lang = useLang()
   const [maxRunning, setMaxRunning] = useState<number | null>(null)
   const [autoContinue, setAutoContinue] = useState<boolean | null>(null)
+  const [removeOnArchive, setRemoveOnArchive] = useState<boolean | null>(null)
   const [themeId, setThemeId] = useState(() => cachedTheme().id)
   const [checking, setChecking] = useState(false)
   const [result, setResult] = useState<'upToDate' | null>(null)
@@ -47,6 +48,7 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
     void window.api.trashList().then(setTrash)
     void window.api.getMaxRunning().then(setMaxRunning)
     void window.api.getAutoContinue().then(setAutoContinue)
+    void window.api.getRemoveWorktreeOnArchive().then(setRemoveOnArchive)
     // The stored choice wins over the cached one, which may come from another data folder.
     void window.api.getTheme().then(setThemeId)
   }, [])
@@ -54,6 +56,11 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
   function changeAutoContinue(enabled: boolean) {
     setAutoContinue(enabled)
     void window.api.setAutoContinue(enabled)
+  }
+
+  function changeRemoveOnArchive(enabled: boolean) {
+    setRemoveOnArchive(enabled)
+    void window.api.setRemoveWorktreeOnArchive(enabled)
   }
 
   function changeMaxRunning(max: number) {
@@ -129,7 +136,7 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
             </div>
           </section>
 
-          {(maxRunning !== null || autoContinue !== null) && (
+          {(maxRunning !== null || autoContinue !== null || removeOnArchive !== null) && (
             <section className="settings-section">
               <h3 className="settings-title">{t.statusbar.maxRunning}</h3>
               <div className="settings-card">
@@ -146,6 +153,7 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
                   </div>
                 )}
                 {autoContinue !== null && <Toggle label={t.statusbar.autoContinue} hint={t.statusbar.autoContinueHint} checked={autoContinue} onChange={changeAutoContinue} />}
+                {removeOnArchive !== null && <Toggle label={t.statusbar.removeWorktreeOnArchive} hint={t.statusbar.removeWorktreeOnArchiveHint} checked={removeOnArchive} onChange={changeRemoveOnArchive} />}
               </div>
             </section>
           )}

@@ -141,6 +141,8 @@ const en = {
     queued: (n: number) => `${n} queued`,
     maxRunning: 'At once',
     maxRunningHint: 'Agents allowed to run at the same time; the others wait in line. ∞ for no limit.',
+    removeWorktreeOnArchive: 'Remove the worktree when archiving',
+    removeWorktreeOnArchiveHint: 'Archiving an agent deletes its worktree to free disk space. The branch and uncommitted changes are kept, and the worktree is made again when you unarchive.',
     autoContinue: 'Continue when the limit resets',
     autoContinueHint: 'Once the usage limit resets, each agent it stopped gets a new thread: Claude sums up its work and the thread carries on, on the same Linear issue.',
     usageNear: (time?: string, used?: number, type?: string) =>
@@ -790,6 +792,8 @@ const fr: Dict = {
     queued: (n) => `${n} en file`,
     maxRunning: 'En parallèle',
     maxRunningHint: "Agents autorisés à tourner en même temps ; les autres attendent leur tour. ∞ pour aucune limite.",
+    removeWorktreeOnArchive: "Supprimer le worktree à l'archivage",
+    removeWorktreeOnArchiveHint: "Archiver un agent supprime son worktree pour libérer de la place. La branche et les changements non commités sont conservés, et le worktree est recréé au désarchivage.",
     autoContinue: 'Reprendre au reset de la limite',
     autoContinueHint: "Quand la limite d'usage est remise à zéro, chaque agent qu'elle a arrêté obtient un nouveau thread : Claude résume son travail et le thread continue, sur la même issue Linear.",
     usageNear: (time, used, type) =>

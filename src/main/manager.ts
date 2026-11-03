@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import type { Dict } from '../shared/i18n'
 import { needsAttention, nextStatus, slugify } from '../shared/status'
 import {
@@ -50,7 +51,7 @@ import type { LinearClient } from './linear'
 import { createPullRequest } from './pullRequest'
 import type { Store } from './store'
 import { applyChanges, captureChanges, discardTrash, listTrash, readMeta, saveToTrash } from './trash'
-import { addWorktreeOnBranch, createWorktree, fetchRemotes, removeWorktree, repoState, type Worktree } from './worktree'
+import { addWorktreeOnBranch, createWorktree, fetchRemotes, git, removeWorktree, repoState, type Worktree } from './worktree'
 
 /** A merge is often followed by a last word with the agent: a feature just touched is left alone. */
 const MERGED_GRACE_MS = 60 * 60 * 1000
@@ -157,9 +158,58 @@ export class Manager {
     this.patch(featureId, { pinned })
   }
 
-  setArchived(featureId: string, archived: boolean): void {
-    this.mustGet(featureId)
+  /**
+   * Archives an agent, or brings it back. With `removeWorktreeOnArchive` the worktree goes
+   * too, its uncommitted work set aside; it is made again, work included, on unarchiving.
+   */
+  async setArchived(featureId: string, archived: boolean): Promise<void> {
+    const feature = this.mustGet(featureId)
+    const project = this.store.getProject(feature.projectId)
+    if (!project || worksInPlace(feature, project)) return this.patch(featureId, { archived })
+    if (!archived) {
+      // Only a worktree this app removed on archiving is made again.
+      if (existsSync(feature.worktreePath) || !existsSync(this.shelfDir(featureId))) return this.patch(featureId, { archived })
+      const worktreePath = await this.restoreWorktree(feature, project)
+      return this.patch(featureId, { archived, worktreePath })
+    }
     this.patch(featureId, { archived })
+    // An agent mid-turn still needs its worktree.
+    const idle = feature.status !== 'working' && feature.status !== 'waiting'
+    if (this.removeWorktreeOnArchive && idle && existsSync(feature.worktreePath)) {
+      await this.shelveWorktree(feature, project).catch(() => {
+        // Left as it was: an archived agent with its worktree is what the setting is off.
+      })
+    }
+  }
+
+  /** Whether archiving an agent removes its worktree. */
+  removeWorktreeOnArchive = false
+
+  private shelfDir(featureId: string): string {
+    return join(dirname(this.trashRoot), 'archive', featureId)
+  }
+
+  /** Removes a worktree, keeping its uncommitted work and the commit it was at. */
+  private async shelveWorktree(feature: Feature, project: Project): Promise<void> {
+    const dir = this.shelfDir(feature.id)
+    await rm(dir, { recursive: true, force: true })
+    await mkdir(dir, { recursive: true })
+    const head = await git(feature.worktreePath, 'rev-parse', 'HEAD').catch(() => '')
+    await captureChanges(feature.worktreePath, dir)
+    await writeFile(join(dir, 'head'), head)
+    this.sessions.get(feature.id)?.close()
+    this.sessions.delete(feature.id)
+    await removeWorktree(project.path, feature.worktreePath)
+  }
+
+  /** Makes the worktree of an archived agent again, on its branch, with the work it held. */
+  private async restoreWorktree(feature: Feature, project: Project): Promise<string> {
+    const dir = this.shelfDir(feature.id)
+    const head = await readFile(join(dir, 'head'), 'utf8').catch(() => '')
+    const worktree = await addWorktreeOnBranch(project.path, this.projectWorktrees(project), slugify(feature.title), feature.branch, head || 'HEAD')
+    await applyChanges(dir, worktree.path).catch(() => {})
+    await rm(dir, { recursive: true, force: true })
+    return worktree.path
   }
 
   /** Puts a queued agent first in line. */

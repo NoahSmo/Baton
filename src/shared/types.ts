@@ -678,6 +678,8 @@ export interface Api {
   /** Applies from the agent's next request. */
   setAgentModel(featureId: string, model: AgentModel): Promise<void>
   /** Whether agents stopped by the usage limit get a summarizing thread once it resets. */
+  getRemoveWorktreeOnArchive(): Promise<boolean>
+  setRemoveWorktreeOnArchive(enabled: boolean): Promise<void>
   getAutoContinue(): Promise<boolean>
   setAutoContinue(enabled: boolean): Promise<void>
   getMaxRunning(): Promise<number>

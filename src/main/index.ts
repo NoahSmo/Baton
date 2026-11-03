@@ -103,6 +103,7 @@ let lang: Lang = 'en'
 const t = () => DICTS[lang]
 let maxRunning = DEFAULT_MAX_RUNNING
 let autoContinue = false
+let removeWorktreeOnArchive = false
 let theme: Theme = DEFAULT_THEME
 let notificationPrefs: NotificationPrefs = normalizePrefs(undefined)
 /** Agent on screen, as the renderer last said. */
@@ -579,6 +580,12 @@ function registerIpc(): void {
     autoContinue = enabled === true
     writeSettings({ autoContinue })
   })
+  ipcMain.handle('settings:removeWorktreeOnArchive', () => removeWorktreeOnArchive)
+  ipcMain.handle('settings:setRemoveWorktreeOnArchive', (_e, enabled: boolean) => {
+    removeWorktreeOnArchive = enabled === true
+    manager.removeWorktreeOnArchive = removeWorktreeOnArchive
+    writeSettings({ removeWorktreeOnArchive })
+  })
   ipcMain.handle('settings:maxRunning', () => maxRunning)
   ipcMain.handle('settings:setMaxRunning', (_e, max: number) => {
     if (!Number.isInteger(max) || max < 0) return
@@ -792,6 +799,7 @@ void app.whenReady().then(() => {
   applyTheme(themeById(readSettings().theme))
   maxRunning = loadMaxRunning()
   autoContinue = readSettings().autoContinue === true
+  removeWorktreeOnArchive = readSettings().removeWorktreeOnArchive === true
   notificationPrefs = normalizePrefs(readSettings().notifications)
   store = new Store(join(dataDir, 'state.db'))
   qaMonitor = new QaMonitor(store, () => lang, (run) => send('qa:run', run))
