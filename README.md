@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="build/icon.png" width="112" alt="Baton icon">
+  <img src="build/icon.png" width="112" alt="Baton logo: a pixel-art stick">
 </p>
 
 <h1 align="center">Baton</h1>
@@ -184,7 +184,7 @@ npm run typecheck
 npm run dist       # build Baton-<version>.zip in dist/ (on a Mac)
 npm run dist:linux # build the .deb, .rpm and .tar.gz in dist/ (on Linux)
 scripts/build-linux.sh  # same, from a Mac, in Docker
-npm run icon       # regenerate the icon from build/icon.svg
+npm run icon       # regenerate the pixel-art stick icon from build/icon.svg
 ```
 
 The renderer reloads on save; restart `npm run dev` after changing anything under `src/main`.
