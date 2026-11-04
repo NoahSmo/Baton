@@ -529,6 +529,7 @@ export function App() {
 
       <StatusBar
         features={features}
+        current={feature && !boardShown ? { feature, git } : undefined}
         linear={linear}
         onOpenLinear={() => setDialog({ kind: 'linear' })}
         version={version}

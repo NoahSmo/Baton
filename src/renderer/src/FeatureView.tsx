@@ -14,7 +14,6 @@ import {
   type StoredEvent
 } from '../../shared/types'
 import { AttachButton, DraftAttachments, SentAttachments } from './Attachments'
-import { BranchPicker } from './BranchPicker'
 import { ConversationSearch } from './ConversationSearch'
 import { loadDraft, saveDraft } from './drafts'
 import { GitActions } from './GitActions'
@@ -152,7 +151,6 @@ export function FeatureView({
           <p className="feature-meta">
             {project?.name}
             <span className="sep">/</span>
-            {(feature.branch || git) && <BranchPicker feature={feature} git={git} />}
             {git && git.ahead > 0 && (
               <span className="num" title={t.git.ahead(git.ahead, git.upstream ?? '')}>
                 ↑{git.ahead}
