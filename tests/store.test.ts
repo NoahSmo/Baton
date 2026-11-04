@@ -5,9 +5,20 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { Store } from '../src/main/store'
 
-const project = { id: 'p', name: 'P', path: '/p', color: '#fff', commands: [], templates: [], worktrees: true, qa: { enabled: false, command: '' } }
+const project = { id: 'p', name: 'P', path: '/p', color: '#fff', linearProjects: [], linearLabels: [], commands: [], templates: [], worktrees: true, qa: { enabled: false, command: '' } }
 
-describe('project Linear labels', () => {
+describe('project Linear links', () => {
+  it('keeps the Linear projects a repository serves, and which one is the main repository', () => {
+    const store = new Store(':memory:')
+    const links = [{ id: 'p1', name: 'Web', primary: true }, { id: 'p2', name: 'API' }]
+    store.insertProject({ ...project, linearProjects: links })
+    expect(store.getProject('p')?.linearProjects).toEqual(links)
+    store.updateProject({ ...project, linearProjects: [] })
+    expect(store.getProject('p')?.linearProjects).toEqual([])
+  })
+})
+
+describe('legacy project Linear labels', () => {
   it('keeps several labels per project', () => {
     const store = new Store(':memory:')
     store.insertProject({ ...project, linearLabels: [{ id: 'l1', name: 'Web' }, { id: 'l2', name: 'API' }] })

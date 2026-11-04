@@ -1995,6 +1995,31 @@ input.mono {
   margin: 0 8px;
 }
 
+.linear-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 4px 8px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.linear-group-head[aria-expanded='false'] .kanban-lane-chevron {
+  transform: rotate(-90deg);
+}
+
+.linear-group-name {
+  flex: 1;
+  text-align: left;
+}
+
 .linear-project {
   display: flex;
   flex-direction: column;
@@ -2020,6 +2045,20 @@ input.mono {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+}
+
+.linear-project-repos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+
+.linear-project-more {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 6px;
 }
 
 .linear-project-repo {
@@ -3515,6 +3554,66 @@ kbd {
   padding: 10px 16px 16px;
 }
 
+/* One row per project under shared status columns; the whole board scrolls together. */
+.kanban-lanes {
+  flex-direction: column;
+  overflow: auto;
+}
+
+.kanban-lanes-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: max-content;
+  min-width: 100%;
+}
+
+.kanban-lanes-heads {
+  position: sticky;
+  top: -10px;
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+  padding: 0 0 2px 0;
+  background: var(--bg);
+}
+
+.kanban-lanes-heads .kanban-column-head {
+  flex: 0 0 260px;
+  box-sizing: border-box;
+}
+
+.kanban-lane-head {
+  position: sticky;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  min-width: 260px;
+  padding: 5px 10px;
+  font-weight: 600;
+}
+
+.kanban-lane-chevron {
+  display: inline-block;
+  transition: transform 0.15s;
+}
+
+.kanban-lane.collapsed .kanban-lane-chevron {
+  transform: rotate(-90deg);
+}
+
+.kanban-lane-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.kanban-lane-row .kanban-column {
+  min-height: 80px;
+}
+
 .kanban-column {
   display: flex;
   flex-direction: column;
@@ -3586,6 +3685,22 @@ kbd {
   margin: 0;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.linear-lane-axis {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.kanban-state-select {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 1px 4px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
 }
 
 .kanban-priority,
@@ -3953,13 +4068,22 @@ button.kanban-card {
   background: var(--bg);
 }
 
-.dialog label.label-option {
+.dialog .label-option {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+}
+
+.dialog .label-option label {
+  display: flex;
+  flex: 1;
   align-items: center;
   gap: 8px;
   margin: 0;
-  padding: 4px 6px;
-  border-radius: var(--r-sm);
+  padding: 2px 0;
   cursor: pointer;
 }
 
@@ -3970,20 +4094,6 @@ button.kanban-card {
 .label-option input {
   width: auto;
   margin: 0;
-}
-
-.linear-project-start {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 8px 6px;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-}
-
-.linear-project-start select {
-  flex: 1;
-  min-width: 0;
 }
 
 .statusbar {

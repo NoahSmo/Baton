@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { labelNames } from '../../shared/linear'
+import { projectNames } from '../../shared/linear'
 import { shortcutLabel } from '../../shared/shortcuts'
 import { arrangeFeatures, SIDEBAR_SORTS, type SidebarSort } from '../../shared/features'
 import type { Feature, FeatureStatus, Project, QaRun, TerminalTarget } from '../../shared/types'
@@ -384,9 +384,9 @@ export function Sidebar({
         <p className="sidebar-path" title={project.path}>
           {project.path.replace(/^\/Users\/[^/]+/, '~')}
         </p>
-        {project.linearLabels.length ? (
+        {project.linearProjects.length ? (
           <p className="sidebar-linear">
-            <span className="dot done" /> Linear · {labelNames(project.linearLabels)}
+            <span className="dot done" /> Linear · {projectNames(project.linearProjects)}
           </p>
         ) : (
           linearConnected && (

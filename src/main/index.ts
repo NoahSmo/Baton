@@ -694,8 +694,6 @@ function registerIpc(): void {
   })
   ipcMain.handle('linear:disconnect', () => linearKey.clear())
   ipcMain.handle('linear:projects', () => linear.projects())
-  ipcMain.handle('linear:projectLabels', () => linear.projectLabels())
-  ipcMain.handle('linear:labelIssues', (_e, labelId: string) => linear.labelIssues(labelId))
   ipcMain.handle('linear:issues', (_e, linearProjectId?: string) =>
     linearProjectId ? linear.projectIssues(linearProjectId) : linear.myIssues()
   )

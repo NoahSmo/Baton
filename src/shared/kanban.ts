@@ -13,6 +13,20 @@ export interface KanbanColumn {
   issues: LinearIssue[]
 }
 
+/** One row of the board: the issues of a Linear project, laid out under the same columns as the other rows. */
+export interface KanbanLane {
+  /** The Linear project id, or `none` for issues that belong to no project. */
+  key: string
+  name: string
+  issues: LinearIssue[]
+}
+
+/** What the rows of the board are made of. */
+export type LaneAxis = 'none' | 'project' | 'assignee'
+export const LANE_AXES: LaneAxis[] = ['none', 'project', 'assignee']
+
+export const NO_PROJECT_LANE = 'none'
+
 const STATE_TYPE_ORDER = ['triage', 'backlog', 'unstarted', 'started', 'completed', 'canceled']
 
 /** Linear priorities from most to least pressing; 0 ("none") sorts last, unlike its numeric value. */
@@ -28,33 +42,19 @@ export function sortByPriority(issues: LinearIssue[]): LinearIssue[] {
   return [...issues].sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority))
 }
 
+/** Workflow categories shown as columns, in the order work moves. Canceled issues have no column. */
+export const STATUS_COLUMN_TYPES = ['triage', 'backlog', 'unstarted', 'started', 'completed']
+
 /**
- * One column per workflow status, named like the statuses of the teams involved, in the order work moves.
- * Statuses of different teams that share a name share a column. Open statuses with no issue still get a column.
+ * One column per Linear workflow category, whatever the statuses of the teams are called.
+ * Backlog, started and completed always show so a card can be dropped on them; triage only when an issue is in it.
  */
-export function statusColumns(issues: LinearIssue[], teamStates: Record<string, LinearState[]>): KanbanColumn[] {
-  const columns = new Map<string, KanbanColumn & { position: number }>()
-  const column = (key: string, type: string, position: number) => {
-    let col = columns.get(key)
-    if (!col) columns.set(key, (col = { key, type, position, issues: [] }))
-    col.position = Math.min(col.position, position)
-    return col
-  }
-  const teams = new Set(issues.map((i) => i.teamId))
-  for (const teamId of teams) {
-    for (const s of teamStates[teamId] ?? []) {
-      if (s.type !== 'completed' && s.type !== 'canceled') column(s.name, s.type, s.position)
-    }
-  }
-  for (const issue of issues) column(issue.stateName, issue.stateType, Infinity).issues.push(issue)
-  return [...columns.values()]
-    .sort(
-      (a, b) =>
-        STATE_TYPE_ORDER.indexOf(a.type ?? '') - STATE_TYPE_ORDER.indexOf(b.type ?? '') ||
-        a.position - b.position ||
-        a.key.localeCompare(b.key)
-    )
-    .map(({ position: _position, ...col }) => ({ ...col, issues: sortByPriority(col.issues) }))
+export function statusColumns(issues: LinearIssue[]): KanbanColumn[] {
+  return STATUS_COLUMN_TYPES.map((type) => ({
+    key: type,
+    type,
+    issues: sortByPriority(issues.filter((i) => i.stateType === type))
+  })).filter((col) => col.type !== 'triage' || col.issues.length)
 }
 
 /** One column per priority, all five shown so an issue can be dropped on any of them. */
@@ -66,12 +66,49 @@ export function priorityColumns(issues: LinearIssue[]): KanbanColumn[] {
   }))
 }
 
-/** The state of a team a card dropped on a status column moves to: same name, else same category. */
-export function stateForColumn(states: LinearState[], column: Pick<KanbanColumn, 'key' | 'type'>): LinearState | undefined {
-  return (
-    states.find((s) => s.name === column.key) ??
-    states.filter((s) => s.type === column.type).sort((a, b) => a.position - b.position)[0]
-  )
+/** One lane per Linear project, by name, with the issues of no project last. */
+export function groupByProject(issues: LinearIssue[], projectName: (linearProjectId: string) => string | undefined, noProjectName: string): KanbanLane[] {
+  const lanes = new Map<string, KanbanLane>()
+  for (const issue of issues) {
+    const key = issue.linearProjectId ?? NO_PROJECT_LANE
+    let lane = lanes.get(key)
+    if (!lane) {
+      const name = issue.linearProjectId ? (projectName(issue.linearProjectId) ?? issue.linearProjectId) : noProjectName
+      lanes.set(key, (lane = { key, name, issues: [] }))
+    }
+    lane.issues.push(issue)
+  }
+  const rank = (lane: KanbanLane) => Number(lane.key === NO_PROJECT_LANE)
+  return [...lanes.values()].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
+}
+
+/** One lane per assignee, by name, with the unassigned issues last. */
+export function groupByAssignee(issues: LinearIssue[], unassignedName: string): KanbanLane[] {
+  const lanes = new Map<string, KanbanLane>()
+  for (const issue of issues) {
+    const key = issue.assigneeName ?? NO_PROJECT_LANE
+    let lane = lanes.get(key)
+    if (!lane) lanes.set(key, (lane = { key, name: issue.assigneeName ?? unassignedName, issues: [] }))
+    lane.issues.push(issue)
+  }
+  const rank = (lane: KanbanLane) => Number(lane.key === NO_PROJECT_LANE)
+  return [...lanes.values()].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
+}
+
+/** The issues of a lane that belong in a column. */
+export function issuesInColumn(lane: KanbanLane, column: KanbanColumn): LinearIssue[] {
+  const inColumn = new Set(column.issues.map((i) => i.id))
+  return lane.issues.filter((i) => inColumn.has(i.id))
+}
+
+/** The statuses of a team in one workflow category, in the order the team set them. */
+export function statesOfType(states: LinearState[], type: string): LinearState[] {
+  return states.filter((s) => s.type === type).sort((a, b) => a.position - b.position)
+}
+
+/** The status of a team a card dropped on a column takes: the first of the column's category. */
+export function stateForColumn(states: LinearState[], column: Pick<KanbanColumn, 'type'>): LinearState | undefined {
+  return statesOfType(states, column.type ?? '')[0]
 }
 
 /** What replaces the conversation: the Linear issues as a Kanban board, or as a list. */
