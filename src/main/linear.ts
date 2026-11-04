@@ -1,5 +1,5 @@
 import { DICTS, type Dict } from '../shared/i18n'
-import type { CreateLinearIssueInput, LinearIssue, LinearLabel, LinearProject, LinearState, LinearTeam } from '../shared/types'
+import type { CreateLinearIssueInput, LinearIssue, LinearLabel, LinearProject, LinearProjectStatus, LinearState, LinearTeam } from '../shared/types'
 
 // Overridable so the app can be exercised against a local stand-in for Linear.
 const ENDPOINT = process.env.BATON_LINEAR_URL ?? 'https://api.linear.app/graphql'
@@ -72,43 +72,17 @@ export class LinearClient {
   async projects(): Promise<LinearProject[]> {
     const data = await this.request<{
       projects: {
-        nodes: { id: string; name: string; labels: { nodes: LinearLabel[] }; teams: { nodes: LinearTeam[] } }[]
+        nodes: { id: string; name: string; status: LinearProjectStatus | null; labels: { nodes: LinearLabel[] }; teams: { nodes: LinearTeam[] } }[]
       }
     }>(
       // Nested connections default to 50 items; left alone they push the query past Linear's complexity cap.
-      'query { projects(first: 100, orderBy: updatedAt) { nodes { id name labels(first: 10) { nodes { id name } } teams(first: 5) { nodes { id name } } } } }'
+      'query { projects(first: 100, orderBy: updatedAt) { nodes { id name status { name type } labels(first: 10) { nodes { id name } } teams(first: 5) { nodes { id name } } } } }'
     )
     return data.projects.nodes.map(({ labels, teams, ...project }) => ({
       ...project,
       labels: labels.nodes,
       teams: teams.nodes
     }))
-  }
-
-  /** Project labels of the workspace, by name. Groups are left out: they cannot be put on a project. */
-  async projectLabels(): Promise<LinearLabel[]> {
-    const data = await this.request<{ projectLabels: { nodes: LinearLabel[] } }>(
-      'query { projectLabels(first: 250, filter: { isGroup: { eq: false } }) { nodes { id name } } }'
-    )
-    return data.projectLabels.nodes.sort((a, b) => a.name.localeCompare(b.name))
-  }
-
-  /** Open issues of every project carrying a label, most recently updated first. */
-  async labelIssues(labelId: string): Promise<LinearIssue[]> {
-    const data = await this.request<{ issues: { nodes: RawIssue[] } }>(
-      `query($labelId: ID!) {
-        issues(
-          first: 100
-          orderBy: updatedAt
-          filter: {
-            project: { labels: { some: { id: { eq: $labelId } } } }
-            state: { type: { nin: ["completed", "canceled"] } }
-          }
-        ) { nodes { ${ISSUE_FIELDS} } }
-      }`,
-      { labelId }
-    )
-    return data.issues.nodes.map(toIssue)
   }
 
   /** Open issues of one project, whoever they are assigned to, most recently updated first. */

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { BOARD_GROUPINGS, stateForColumn, type BoardGrouping, type BoardKind, type KanbanColumn } from '../../shared/kanban'
-import { issuePrompt, reposForLabels } from '../../shared/linear'
+import { BOARD_GROUPINGS, LANE_AXES, groupByAssignee, groupByProject, stateForColumn, type LaneAxis, type BoardGrouping, type BoardKind, type KanbanColumn } from '../../shared/kanban'
+import { CLOSED_PROJECT_STATUSES, groupProjectsByStatus, issuePrompt, reposForLinearProject } from '../../shared/linear'
 import { DEFAULT_AGENT_MODEL, type Feature, type LinearIssue, type LinearProject, type LinearState, type LinearStatus, type Project } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
 import { useT } from './i18n'
@@ -37,24 +37,40 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
   const [teamStates, setTeamStates] = useState<Record<string, LinearState[]>>({})
   const [stateFilter, setStateFilter] = useState<string[]>([])
   const [grouping, setGrouping] = usePersisted<BoardGrouping>('linear-board-grouping', 'status', BOARD_GROUPINGS)
+  /** What the rows of the board are made of; none lays the columns out alone. */
+  const [laneAxis, setLaneAxis] = usePersisted<LaneAxis>('linear-board-lane-axis', 'none', LANE_AXES)
+  const [collapsedLanes, setCollapsedLanes] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('linear-board-collapsed-lanes') ?? '[]') as string[]
+    } catch {
+      return []
+    }
+  })
+  /** Status groups of the project list the user folded; finished projects start folded. */
+  const [foldedGroups, setFoldedGroups] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('linear-folded-project-groups')
+      return stored ? (JSON.parse(stored) as string[]) : CLOSED_PROJECT_STATUSES
+    } catch {
+      return CLOSED_PROJECT_STATUSES
+    }
+  })
   const [text, setText] = useState('')
   const [error, setError] = useState('')
   const [reload, setReload] = useState(0)
   const [selection, setSelection] = useState<string[]>([])
   const [starting, setStarting] = useState(false)
-  /** Repository the user picked for a Linear project several repositories point at, by Linear project id. */
-  const [repoChoice, setRepoChoice] = useState<Record<string, string>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('linear-repo-choice') ?? '{}') as Record<string, string>
-    } catch {
-      return {}
-    }
-  })
 
-  function chooseRepo(linearProjectId: string, repoId: string) {
-    const next = { ...repoChoice, [linearProjectId]: repoId }
-    setRepoChoice(next)
-    localStorage.setItem('linear-repo-choice', JSON.stringify(next))
+  function toggleLane(key: string) {
+    const next = collapsedLanes.includes(key) ? collapsedLanes.filter((k) => k !== key) : [...collapsedLanes, key]
+    setCollapsedLanes(next)
+    localStorage.setItem('linear-board-collapsed-lanes', JSON.stringify(next))
+  }
+
+  function toggleGroup(type: string) {
+    const next = foldedGroups.includes(type) ? foldedGroups.filter((g) => g !== type) : [...foldedGroups, type]
+    setFoldedGroups(next)
+    localStorage.setItem('linear-folded-project-groups', JSON.stringify(next))
   }
 
   useEffect(() => {
@@ -102,13 +118,19 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
     )
   }
 
-  /** Repositories linked to one of the labels the Linear project carries, the one to start in first: the user's pick, else the repository being worked in. */
+  /** Repositories serving a Linear project: the main one first, then the repository being worked in. */
+  const linkedRepos = (linearProjectId: string | null) => {
+    const linked = linearProjectId ? reposForLinearProject(projects, linearProjectId) : []
+    const isMain = (p: Project) => p.linearProjects.some((l) => l.id === linearProjectId && l.primary)
+    return linked.length && isMain(linked[0]) ? linked : linked.sort((a, b) => Number(b.id === defaultProjectId) - Number(a.id === defaultProjectId))
+  }
+  /** Where an issue of the project starts: its main repository, else any of the linked ones for the user to pick. */
   const reposFor = (linearProjectId: string | null) => {
-    const labels = linearProjects?.find((p) => p.id === linearProjectId)?.labels ?? []
-    const preferred = (linearProjectId && repoChoice[linearProjectId]) || defaultProjectId
-    return reposForLabels(projects, labels.map((l) => l.id)).sort((a, b) => Number(b.id === preferred) - Number(a.id === preferred))
+    const linked = linkedRepos(linearProjectId)
+    return linked.length && linked[0].linearProjects.some((l) => l.id === linearProjectId && l.primary) ? [linked[0]] : linked
   }
   const selectedProject = linearProjects?.find((p) => p.id === selectedId) ?? null
+  const laneLabels: Record<LaneAxis, string> = { none: t.linearView.noLanes, project: t.linearView.groupByProject, assignee: t.linearView.groupByAssignee }
 
   async function changeState(issue: LinearIssue, stateId: string) {
     const state = teamStates[issue.teamId]?.find((s) => s.id === stateId)
@@ -141,9 +163,9 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
       }
       return
     }
-    if (column.key === issue.stateName) return
+    if (column.type === issue.stateType) return
     const state = stateForColumn(teamStates[issue.teamId] ?? [], column)
-    if (!state) return setError(t.linearView.noStateInTeam(column.key))
+    if (!state) return setError(t.linearView.noStateInTeam(t.linearView.stateTypes[column.type ?? ''] ?? column.key))
     await changeState(issue, state.id)
   }
 
@@ -202,11 +224,20 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
         </button>
         <h2 className="sidebar-title">{t.linearView.projects}</h2>
         {!linearProjects && <p className="hint">{t.project.loading}</p>}
-        {linearProjects?.map((p) => {
-          const repos = reposFor(p.id)
+        {groupProjectsByStatus(linearProjects ?? []).map((group) => {
+          const folded = foldedGroups.includes(group.type) && !group.projects.some((p) => p.id === selectedId)
           return (
-            <div key={p.id} className="linear-project-wrap">
+            <div key={group.type} className="linear-project-group">
+              <button className="linear-group-head" aria-expanded={!folded} onClick={() => toggleGroup(group.type)}>
+                <span className="kanban-lane-chevron" aria-hidden>▾</span>
+                <span className="linear-group-name">{t.linearView.projectStatuses[group.type] ?? group.type}</span>
+                <span className="num">{group.projects.length}</span>
+              </button>
+              {!folded && group.projects.map((p) => {
+          const [main, ...others] = linkedRepos(p.id)
+          return (
             <button
+              key={p.id}
               className={`linear-project${selectedId === p.id ? ' selected' : ''}`}
               onClick={() => {
                 setSelectedId(p.id)
@@ -214,28 +245,21 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
               }}
             >
               <span className="linear-project-name">{p.name}</span>
-              {repos.map((repo) => (
-                <span
-                  key={repo.id}
-                  className="linear-project-repo"
-                  style={{ '--tab-color': repo.color } as React.CSSProperties}
-                >
-                  <span className="swatch" /> {repo.name}
+              {main && (
+                <span className="linear-project-repos">
+                  <span className="linear-project-repo" style={{ '--tab-color': main.color } as React.CSSProperties}>
+                    <span className="swatch" /> {main.name}
+                  </span>
+                  {others.length > 0 && (
+                    <span className="linear-project-more" title={others.map((repo) => repo.name).join(', ')}>
+                      +{others.length}
+                    </span>
+                  )}
                 </span>
-              ))}
+              )}
             </button>
-            {repos.length > 1 && (
-              <label className="linear-project-start">
-                {t.linearView.startIn}
-                <select value={repos[0].id} onChange={(e) => chooseRepo(p.id, e.target.value)}>
-                  {[...repos].sort((a, b) => a.name.localeCompare(b.name)).map((repo) => (
-                    <option key={repo.id} value={repo.id}>
-                      {repo.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+          )
+        })}
             </div>
           )
         })}
@@ -250,7 +274,7 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
             <p className="feature-meta">
               {[
                 issues ? t.linearView.issues(issues.length) : t.project.loading,
-                ...(selectedProject?.labels.map((l) => l.name) ?? [])
+                ...linkedRepos(selectedId).map((repo) => repo.name)
               ].join(' · ')}
             </p>
           </div>
@@ -268,6 +292,18 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
                 </button>
               ))}
             </div>
+          )}
+          {mode === 'kanban' && (
+            <label className="linear-lane-axis">
+              {t.linearView.laneAxis}
+              <select value={laneAxis} onChange={(e) => setLaneAxis(e.target.value as LaneAxis)}>
+                {LANE_AXES.map((axis) => (
+                  <option key={axis} value={axis}>
+                    {laneLabels[axis]}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
           <button onClick={() => setReload((n) => n + 1)}>{t.linearView.refresh}</button>
         </header>
@@ -312,10 +348,20 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
             issues={shown}
             teamStates={teamStates}
             grouping={grouping}
+            lanes={
+              laneAxis === 'project'
+                ? groupByProject(shown, (id) => linearProjects?.find((p) => p.id === id)?.name, t.linearView.noProject)
+                : laneAxis === 'assignee'
+                  ? groupByAssignee(shown, t.linearView.unassigned)
+                  : null
+            }
+            collapsed={collapsedLanes}
+            onToggleLane={toggleLane}
             projects={projects}
             features={features}
             reposFor={reposFor}
             onMove={(issue, column) => void moveIssue(issue, column)}
+            onSetState={(issue, stateId) => void changeState(issue, stateId)}
             onStart={onStart}
             onOpenFeature={onOpenFeature}
           />

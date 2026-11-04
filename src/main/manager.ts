@@ -242,7 +242,8 @@ export class Manager {
       name: input.name.trim() || basename(input.path),
       path: input.path,
       color: input.color,
-      linearLabels: input.linearLabels,
+      linearProjects: input.linearProjects,
+      linearLabels: [],
       commands: [],
       templates: [],
       worktrees: isGit && input.worktrees,
@@ -259,10 +260,17 @@ export class Manager {
       ...project,
       name: patch.name.trim() || project.name,
       color: patch.color,
-      linearLabels: patch.linearLabels,
+      linearProjects: patch.linearProjects,
+      linearLabels: [],
       worktrees: patch.worktrees && (await repoState(project.path)).isGit
     }
     this.store.updateProject(updated)
+    // A Linear project has one main repository: the others lose the flag.
+    const main = new Set(updated.linearProjects.filter((l) => l.primary).map((l) => l.id))
+    for (const other of this.store.listProjects()) {
+      if (other.id === updated.id || !other.linearProjects.some((l) => l.primary && main.has(l.id))) continue
+      this.store.updateProject({ ...other, linearProjects: other.linearProjects.map((l) => (main.has(l.id) ? { ...l, primary: false } : l)) })
+    }
     return updated
   }
 

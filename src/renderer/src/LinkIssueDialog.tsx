@@ -3,8 +3,8 @@ import type { Feature, LinearIssue, Project } from '../../shared/types'
 import { useT } from './i18n'
 import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
 import { cleanError } from './NewFeatureDialog'
-import { labelNames } from '../../shared/linear'
-import { issuesOfLabels } from './linearIssues'
+import { projectNames } from '../../shared/linear'
+import { issuesOfProjects } from './linearIssues'
 
 interface Props {
   feature: Feature
@@ -22,13 +22,13 @@ export function LinkIssueDialog({ feature, project, onClose, onLinked }: Props) 
   const [stateFilter, setStateFilter] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
 
-  const labels = project.linearLabels
-  const labelKey = labels.map((l) => l.id).join()
+  const links = project.linearProjects
+  const linkKey = links.map((l) => l.id).join()
 
   useEffect(() => {
     let stale = false
-    // A repository linked to labels offers their issues; any other, those assigned to the user.
-    const load = labels.length ? issuesOfLabels(labels) : window.api.linearIssues()
+    // A repository linked to Linear projects offers their issues; any other, those assigned to the user.
+    const load = links.length ? issuesOfProjects(links) : window.api.linearIssues()
     load.then(
       (list) => !stale && setIssues(list),
       (err) => !stale && setError(cleanError(err))
@@ -36,7 +36,7 @@ export function LinkIssueDialog({ feature, project, onClose, onLinked }: Props) 
     return () => {
       stale = true
     }
-  }, [labelKey])
+  }, [linkKey])
 
   async function pick(issue: LinearIssue) {
     if (busy) return
@@ -61,7 +61,7 @@ export function LinkIssueDialog({ feature, project, onClose, onLinked }: Props) 
         </h2>
         <p className="hint">{t.linkIssue.hint}</p>
 
-        <label htmlFor="li-filter">{labels.length ? t.newFeature.issueOf(labelNames(labels)) : t.linearView.myIssues}</label>
+        <label htmlFor="li-filter">{links.length ? t.newFeature.issueOf(projectNames(links)) : t.linearView.myIssues}</label>
         {!issues && !error ? (
           <p className="hint">{t.newFeature.loadingIssues}</p>
         ) : (

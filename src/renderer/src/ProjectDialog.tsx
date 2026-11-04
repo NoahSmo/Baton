@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import {
   PROJECT_COLORS,
-  type LinearLabel,
+  type LinearProject,
+  type LinearProjectLink,
   type LinearStatus,
   type Project,
   type RepoInfo
@@ -24,10 +25,10 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
   const [repo, setRepo] = useState<RepoInfo | null>(null)
   const [name, setName] = useState(project?.name ?? '')
   const [color, setColor] = useState<string>(project?.color ?? PROJECT_COLORS[0])
-  /** Labels ticked for this repository. */
-  const [chosen, setChosen] = useState<LinearLabel[]>(project?.linearLabels ?? [])
-  /** Every label of the workspace; null while loading. */
-  const [linearLabels, setLinearLabels] = useState<LinearLabel[] | null>(null)
+  /** Linear projects ticked for this repository. */
+  const [chosen, setChosen] = useState<LinearProjectLink[]>(project?.linearProjects ?? [])
+  /** Every project of the workspace; null while loading. */
+  const [linearProjects, setLinearProjects] = useState<LinearProject[] | null>(null)
   const [labelFilter, setLabelFilter] = useState('')
   const [linearError, setLinearError] = useState('')
   const [worktrees, setWorktrees] = useState(project?.worktrees ?? true)
@@ -36,7 +37,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
 
   useEffect(() => {
     if (!linear.connected) return
-    window.api.linearProjectLabels().then(setLinearLabels, (err) => setLinearError(cleanError(err)))
+    window.api.linearProjects().then(setLinearProjects, (err) => setLinearError(cleanError(err)))
   }, [linear.connected])
 
   async function browse() {
@@ -58,7 +59,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
     setBusy(true)
     setError('')
     try {
-      const patch = { name, color, linearLabels: chosen, worktrees }
+      const patch = { name, color, linearProjects: chosen, worktrees }
       onSaved(
         project
           ? await window.api.updateProject(project.id, patch)
@@ -70,11 +71,15 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
     }
   }
 
-  // A linked label that no longer shows up in Linear still has to stay selectable.
-  const options = [...chosen.filter((c) => !linearLabels?.some((l) => l.id === c.id)), ...(linearLabels ?? [])]
+  // A linked project that no longer shows up in Linear still has to stay selectable.
+  const options: LinearProjectLink[] = [
+    ...chosen.filter((c) => !linearProjects?.some((p) => p.id === c.id)),
+    ...(linearProjects ?? []).map(({ id, name }) => ({ id, name }))
+  ]
   const visible = options.filter((l) => l.name.toLowerCase().includes(labelFilter.trim().toLowerCase()))
-  const toggleLabel = (label: LinearLabel) =>
-    setChosen((list) => (list.some((l) => l.id === label.id) ? list.filter((l) => l.id !== label.id) : [...list, label]))
+  const toggleLink = (link: LinearProjectLink) =>
+    setChosen((list) => (list.some((l) => l.id === link.id) ? list.filter((l) => l.id !== link.id) : [...list, { id: link.id, name: link.name }]))
+  const toggleMain = (id: string) => setChosen((list) => list.map((l) => (l.id === id ? { ...l, primary: !l.primary } : l)))
 
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -150,14 +155,30 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
               <input id="pd-linear-filter" value={labelFilter} placeholder={t.project.linearFilter} onChange={(e) => setLabelFilter(e.target.value)} />
             )}
             <div className="label-list" role="group" aria-label={t.project.linearLabel}>
-              {!linearLabels && <p className="hint">{t.project.loading}</p>}
-              {linearLabels && !options.length && <p className="hint">{t.project.linearNone}</p>}
-              {visible.map((l) => (
-                <label key={l.id} className="label-option">
-                  <input type="checkbox" checked={chosen.some((c) => c.id === l.id)} onChange={() => toggleLabel(l)} />
-                  {l.name}
-                </label>
-              ))}
+              {!linearProjects && <p className="hint">{t.project.loading}</p>}
+              {linearProjects && !options.length && <p className="hint">{t.project.linearNone}</p>}
+              {visible.map((l) => {
+                const link = chosen.find((c) => c.id === l.id)
+                return (
+                  <div key={l.id} className="label-option">
+                    <label>
+                      <input type="checkbox" checked={!!link} onChange={() => toggleLink(l)} />
+                      {l.name}
+                    </label>
+                    {link && (
+                      <button
+                        type="button"
+                        className={`filter${link.primary ? ' selected' : ''}`}
+                        aria-pressed={!!link.primary}
+                        title={t.project.mainRepoHint}
+                        onClick={() => toggleMain(l.id)}
+                      >
+                        {t.project.mainRepo}
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
             </div>
             <p className="hint">{t.project.linearHint}</p>
           </>

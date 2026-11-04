@@ -33,7 +33,7 @@ const HOUR = 60 * 60 * 1000
 function setup(maxRunning = 1) {
   const dir = mkdtempSync(join(tmpdir(), 'baton-manager-'))
   const store = new Store(':memory:')
-  store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearLabels: [], commands: [], templates: [], worktrees: true, qa: { enabled: false, command: '' } })
+  store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearProjects: [], linearLabels: [], commands: [], templates: [], worktrees: true, qa: { enabled: false, command: '' } })
   const warnings: (UsageWarning | null)[] = []
   const lifted: string[][] = []
   const sink: ManagerSink = {
@@ -351,7 +351,7 @@ describe('organising agents', () => {
   it('opens a folder that is not a git repository, without worktrees', async () => {
     const { manager } = setup()
     const dir = mkdtempSync(join(tmpdir(), 'baton-plain-'))
-    const project = await manager.createProject({ path: dir, name: '', color: '#fff', linearLabels: [], worktrees: true })
+    const project = await manager.createProject({ path: dir, name: '', color: '#fff', linearProjects: [], worktrees: true })
     expect(project.worktrees).toBe(false)
     const feature = await manager.createFeature({ projectId: project.id, title: 'Tweak', prompt: '', permissionMode: 'default' })
     expect(feature.worktreePath).toBe(dir)
@@ -361,7 +361,7 @@ describe('organising agents', () => {
   it('leaves the project folder alone when an agent working in it is removed', async () => {
     const { manager } = setup()
     const dir = mkdtempSync(join(tmpdir(), 'baton-plain-'))
-    const project = await manager.createProject({ path: dir, name: 'Plain', color: '#fff', linearLabels: [], worktrees: false })
+    const project = await manager.createProject({ path: dir, name: 'Plain', color: '#fff', linearProjects: [], worktrees: false })
     const feature = await manager.createFeature({ projectId: project.id, title: 'Tweak', prompt: '', permissionMode: 'default' })
     await manager.removeFeature(feature.id)
     expect(existsSync(dir)).toBe(true)
