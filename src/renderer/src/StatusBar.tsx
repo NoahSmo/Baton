@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import { formatReset } from '../../shared/time'
-import type { AppStats, Feature, LinearStatus, UpdateInfo, UsageWarning, UsageWindow } from '../../shared/types'
+import type { AppStats, Feature, GitStatus, LinearStatus, UpdateInfo, UsageWarning, UsageWindow } from '../../shared/types'
 import { formatUsd } from '../../shared/format'
 import { limitWindow } from '../../shared/i18n'
 import { downloadPercent } from '../../shared/version'
+import { BranchPicker } from './BranchPicker'
 import { useLang, useT } from './i18n'
 
 interface Props {
   features: Feature[]
+  /** The feature on screen and its git status; absent when none is. */
+  current?: { feature: Feature; git: GitStatus | null }
   linear: LinearStatus
   onOpenLinear(): void
   version: string
@@ -39,7 +42,7 @@ function loadWindows(): UsageWindow[] {
   }
 }
 
-export function StatusBar({ features, linear, onOpenLinear, version, update, onOpenUpdate, terminal, onNextWaiting, nextWaitingShortcut, onOpenUsage }: Props) {
+export function StatusBar({ features, current, linear, onOpenLinear, version, update, onOpenUpdate, terminal, onNextWaiting, nextWaitingShortcut, onOpenUsage }: Props) {
   const t = useT()
   const lang = useLang()
   const count = (...statuses: Feature['status'][]) => features.filter((f) => statuses.includes(f.status)).length
@@ -113,6 +116,7 @@ export function StatusBar({ features, linear, onOpenLinear, version, update, onO
         </span>
       )}
       <span className="statusbar-sep" />
+      {current && (current.feature.branch || current.git) && <BranchPicker feature={current.feature} git={current.git} above />}
       <span>
         {t.statusbar.agents(features.length)}
         {stats && (

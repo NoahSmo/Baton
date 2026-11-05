@@ -119,7 +119,7 @@ export const PROJECT_COLORS = [
   '#c9bcae'
 ] as const
 
-/** A Linear project label. Repositories are linked to one. */
+/** A Linear project label. Repositories used to be linked through one; see `Project.linearLabels`. */
 export interface LinearLabel {
   id: string
   name: string
@@ -130,9 +130,24 @@ export interface LinearTeam {
   name: string
 }
 
+/** Where a project stands in Linear: `type` is its category (backlog, planned, started, paused, completed, canceled). */
+export interface LinearProjectStatus {
+  name: string
+  type: string
+}
+
+/** A Linear project a repository serves. */
+export interface LinearProjectLink {
+  id: string
+  name: string
+  /** The repository agents start in for this Linear project when it spans several. At most one repository has it. */
+  primary?: boolean
+}
+
 export interface LinearProject {
   id: string
   name: string
+  status: LinearProjectStatus | null
   labels: LinearLabel[]
   teams: LinearTeam[]
 }
@@ -199,7 +214,9 @@ export interface Project {
   color: string
   /** Square data URL (PNG) shown in place of the initials; null for none. */
   image: string | null
-  /** The issues of every Linear project carrying one of these labels belong to the repo; a label can serve several repos. */
+  /** The Linear projects whose issues belong to the repo; a Linear project can span several repos. */
+  linearProjects: LinearProjectLink[]
+  /** Labels the repo was linked through before it was linked to projects directly: moved into `linearProjects` once Linear is reachable, then emptied. */
   linearLabels: LinearLabel[]
   commands: LaunchCommand[]
   templates: PromptTemplate[]
@@ -228,7 +245,7 @@ export interface ProjectInput {
   name: string
   color: string
   image: string | null
-  linearLabels: LinearLabel[]
+  linearProjects: LinearProjectLink[]
   /** Ignored for a folder that is not a git repository: agents can only work in place there. */
   worktrees: boolean
 }
@@ -729,9 +746,6 @@ export interface Api {
   linearConnect(apiKey: string): Promise<LinearStatus>
   linearDisconnect(): Promise<void>
   linearProjects(): Promise<LinearProject[]>
-  linearProjectLabels(): Promise<LinearLabel[]>
-  /** Open issues of every Linear project carrying a label. */
-  linearLabelIssues(labelId: string): Promise<LinearIssue[]>
   /** Open issues of a Linear project, or the user's assigned issues when none is given. */
   linearIssues(linearProjectId?: string): Promise<LinearIssue[]>
   /** Workflow states an issue of this team can be moved to, in workflow order. */

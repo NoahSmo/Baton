@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { issuePrompt, labelNames } from '../../shared/linear'
+import { issuePrompt, projectNames } from '../../shared/linear'
 import {
   AGENT_MODELS,
   DEFAULT_AGENT_MODEL,
@@ -14,7 +14,7 @@ import {
 import { AttachButton, DraftAttachments } from './Attachments'
 import { useT } from './i18n'
 import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
-import { issuesOfLabels } from './linearIssues'
+import { issuesOfProjects } from './linearIssues'
 import { TemplateChips } from './TemplatesDialog'
 import { toMessageAttachments, useAttachments } from './useAttachments'
 
@@ -56,34 +56,34 @@ export function NewFeatureDialog({
   const [newTeamId, setNewTeamId] = useState('')
   const [creatingIssue, setCreatingIssue] = useState(false)
 
-  const labels = project.linearLabels
-  const labelKey = labels.map((l) => l.id).join()
-  const hasLabels = labels.length > 0
+  const links = project.linearProjects
+  const linkKey = links.map((l) => l.id).join()
+  const hasLinks = links.length > 0
 
   useEffect(() => {
-    // A repository linked to a Linear label starts its agents from the issues of that label;
+    // A repository linked to Linear projects starts its agents from their issues;
     // any other gets a title and a prompt written by hand.
-    if (!linearConnected || !hasLabels) return
+    if (!linearConnected || !hasLinks) return
     let stale = false
     setIssues(null)
     setIssuesError('')
-    issuesOfLabels(labels).then(
+    issuesOfProjects(links).then(
       (list) => !stale && setIssues(list),
       (err) => !stale && setIssuesError(cleanError(err))
     )
     return () => {
       stale = true
     }
-  }, [linearConnected, labelKey])
+  }, [linearConnected, linkKey])
 
-  // Linear projects carrying one of the labels are where a new issue can go.
+  // The Linear projects the repository serves are where a new issue can go.
   useEffect(() => {
-    if (!linearConnected || !hasLabels) return
+    if (!linearConnected || !hasLinks) return
     let stale = false
     window.api.linearProjects().then(
       (list) => {
         if (stale) return
-        const matching = list.filter((p) => p.labels.some((l) => labels.some((own) => own.id === l.id)))
+        const matching = list.filter((p) => links.some((l) => l.id === p.id))
         setLinearProjects(matching)
         setNewProjectId((current) => (matching.some((p) => p.id === current) ? current : (matching[0]?.id ?? '')))
       },
@@ -92,7 +92,7 @@ export function NewFeatureDialog({
     return () => {
       stale = true
     }
-  }, [linearConnected, labelKey])
+  }, [linearConnected, linkKey])
 
   const newProject = linearProjects.find((p) => p.id === newProjectId)
   const newTeam = newProject?.teams.find((tm) => tm.id === newTeamId) ?? newProject?.teams[0]
@@ -171,9 +171,9 @@ export function NewFeatureDialog({
           </>
         )}
 
-        {linearConnected && (hasLabels || issue) && (
+        {linearConnected && (hasLinks || issue) && (
           <>
-            <label>{hasLabels ? t.newFeature.issueOf(labelNames(labels)) : t.newFeature.linearIssue}</label>
+            <label>{hasLinks ? t.newFeature.issueOf(projectNames(links)) : t.newFeature.linearIssue}</label>
             {issue ? (
               <div className="issue-picked">
                 <span className="issue-id">{issue.identifier}</span>
@@ -202,13 +202,13 @@ export function NewFeatureDialog({
                       <span className="issue-state">{i.stateName}</span>
                     </button>
                   ))}
-                  {!shownIssues.length && hasLabels && (
-                    <p className="hint">{t.newFeature.noIssueIn(labelNames(labels))}</p>
+                  {!shownIssues.length && hasLinks && (
+                    <p className="hint">{t.newFeature.noIssueIn(projectNames(links))}</p>
                   )}
                 </div>
               </>
             )}
-            {!issue && hasLabels && newProject && (
+            {!issue && hasLinks && newProject && (
               <div className="issue-create">
                 <p className="hint">{t.newFeature.newIssue}</p>
                 {linearProjects.length > 1 && (

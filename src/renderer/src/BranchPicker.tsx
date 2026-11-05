@@ -9,10 +9,12 @@ const MARGIN = 6
 interface Props {
   feature: Feature
   git: GitStatus | null
+  /** Opens the list over the button rather than under it, for a button at the bottom of the window. */
+  above?: boolean
 }
 
 /** The feature's branch, as a button listing the branches its worktree can switch to. */
-export function BranchPicker({ feature, git }: Props) {
+export function BranchPicker({ feature, git, above }: Props) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [branches, setBranches] = useState<GitBranch[] | null>(null)
@@ -56,7 +58,7 @@ export function BranchPicker({ feature, git }: Props) {
     const { width, height } = menu.current.getBoundingClientRect()
     setPosition({
       left: Math.max(MARGIN, Math.min(anchor.left, window.innerWidth - width - MARGIN)),
-      top: Math.max(MARGIN, Math.min(anchor.bottom + 4, window.innerHeight - height - MARGIN))
+      top: Math.max(MARGIN, Math.min(above ? anchor.top - height - 4 : anchor.bottom + 4, window.innerHeight - height - MARGIN))
     })
   }, [open, branches, error])
 

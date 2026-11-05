@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { DICTS, langFromLocale, type Lang } from '../../shared/i18n'
 import { arrangeFeatures, neighbour, nextWaiting, SIDEBAR_SORTS, type SidebarSort } from '../../shared/features'
+import { linksFromLabels } from '../../shared/linear'
 import { resolveShortcut, shortcutLabel } from '../../shared/shortcuts'
 import type { BackgroundTask, Feature, FeatureStatus, LinearIssue, LinearStatus, Project, QaRun, StoredEvent, UpdateInfo } from '../../shared/types'
 import { BoardView } from './BoardView'
@@ -128,6 +129,27 @@ export function App() {
   useEffect(() => {
     document.documentElement.lang = lang
   }, [lang])
+
+  // Repositories linked through Linear labels move to the Linear projects carrying them, once Linear answers.
+  const migratingLabels = useRef(false)
+  useEffect(() => {
+    const legacy = projects.filter((p) => p.linearLabels.length)
+    if (!linear.connected || !legacy.length || migratingLabels.current) return
+    migratingLabels.current = true
+    void window.api
+      .linearProjects()
+      .then(async (all) => {
+        for (const p of legacy) {
+          const known = new Set(p.linearProjects.map((l) => l.id))
+          const links = [...p.linearProjects, ...linksFromLabels(p.linearLabels, all).filter((l) => !known.has(l.id))]
+          upsertProject(await window.api.updateProject(p.id, { name: p.name, color: p.color, image: p.image, linearProjects: links, worktrees: p.worktrees }))
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        migratingLabels.current = false
+      })
+  }, [linear.connected, projects])
 
   function changeLanguage(next: Lang) {
     setLang(next)
@@ -340,8 +362,14 @@ export function App() {
     setProjects((list) => (list.some((p) => p.id === saved.id) ? list.map((p) => (p.id === saved.id ? saved : p)) : [...list, saved]))
   }
 
+  /** A repository has one main repository per Linear project: saving one can unflag another, so reload them all. */
+  function refreshProjects() {
+    void window.api.getState().then((s) => setProjects(s.projects))
+  }
+
   function onProjectSaved(saved: Project) {
     upsertProject(saved)
+    refreshProjects()
     goToProject(saved.id)
     setDialog(null)
   }
@@ -501,6 +529,7 @@ export function App() {
 
       <StatusBar
         features={features}
+        current={feature && !boardShown ? { feature, git } : undefined}
         linear={linear}
         onOpenLinear={() => setDialog({ kind: 'linear' })}
         version={version}

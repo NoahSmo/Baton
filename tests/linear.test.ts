@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { LinearClient, pickStartedState } from '../src/main/linear'
-import { issuePrompt, reposForLabels } from '../src/shared/linear'
-import type { LinearIssue, Project } from '../src/shared/types'
+import { issuePrompt, linksFromLabels, reposForLinearProject } from '../src/shared/linear'
+import type { LinearIssue, LinearProject, Project } from '../src/shared/types'
 
 const issue: LinearIssue = {
   id: 'i1',
@@ -100,13 +100,13 @@ describe('LinearClient', () => {
       body: {
         data: {
           projects: {
-            nodes: [{ id: 'p1', name: 'Mobile app', labels: { nodes: labels }, teams: { nodes: [{ id: 't1', name: 'Eng' }] } }]
+            nodes: [{ id: 'p1', name: 'Mobile app', status: { name: 'In Progress', type: 'started' }, labels: { nodes: labels }, teams: { nodes: [{ id: 't1', name: 'Eng' }] } }]
           }
         }
       }
     })
     expect(await client.projects()).toEqual([
-      { id: 'p1', name: 'Mobile app', labels, teams: [{ id: 't1', name: 'Eng' }] }
+      { id: 'p1', name: 'Mobile app', status: { name: 'In Progress', type: 'started' }, labels, teams: [{ id: 't1', name: 'Eng' }] }
     ])
   })
 
@@ -138,21 +138,6 @@ describe('LinearClient', () => {
     await expect(
       client.createIssue({ title: 'x', description: '', teamId: 't1', projectId: 'p1' })
     ).rejects.toThrow('Linear did not create the issue.')
-  })
-
-  it('lists project labels by name, without groups', async () => {
-    const { client, calls } = fakeLinear({
-      body: { data: { projectLabels: { nodes: [{ id: 'l2', name: 'Infra' }, { id: 'l1', name: 'Comparateur' }] } } }
-    })
-    expect((await client.projectLabels()).map((l) => l.name)).toEqual(['Comparateur', 'Infra'])
-    expect(calls[0].body.query).toContain('isGroup: { eq: false }')
-  })
-
-  it('asks for the open issues of the projects carrying a label', async () => {
-    const { client, calls } = fakeLinear({ body: { data: { issues: { nodes: [rawIssue] } } } })
-    expect(await client.labelIssues('l1')).toEqual([issue])
-    expect(calls[0].body.variables).toEqual({ labelId: 'l1' })
-    expect(calls[0].body.query).toContain('labels: { some: { id: { eq: $labelId } } }')
   })
 
   it('returns team states in workflow order', async () => {
@@ -187,13 +172,20 @@ describe('LinearClient', () => {
   })
 })
 
-describe('reposForLabels', () => {
-  const repo = (id: string, labels: string[]) => ({ id, linearLabels: labels.map((l) => ({ id: l, name: l })) }) as Project
+describe('reposForLinearProject', () => {
+  const repo = (id: string, links: { id: string; primary?: boolean }[]) =>
+    ({ id, linearProjects: links.map((l) => ({ ...l, name: l.id })) }) as Project
 
-  it('returns every repository sharing a label, and repositories with several labels once', () => {
-    const repos = [repo('web', ['a', 'b']), repo('api', ['a']), repo('docs', ['c']), repo('none', [])]
-    expect(reposForLabels(repos, ['a']).map((r) => r.id)).toEqual(['web', 'api'])
-    expect(reposForLabels(repos, ['a', 'b']).map((r) => r.id)).toEqual(['web', 'api'])
-    expect(reposForLabels(repos, ['z'])).toEqual([])
+  it('returns the repositories serving a project, the main one first', () => {
+    const repos = [repo('web', [{ id: 'a' }]), repo('api', [{ id: 'a', primary: true }, { id: 'b' }]), repo('docs', [{ id: 'c' }])]
+    expect(reposForLinearProject(repos, 'a').map((r) => r.id)).toEqual(['api', 'web'])
+    expect(reposForLinearProject(repos, 'z')).toEqual([])
+  })
+})
+
+describe('linksFromLabels', () => {
+  it('links the repository to every project carrying one of its labels', () => {
+    const project = (id: string, labels: string[]) => ({ id, name: id, labels: labels.map((l) => ({ id: l, name: l })) }) as LinearProject
+    expect(linksFromLabels([{ id: 'x', name: 'x' }], [project('p1', ['x']), project('p2', ['y'])])).toEqual([{ id: 'p1', name: 'p1' }])
   })
 })
