@@ -412,7 +412,18 @@ const en = {
     mainRepoHint: 'Agents start in the main repository of a Linear project',
     loading: 'Loading…',
     linearHint: 'Issues of the ticked Linear projects start their agents in this repository. When a project spans several repositories, mark one as main: agents start there, and the others stay linked.',
-    create: 'Create project'
+    create: 'Create project',
+    image: 'Image',
+    imageChoose: 'Choose an image',
+    imageDrop: 'Drop an image or click',
+    imageRemove: 'Remove image',
+    imageInvalid: 'This file is not a readable image.',
+    copyPath: 'Copy path',
+    copied: 'Copied',
+    labelsSelected: (n: number) => `${n} selected`,
+    clearLabels: 'Clear',
+    linearSection: 'Linear',
+    saveHint: '⌘↵ to save'
   },
 
   linear: {
@@ -1078,7 +1089,18 @@ const fr: Dict = {
     mainRepoHint: "Les agents d'un projet Linear démarrent dans son dépôt principal",
     loading: 'Chargement…',
     linearHint: "Les issues des projets Linear cochés lancent leurs agents dans ce dépôt. Quand un projet s'étend sur plusieurs dépôts, marquez-en un comme principal : les agents démarrent là, les autres restent liés.",
-    create: 'Créer le projet'
+    create: 'Créer le projet',
+    image: 'Image',
+    imageChoose: 'Choisir une image',
+    imageDrop: 'Dépose une image ou clique',
+    imageRemove: "Retirer l'image",
+    imageInvalid: "Ce fichier n'est pas une image lisible.",
+    copyPath: 'Copier le chemin',
+    copied: 'Copié',
+    labelsSelected: (n) => `${n} sélectionné${n > 1 ? 's' : ''}`,
+    clearLabels: 'Tout décocher',
+    linearSection: 'Linear',
+    saveHint: '⌘↵ pour enregistrer'
   },
 
   linear: {

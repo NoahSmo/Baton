@@ -22,6 +22,15 @@ export function initials(name: string): string {
   return letters.toUpperCase()
 }
 
+/** A project's picture, or its initials on its color. Sized by the surrounding CSS. */
+export function ProjectAvatar({ name, image, className = '' }: { name: string; image: string | null; className?: string }) {
+  return (
+    <span className={`rail-avatar${image ? ' has-image' : ''} ${className}`}>
+      {image ? <img src={image} alt="" draggable={false} /> : initials(name)}
+    </span>
+  )
+}
+
 /** Vertical strip of project avatars, with the app's global actions at the bottom. */
 export function ProjectRail({ projects, features, activeId, onSelect, onNew, onOpenUsage, onOpenSettings, onMenuAction }: Props) {
   const t = useT()
@@ -44,7 +53,7 @@ export function ProjectRail({ projects, features, activeId, onSelect, onNew, onO
                 if (action) onMenuAction(p, action)
               }}
             >
-              <span className="rail-avatar">{initials(p.name)}</span>
+              <ProjectAvatar name={p.name} image={p.image} />
               <span className="rail-name">{p.name}</span>
               {waiting > 0 && (
                 <span className="rail-badge num" title={t.topbar.waitingBadge}>

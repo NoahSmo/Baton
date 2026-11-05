@@ -212,6 +212,8 @@ export interface Project {
   name: string
   path: string
   color: string
+  /** Square data URL (PNG) shown in place of the initials; null for none. */
+  image: string | null
   /** The Linear projects whose issues belong to the repo; a Linear project can span several repos. */
   linearProjects: LinearProjectLink[]
   /** Labels the repo was linked through before it was linked to projects directly: moved into `linearProjects` once Linear is reachable, then emptied. */
@@ -242,6 +244,7 @@ export interface ProjectInput {
   path: string
   name: string
   color: string
+  image: string | null
   linearProjects: LinearProjectLink[]
   /** Ignored for a folder that is not a git repository: agents can only work in place there. */
   worktrees: boolean

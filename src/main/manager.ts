@@ -73,6 +73,11 @@ interface PendingMessage {
   idleSince: number | null
 }
 
+/** The renderer downsizes avatars to a small PNG; anything else, or anything bulky, is dropped. */
+const MAX_IMAGE_CHARS = 200_000
+const sanitizeImage = (image: string | null | undefined): string | null =>
+  image && image.startsWith('data:image/png;base64,') && image.length <= MAX_IMAGE_CHARS ? image : null
+
 const isActive = (f: Feature) => f.status === 'working' || f.status === 'waiting'
 
 export interface ManagerSink {
@@ -242,6 +247,7 @@ export class Manager {
       name: input.name.trim() || basename(input.path),
       path: input.path,
       color: input.color,
+      image: sanitizeImage(input.image),
       linearProjects: input.linearProjects,
       linearLabels: [],
       commands: [],
@@ -260,6 +266,7 @@ export class Manager {
       ...project,
       name: patch.name.trim() || project.name,
       color: patch.color,
+      image: sanitizeImage(patch.image),
       linearProjects: patch.linearProjects,
       linearLabels: [],
       worktrees: patch.worktrees && (await repoState(project.path)).isGit
