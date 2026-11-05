@@ -21,6 +21,7 @@ function toProject(r: Row): Project {
     name: r.name as string,
     path: r.path as string,
     color: (r.color as string | null) ?? PROJECT_COLORS[0],
+    image: (r.image as string | null) ?? null,
     linearLabels: linearLabelsOf(r),
     commands: r.commands ? (JSON.parse(r.commands as string) as LaunchCommand[]) : [],
     templates: r.templates ? (JSON.parse(r.templates as string) as PromptTemplate[]) : [],
@@ -136,7 +137,7 @@ export class Store {
       'pr_url TEXT',
       'turn_base TEXT'
     ])
-    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'linear_labels TEXT', 'commands TEXT', 'templates TEXT', 'worktrees INTEGER', 'qa TEXT'])
+    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'linear_labels TEXT', 'commands TEXT', 'templates TEXT', 'worktrees INTEGER', 'qa TEXT', 'image TEXT'])
   }
 
   /** Columns added after the first release; databases created before them are upgraded in place. */
@@ -163,14 +164,14 @@ export class Store {
 
   insertProject(p: Project): void {
     this.db
-      .prepare('INSERT INTO projects (id, name, path, color, linear_labels, worktrees) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(p.id, p.name, p.path, p.color, JSON.stringify(p.linearLabels), p.worktrees ? 1 : 0)
+      .prepare('INSERT INTO projects (id, name, path, color, image, linear_labels, worktrees) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(p.id, p.name, p.path, p.color, p.image ?? null, JSON.stringify(p.linearLabels), p.worktrees ? 1 : 0)
   }
 
   updateProject(p: Project): void {
     this.db
-      .prepare('UPDATE projects SET name = ?, color = ?, linear_labels = ?, commands = ?, templates = ?, worktrees = ?, qa = ? WHERE id = ?')
-      .run(p.name, p.color, JSON.stringify(p.linearLabels), JSON.stringify(p.commands), JSON.stringify(p.templates), p.worktrees ? 1 : 0, JSON.stringify(p.qa), p.id)
+      .prepare('UPDATE projects SET name = ?, color = ?, image = ?, linear_labels = ?, commands = ?, templates = ?, worktrees = ?, qa = ? WHERE id = ?')
+      .run(p.name, p.color, p.image ?? null, JSON.stringify(p.linearLabels), JSON.stringify(p.commands), JSON.stringify(p.templates), p.worktrees ? 1 : 0, JSON.stringify(p.qa), p.id)
   }
 
   deleteProject(id: string): void {

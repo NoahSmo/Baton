@@ -197,6 +197,8 @@ export interface Project {
   name: string
   path: string
   color: string
+  /** Square data URL (PNG) shown in place of the initials; null for none. */
+  image: string | null
   /** The issues of every Linear project carrying one of these labels belong to the repo; a label can serve several repos. */
   linearLabels: LinearLabel[]
   commands: LaunchCommand[]
@@ -225,6 +227,7 @@ export interface ProjectInput {
   path: string
   name: string
   color: string
+  image: string | null
   linearLabels: LinearLabel[]
   /** Ignored for a folder that is not a git repository: agents can only work in place there. */
   worktrees: boolean

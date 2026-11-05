@@ -410,7 +410,18 @@ const en = {
     linearFilter: 'Filter labels',
     loading: 'Loading…',
     linearHint: 'Issues of the Linear projects carrying any ticked label start their agents in this repository. Several repositories can share a label: you pick which one when starting an issue.',
-    create: 'Create project'
+    create: 'Create project',
+    image: 'Image',
+    imageChoose: 'Choose an image',
+    imageDrop: 'Drop an image or click',
+    imageRemove: 'Remove image',
+    imageInvalid: 'This file is not a readable image.',
+    copyPath: 'Copy path',
+    copied: 'Copied',
+    labelsSelected: (n: number) => `${n} selected`,
+    clearLabels: 'Clear',
+    linearSection: 'Linear',
+    saveHint: '⌘↵ to save'
   },
 
   linear: {
@@ -1068,7 +1079,18 @@ const fr: Dict = {
     linearFilter: 'Filtrer les labels',
     loading: 'Chargement…',
     linearHint: "Les issues des projets Linear portant l'un des labels cochés lancent leurs agents dans ce dépôt. Plusieurs dépôts peuvent partager un label : vous choisissez lequel au lancement d'une issue.",
-    create: 'Créer le projet'
+    create: 'Créer le projet',
+    image: 'Image',
+    imageChoose: 'Choisir une image',
+    imageDrop: 'Dépose une image ou clique',
+    imageRemove: "Retirer l'image",
+    imageInvalid: "Ce fichier n'est pas une image lisible.",
+    copyPath: 'Copier le chemin',
+    copied: 'Copié',
+    labelsSelected: (n) => `${n} sélectionné${n > 1 ? 's' : ''}`,
+    clearLabels: 'Tout décocher',
+    linearSection: 'Linear',
+    saveHint: '⌘↵ pour enregistrer'
   },
 
   linear: {

@@ -348,6 +348,18 @@ kbd {
   transition: border-radius var(--dur-fast, 0.12s) var(--ease, ease), border-color 0.12s;
 }
 
+.rail-avatar.has-image {
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.rail-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .rail-item:hover:not(.active) .rail-avatar {
   border-radius: 14px;
 }
@@ -4135,4 +4147,189 @@ button.kanban-card {
 
 .stat-value.heavy {
   color: var(--amber);
+}
+
+/* Project settings dialog */
+
+.dialog.project-dialog {
+  width: 540px;
+  max-height: calc(100vh - 60px);
+  padding: 0;
+}
+
+.project-dialog h2 {
+  margin: 0;
+  padding: var(--sp-5) var(--sp-6) var(--sp-4);
+}
+
+.project-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  padding: 0 var(--sp-6) var(--sp-4);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.project-body label,
+.project-body .field-label {
+  margin: 0 0 6px;
+}
+
+.project-body .field-label {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.project-body label.toggle-row {
+  margin: 0;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.project-ident {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: flex-start;
+}
+
+.project-ident > div {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.avatar-picker {
+  position: relative;
+  flex: none;
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border-radius: 18px;
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  overflow: visible;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.avatar-picker:hover,
+.avatar-picker.dragging {
+  border-color: var(--accent);
+}
+
+.avatar-picker .rail-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  border: none;
+  font-size: var(--fs-lg);
+}
+
+.avatar-picker .avatar-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: var(--fs-xs);
+  text-align: center;
+  padding: 6px;
+  opacity: 0;
+  transition: opacity 0.12s;
+  pointer-events: none;
+}
+
+.avatar-picker:hover .avatar-hint,
+.avatar-picker.dragging .avatar-hint,
+.avatar-picker:focus-visible .avatar-hint {
+  opacity: 1;
+}
+
+.avatar-clear {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
+}
+
+.avatar-clear:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.path-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  min-width: 0;
+}
+
+.path-row input {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+}
+
+.toggle-row {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg);
+}
+
+.toggle-row .hint {
+  margin: 2px 0 0;
+}
+
+.toggle-row input[type='checkbox'] {
+  width: auto;
+  margin: 3px 0 0;
+  flex: none;
+}
+
+.project-body .dialog-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.project-body .dialog-section-head label {
+  margin: 0;
+}
+
+.project-body .dialog-section-head button {
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.project-dialog .dialog-actions {
+  align-items: center;
+  padding: var(--sp-4) var(--sp-6);
+  border-top: 1px solid var(--border);
+}
+
+.project-dialog .dialog-actions .kbd-hint {
+  margin-right: auto;
+  color: var(--faint);
+  font-size: var(--fs-xs);
 }
