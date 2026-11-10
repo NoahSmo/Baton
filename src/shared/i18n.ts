@@ -375,6 +375,12 @@ const en = {
     create: 'Create agent'
   },
 
+  modelPicker: {
+    more: 'More models',
+    back: 'Back',
+    fableAccess: 'Fable is included in Max and Ultra plans, and in Pro until November 16. It may not work without access.'
+  },
+
   linkIssue: {
     title: 'Link to a Linear issue',
     hint: 'The issue moves to its started state once the agent is at work. Its description is put in the message box, for you to send.'
@@ -388,8 +394,12 @@ const en = {
   } as Record<PermissionMode, { label: string; hint: string }>,
 
   models: {
+    haiku: { label: 'Haiku', hint: 'Fastest and lightest. Good for small, simple edits, and easy on the usage limit' },
     sonnet: { label: 'Sonnet', hint: 'Handles most tasks, and lets the usage limit last several times longer' },
-    opus: { label: 'Opus', hint: 'For the hardest tasks. Uses up the limit several times faster' }
+    opus: { label: 'Opus', hint: 'For the hardest tasks. Uses up the limit several times faster' },
+    opusplan: { label: 'Opus Plan', hint: 'Opus while planning, Sonnet while writing the code' },
+    'claude-fable-5-2': { label: 'Fable 5.2', hint: 'The most capable model. Uses up the usage limit fastest.' },
+    'claude-fable-5-1': { label: 'Fable 5.1', hint: 'The previous Fable. Uses up the usage limit fastest.' }
   } as Record<AgentModel, { label: string; hint: string }>,
 
   project: {
@@ -1056,6 +1066,12 @@ const fr: Dict = {
     create: "Créer l'agent"
   },
 
+  modelPicker: {
+    more: 'Plus de modèles',
+    back: 'Retour',
+    fableAccess: "Fable est inclus dans les forfaits Max et Ultra, et dans Pro jusqu'au 16 novembre. Il peut ne pas fonctionner sans accès."
+  },
+
   linkIssue: {
     title: 'Lier à une issue Linear',
     hint: "L'issue passe à l'état démarré dès que l'agent travaille. Sa description est placée dans la zone de message, à toi de l'envoyer."
@@ -1069,8 +1085,12 @@ const fr: Dict = {
   },
 
   models: {
+    haiku: { label: 'Haiku', hint: "Le plus rapide et le plus léger. Pour les petites modifications simples, et économe en limite d'utilisation" },
     sonnet: { label: 'Sonnet', hint: "Suffit pour la plupart des tâches, et fait durer la limite d'utilisation plusieurs fois plus longtemps" },
-    opus: { label: 'Opus', hint: 'Pour les tâches les plus dures. Consomme la limite plusieurs fois plus vite' }
+    opus: { label: 'Opus', hint: 'Pour les tâches les plus dures. Consomme la limite plusieurs fois plus vite' },
+    opusplan: { label: 'Opus Plan', hint: "Opus pour planifier, Sonnet pour écrire le code" },
+    'claude-fable-5-2': { label: 'Fable 5.2', hint: "Le modèle le plus performant. Consomme la limite d'utilisation le plus vite." },
+    'claude-fable-5-1': { label: 'Fable 5.1', hint: "Le Fable précédent. Consomme la limite d'utilisation le plus vite." }
   },
 
   project: {

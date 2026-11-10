@@ -4,7 +4,6 @@ import { kTokens } from '../../shared/i18n'
 import { atEdge, sentMessages, START, stepHistory, type HistoryCursor } from '../../shared/history'
 import { issuePrompt } from '../../shared/linear'
 import {
-  AGENT_MODELS,
   PERMISSION_MODES,
   type BackgroundTask,
   type Feature,
@@ -20,6 +19,7 @@ import { GitActions } from './GitActions'
 import { openContextMenu } from './contextMenu'
 import { useLang, useT } from './i18n'
 import { LinkIssueDialog } from './LinkIssueDialog'
+import { ModelPicker } from './ModelPicker'
 import { PermissionCard } from './PermissionCard'
 import { TemplateChips } from './TemplatesDialog'
 import { buildTranscript, toolSummary, type Item, type Todo } from './transcript'
@@ -295,17 +295,7 @@ export function FeatureView({
             </button>
           ))}
           <span className="composer-modes-sep">{t.newFeature.model}</span>
-          {AGENT_MODELS.map((model) => (
-            <button
-              key={model}
-              className={`filter${feature.agentModel === model ? ' selected' : ''}`}
-              aria-pressed={feature.agentModel === model}
-              title={t.models[model].hint}
-              onClick={() => void window.api.setAgentModel(feature.id, model)}
-            >
-              {t.models[model].label}
-            </button>
-          ))}
+          <ModelPicker value={feature.agentModel} above onChange={(model) => void window.api.setAgentModel(feature.id, model)} />
         </div>
       </footer>
 

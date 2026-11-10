@@ -112,7 +112,7 @@ The Linear key is stored with the Secret Service (GNOME Keyring, KWallet…); wi
 
 Every request an agent makes sends its whole conversation again. A long task means dozens of requests, and a conversation of 300k tokens read 30 times adds up fast, several agents at once even faster. Baton keeps that in check:
 
-- **Sonnet by default.** Each agent runs on Sonnet unless you pick Opus for it, when you create it or later under the message box. Opus uses up the limit several times faster; keep it for the hard tasks.
+- **Sonnet by default.** Each agent runs on Sonnet unless you pick another model (Haiku, Opus, Opus Plan or Fable 5.2/5.1: Opus plans, Sonnet codes) for it, when you create it or later under the message box. Opus uses up the limit several times faster; keep it for the hard tasks.
 - **A cap on agents running at once.** **At once** in the status bar: 1, 2 (the default), 3 or ∞. A message sent to an agent past the cap is queued, and the agent starts as soon as another finishes its turn. When the usage limit is reached, the queue waits for the reset instead of sending requests that would be refused.
 - **No full price for picking up a conversation.** The prompt cache keeps a conversation cheap to read again for an hour. Send a message to an agent quiet for longer, with a conversation over 60k tokens, and Baton has Claude Code summarise it first (`/compact`) rather than pay to send all of it again, then again at every request.
 - **The size in sight.** The feature's header shows the size of its conversation, in amber past 100k. That is the point where a new agent, given a short summary, costs less than another "Continue".

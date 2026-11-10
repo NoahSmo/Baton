@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { issuePrompt, projectNames } from '../../shared/linear'
 import {
-  AGENT_MODELS,
   DEFAULT_AGENT_MODEL,
   PERMISSION_MODES,
   type AgentModel,
@@ -15,6 +14,7 @@ import { AttachButton, DraftAttachments } from './Attachments'
 import { useT } from './i18n'
 import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
 import { issuesOfProjects } from './linearIssues'
+import { ModelPicker } from './ModelPicker'
 import { TemplateChips } from './TemplatesDialog'
 import { toMessageAttachments, useAttachments } from './useAttachments'
 
@@ -292,18 +292,8 @@ export function NewFeatureDialog({
         <p className="hint">{t.modes[mode].hint}</p>
 
         <label>{t.newFeature.model}</label>
-        <div className="modes">
-          {AGENT_MODELS.map((m) => (
-            <button
-              type="button"
-              key={m}
-              className={`mode${model === m ? ' selected' : ''}`}
-              onClick={() => setModel(m)}
-              title={t.models[m].hint}
-            >
-              {t.models[m].label}
-            </button>
-          ))}
+        <div>
+          <ModelPicker value={model} onChange={setModel} />
         </div>
         <p className="hint">{t.models[model].hint}</p>
 

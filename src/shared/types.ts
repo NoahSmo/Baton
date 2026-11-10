@@ -74,9 +74,12 @@ export type PermissionMode = 'default' | 'acceptEdits' | 'plan' | 'bypassPermiss
 export const PERMISSION_MODES: PermissionMode[] = ['default', 'acceptEdits', 'plan', 'bypassPermissions']
 
 /** Model an agent runs on, as Claude Code aliases it. */
-export type AgentModel = 'sonnet' | 'opus'
+export type AgentModel = 'haiku' | 'sonnet' | 'opus' | 'opusplan' | 'claude-fable-5-2' | 'claude-fable-5-1'
 
-export const AGENT_MODELS: AgentModel[] = ['sonnet', 'opus']
+export const AGENT_MODELS: AgentModel[] = ['haiku', 'sonnet', 'opus', 'opusplan', 'claude-fable-5-2', 'claude-fable-5-1']
+
+/** Models listed first in the picker; the others sit under "More models". */
+export const FEATURED_AGENT_MODELS: AgentModel[] = ['claude-fable-5-2', 'opus', 'sonnet', 'haiku']
 
 /** Opus spends the usage limit several times faster: it is picked per agent, never by default. */
 export const DEFAULT_AGENT_MODEL: AgentModel = 'sonnet'
