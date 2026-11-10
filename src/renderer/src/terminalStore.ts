@@ -89,10 +89,17 @@ function wire(): void {
   window.api.onTerminalExit((id) => {
     const tab = tabs.find((t) => t.info.id === id)
     if (!tab) return
+    // Whatever the CLI added to the conversation comes back into the transcript.
+    if (isCliTab(tab) && tab.info.featureId) void window.api.cliEnd(tab.info.featureId)
     tab.term.dispose()
     tab.el.remove()
     publish(tabs.filter((t) => t !== tab))
   })
+}
+
+/** Whether a terminal runs the conversation of its feature in the Claude Code CLI. */
+export function isCliTab(tab: TerminalTab): boolean {
+  return tab.info.commandId === 'resume'
 }
 
 /** Opens a terminal and puts it forward; with `commandId`, it runs that launch command of the project. */
@@ -122,7 +129,8 @@ export async function openTerminal(target: TerminalTarget, commandId?: string, r
     label = `${info.shell}-${rank}`
   }
   const tab: TerminalTab = { info, term, fit, el, opened: false, label }
-  shown = { ...shown, [key]: info.id }
+  // The CLI has the conversation view to itself, not the panel.
+  if (!isCliTab(tab)) shown = { ...shown, [key]: info.id }
   publish([...tabs, tab])
   return tab
 }
@@ -186,7 +194,12 @@ export function useTerminals(): TerminalTab[] {
 
 /** The terminal a target's panel shows: the one last put forward, the latest otherwise. */
 export function useShownTerminal(target: TerminalTarget): TerminalTab | null {
-  const mine = useTerminals().filter((tab) => inTarget(tab.info, target))
+  const mine = useTerminals().filter((tab) => inTarget(tab.info, target) && !isCliTab(tab))
   const id = useSyncExternalStore(subscribe, () => shown[keyOf(target)] ?? null)
   return mine.find((tab) => tab.info.id === id) ?? mine.at(-1) ?? null
+}
+
+/** The CLI terminal of a feature, while its conversation is in Claude Code. */
+export function useCliTab(featureId: string): TerminalTab | null {
+  return useTerminals().find((tab) => isCliTab(tab) && tab.info.featureId === featureId) ?? null
 }

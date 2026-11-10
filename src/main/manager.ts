@@ -1,3 +1,4 @@
+import { getSessionMessages, listSessions } from '@anthropic-ai/claude-agent-sdk'
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
@@ -45,6 +46,7 @@ import {
 } from '../shared/types'
 import { AgentSession, type AgentOutput } from './agent'
 import { removeAttachments, saveFiles, saveImages, withFiles } from './attachments'
+import { sessionEvents } from './cliImport'
 import { abortMerge, checkConflicts, finishMerge, mergeUpstream, resolveConflicts } from './conflicts'
 import { changesSince, commitChanges, commitOp, gitStatus, hasLanded, lastGitActivity, listBranches, pull, push, snapshotTree, strayWorktrees, switchBranch } from './git'
 import type { LinearClient } from './linear'
@@ -687,6 +689,33 @@ export class Manager {
     await this.interrupt(featureId)
     this.sessions.get(featureId)?.close()
     this.sessions.delete(featureId)
+  }
+
+  /** Where the conversation stood when its terminal was handed to the Claude Code CLI. */
+  private cliHandoffs = new Map<string, { messages: number; at: number }>()
+
+  /** Frees the conversation for the CLI, and notes how far it had got so only what the CLI adds is imported. */
+  async beginCli(featureId: string): Promise<void> {
+    const feature = this.mustGet(featureId)
+    await this.releaseSession(featureId)
+    if (!feature.sessionId) return
+    const messages = await getSessionMessages(feature.sessionId, { dir: feature.worktreePath }).catch(() => [])
+    this.cliHandoffs.set(featureId, { messages: messages.length, at: Date.now() })
+  }
+
+  /** Brings back into the transcript whatever the CLI wrote, and follows the session if it carried on in a new one. */
+  async endCli(featureId: string): Promise<void> {
+    const handoff = this.cliHandoffs.get(featureId)
+    const feature = this.store.getFeature(featureId)
+    if (!handoff || !feature?.sessionId) return
+    this.cliHandoffs.delete(featureId)
+    const dir = feature.worktreePath
+    // A resumed conversation may have been given a session of its own: the most recent one then carries on.
+    const latest = (await listSessions({ dir, limit: 1 }).catch(() => []))[0]
+    const sessionId = latest && latest.lastModified >= handoff.at && latest.sessionId !== feature.sessionId ? latest.sessionId : feature.sessionId
+    const messages = await getSessionMessages(sessionId, { dir }).catch(() => [])
+    for (const event of sessionEvents(messages.slice(handoff.messages))) this.sink.event(this.store.appendEvent(featureId, event))
+    if (sessionId !== feature.sessionId) this.patch(featureId, { sessionId })
   }
 
   async removeFeature(featureId: string): Promise<void> {

@@ -119,8 +119,8 @@ export function Sidebar({
     if (action === 'resume-terminal') {
       setTerminalError(null)
       try {
+        // The conversation view turns into the CLI by itself.
         await openTerminal({ featureId: feature.id }, undefined, true)
-        onShowTerminal()
       } catch (err) {
         setTerminalError(t.terminal.failed(cleanError(err)))
       }
