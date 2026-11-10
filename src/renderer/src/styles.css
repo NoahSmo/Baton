@@ -2699,6 +2699,61 @@ button.toggled:hover:not(:disabled) {
   color: var(--muted);
 }
 
+.model-menu {
+  width: 340px;
+}
+
+.model-item,
+.model-more,
+.model-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-item {
+  white-space: normal;
+  padding: 7px 10px;
+}
+
+.model-item.current {
+  color: var(--accent);
+}
+
+.model-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.model-hint {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.model-more {
+  justify-content: space-between;
+}
+
+.model-back svg {
+  transform: rotate(180deg);
+}
+
+.model-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.model-note {
+  margin: 0;
+  padding: 6px 10px 4px;
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
 .branch-note {
   margin: 0;
   padding: 4px 10px;
