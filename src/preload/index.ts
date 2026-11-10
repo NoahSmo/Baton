@@ -129,6 +129,7 @@ const api: Api = {
   onGitChanged: (cb) => subscribe('git:changed', cb),
   terminalOpen: (target, commandId, resume) => ipcRenderer.invoke('terminal:open', target, commandId, resume),
   // One-way: keystrokes and resizes need no answer.
+  cliEnd: (id) => ipcRenderer.invoke('feature:cliEnd', id),
   terminalWrite: (id, data) => ipcRenderer.send('terminal:write', id, data),
   terminalResize: (id, cols, rows) => ipcRenderer.send('terminal:resize', id, cols, rows),
   terminalClose: (id) => ipcRenderer.invoke('terminal:close', id),

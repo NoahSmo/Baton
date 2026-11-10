@@ -4288,6 +4288,30 @@ button.kanban-card {
   color: var(--red);
 }
 
+.view-switch {
+  display: flex;
+  flex: none;
+  align-self: flex-start;
+  padding: 2px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.view-switch button {
+  padding: 3px 10px;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.view-switch button.selected {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
+}
+
 .feature-stats {
   display: flex;
   gap: 24px;

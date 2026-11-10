@@ -8,6 +8,7 @@ import {
   ensureTerminal,
   fitTerminal,
   inTarget,
+  isCliTab,
   openTerminal,
   showTerminal,
   useShownTerminal,
@@ -27,7 +28,7 @@ interface Props {
 export function TerminalPanel({ project, feature, height, onHide }: Props) {
   const t = useT()
   const target: TerminalTarget = feature ? { featureId: feature.id } : { projectId: project.id }
-  const tabs = useTerminals().filter((tab) => inTarget(tab.info, target))
+  const tabs = useTerminals().filter((tab) => inTarget(tab.info, target) && !isCliTab(tab))
   const active = useShownTerminal(target)
   const [error, setError] = useState<string | null>(null)
   const host = useRef<HTMLDivElement>(null)

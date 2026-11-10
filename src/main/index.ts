@@ -849,7 +849,7 @@ function registerIpc(): void {
     if (commandId && !launch) throw new Error(t().errors.unknownCommand)
     if (resume) {
       if (!feature?.sessionId) throw new Error(t().errors.noConversation)
-      await manager.releaseSession(feature.id)
+      await manager.beginCli(feature.id)
       // The session id comes from the Claude SDK, never from the user: still quoted, as it lands in a shell.
       const command = `claude --resume '${feature.sessionId}' --model ${feature.agentModel} --permission-mode ${feature.permissionMode}`
       return terminals.open({ projectId: project.id, featureId: feature.id, cwd: feature.worktreePath }, { id: 'resume', name: 'claude', command })
@@ -859,6 +859,7 @@ function registerIpc(): void {
       launch
     )
   })
+  ipcMain.handle('feature:cliEnd', (_e, id: string) => manager.endCli(id))
   ipcMain.on('terminal:write', (_e, id: string, data: string) => terminals.write(id, data))
   ipcMain.on('terminal:resize', (_e, id: string, cols: number, rows: number) => terminals.resize(id, cols, rows))
   ipcMain.handle('terminal:close', (_e, id: string) => terminals.close(id))

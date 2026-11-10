@@ -20,7 +20,9 @@ import { openContextMenu } from './contextMenu'
 import { useLang, useT } from './i18n'
 import { LinkIssueDialog } from './LinkIssueDialog'
 import { ModelPicker } from './ModelPicker'
+import { cleanError } from './NewFeatureDialog'
 import { PermissionCard } from './PermissionCard'
+import { attachTerminal, closeTerminal, fitTerminal, openTerminal, useCliTab, type TerminalTab } from './terminalStore'
 import { TemplateChips } from './TemplatesDialog'
 import { buildTranscript, toolSummary, type Item, type Todo } from './transcript'
 import { toMessageAttachments, useAttachments } from './useAttachments'
@@ -134,6 +136,15 @@ export function FeatureView({
     }
   }
 
+  const cliTab = useCliTab(feature.id)
+  const [cliError, setCliError] = useState<string | null>(null)
+  const working = feature.status === 'working' || feature.status === 'waiting'
+
+  function swapToCli() {
+    setCliError(null)
+    openTerminal({ featureId: feature.id }, undefined, true).catch((err) => setCliError(t.terminal.failed(cleanError(err))))
+  }
+
   const respond = (requestId: string, decision: PermissionDecision) =>
     void window.api.respondPermission(feature.id, requestId, decision)
 
@@ -189,6 +200,20 @@ export function FeatureView({
             )}
           </p>
         </div>
+        <div className="view-switch" role="group" aria-label={t.feature.viewSwitch}>
+          <button className={cliTab ? '' : 'selected'} aria-pressed={!cliTab} onClick={() => cliTab && closeTerminal(cliTab.info.id)}>
+            {t.feature.viewBaton}
+          </button>
+          <button
+            className={cliTab ? 'selected' : ''}
+            aria-pressed={Boolean(cliTab)}
+            disabled={!cliTab && (!feature.sessionId || working)}
+            title={!cliTab && (!feature.sessionId || working) ? t.feature.viewCliUnavailable : t.feature.viewCliHint}
+            onClick={() => !cliTab && swapToCli()}
+          >
+            {t.feature.viewCli}
+          </button>
+        </div>
         <div className="feature-stats">
           <div className="stat" title={t.feature.contextSize}>
             <span className="stat-label">{t.feature.context}</span>
@@ -206,98 +231,105 @@ export function FeatureView({
         </div>
       </header>
 
-      {todos.length > 0 && <PlanBanner todos={todos} />}
+      {cliError && <p className="terminal-error">{cliError}</p>}
+      {cliTab ? (
+        <CliView tab={cliTab} />
+      ) : (
+        <>
+        {todos.length > 0 && <PlanBanner todos={todos} />}
 
-      {finding && <ConversationSearch scroller={scroller} revision={searchRevision} onClose={() => setFinding(false)} />}
+        {finding && <ConversationSearch scroller={scroller} revision={searchRevision} onClose={() => setFinding(false)} />}
 
-      <div
-        className="transcript"
-        ref={scroller}
-        onScroll={(e) => {
-          const el = e.currentTarget
-          pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-        }}
-      >
-        <div className="transcript-inner">
-          {items.length === 0 && !stream && <p className="transcript-empty">{t.feature.sendFirst}</p>}
-          {items.map((item) => (
-            <TranscriptItem key={item.seq} item={item} featureId={feature.id} onRespond={respond} />
-          ))}
-          {stream && (
-            <div className="msg assistant">
-              <Markdown>{stream}</Markdown>
-            </div>
-          )}
-          {feature.status === 'working' && !stream && <div className="thinking">{t.feature.working}</div>}
-          {background.length > 0 && (
-            <div className="background-tasks">
-              <div className="background-title">{t.feature.backgroundRunning(background.length)}</div>
-              {background.map((task) => (
-                <div key={task.id} className="background-task">
-                  <span className="background-dot" />
-                  <span className="background-kind">{task.kind}</span>
-                  <span className="background-desc">{task.description}</span>
-                </div>
-              ))}
-            </div>
-          )}
+        <div
+          className="transcript"
+          ref={scroller}
+          onScroll={(e) => {
+            const el = e.currentTarget
+            pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+          }}
+        >
+          <div className="transcript-inner">
+            {items.length === 0 && !stream && <p className="transcript-empty">{t.feature.sendFirst}</p>}
+            {items.map((item) => (
+              <TranscriptItem key={item.seq} item={item} featureId={feature.id} onRespond={respond} />
+            ))}
+            {stream && (
+              <div className="msg assistant">
+                <Markdown>{stream}</Markdown>
+              </div>
+            )}
+            {feature.status === 'working' && !stream && <div className="thinking">{t.feature.working}</div>}
+            {background.length > 0 && (
+              <div className="background-tasks">
+                <div className="background-title">{t.feature.backgroundRunning(background.length)}</div>
+                {background.map((task) => (
+                  <div key={task.id} className="background-task">
+                    <span className="background-dot" />
+                    <span className="background-kind">{task.kind}</span>
+                    <span className="background-desc">{task.description}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      <footer className="composer" onDragOver={attachments.onDragOver} onDrop={attachments.onDrop}>
-        <DraftAttachments drafts={attachments.drafts} rejected={attachments.rejected} onRemove={attachments.remove} />
-        {project && (
-          <TemplateChips
-            templates={project.templates}
-            onPick={(text) => {
-              cursor.current = START
-              caretAtEnd.current = true
-              setDraft((current) => (current.trim() ? `${current.trimEnd()}\n${text}` : text))
-              box.current?.focus()
-            }}
-          />
-        )}
-        <div className="composer-row">
-          <AttachButton onPick={(files) => void attachments.add(files)} />
-          <textarea
-            ref={box}
-            value={draft}
-            onChange={(e) => {
-              cursor.current = START
-              setDraft(e.target.value)
-            }}
-            onKeyDown={onKeyDown}
-            onPaste={attachments.onPaste}
-            rows={Math.min(8, Math.max(1, draft.split('\n').length))}
-            placeholder={busy ? t.feature.queuePlaceholder : t.feature.messagePlaceholder}
-          />
-          {busy && (
-            <button className="danger" onClick={stop} title={t.feature.stopHint}>
-              {t.feature.stop}
+        <footer className="composer" onDragOver={attachments.onDragOver} onDrop={attachments.onDrop}>
+          <DraftAttachments drafts={attachments.drafts} rejected={attachments.rejected} onRemove={attachments.remove} />
+          {project && (
+            <TemplateChips
+              templates={project.templates}
+              onPick={(text) => {
+                cursor.current = START
+                caretAtEnd.current = true
+                setDraft((current) => (current.trim() ? `${current.trimEnd()}\n${text}` : text))
+                box.current?.focus()
+              }}
+            />
+          )}
+          <div className="composer-row">
+            <AttachButton onPick={(files) => void attachments.add(files)} />
+            <textarea
+              ref={box}
+              value={draft}
+              onChange={(e) => {
+                cursor.current = START
+                setDraft(e.target.value)
+              }}
+              onKeyDown={onKeyDown}
+              onPaste={attachments.onPaste}
+              rows={Math.min(8, Math.max(1, draft.split('\n').length))}
+              placeholder={busy ? t.feature.queuePlaceholder : t.feature.messagePlaceholder}
+            />
+            {busy && (
+              <button className="danger" onClick={stop} title={t.feature.stopHint}>
+                {t.feature.stop}
+              </button>
+            )}
+            <button className="primary" onClick={submit} disabled={!draft.trim() && !attachments.drafts.length}>
+              {t.feature.send}
             </button>
-          )}
-          <button className="primary" onClick={submit} disabled={!draft.trim() && !attachments.drafts.length}>
-            {t.feature.send}
-          </button>
-        </div>
-        {/* Applies at once, to the turn in progress too. */}
-        <div className="composer-modes" role="group" aria-label={t.newFeature.permissions}>
-          <span>{t.newFeature.permissions}</span>
-          {PERMISSION_MODES.map((mode) => (
-            <button
-              key={mode}
-              className={`filter ${mode}${feature.permissionMode === mode ? ' selected' : ''}`}
-              aria-pressed={feature.permissionMode === mode}
-              title={t.modes[mode].hint}
-              onClick={() => void window.api.setPermissionMode(feature.id, mode)}
-            >
-              {t.modes[mode].label}
-            </button>
-          ))}
-          <span className="composer-modes-sep">{t.newFeature.model}</span>
-          <ModelPicker value={feature.agentModel} above onChange={(model) => void window.api.setAgentModel(feature.id, model)} />
-        </div>
-      </footer>
+          </div>
+          {/* Applies at once, to the turn in progress too. */}
+          <div className="composer-modes" role="group" aria-label={t.newFeature.permissions}>
+            <span>{t.newFeature.permissions}</span>
+            {PERMISSION_MODES.map((mode) => (
+              <button
+                key={mode}
+                className={`filter ${mode}${feature.permissionMode === mode ? ' selected' : ''}`}
+                aria-pressed={feature.permissionMode === mode}
+                title={t.modes[mode].hint}
+                onClick={() => void window.api.setPermissionMode(feature.id, mode)}
+              >
+                {t.modes[mode].label}
+              </button>
+            ))}
+            <span className="composer-modes-sep">{t.newFeature.model}</span>
+            <ModelPicker value={feature.agentModel} above onChange={(model) => void window.api.setAgentModel(feature.id, model)} />
+          </div>
+        </footer>
+        </>
+      )}
 
       {linking && project && (
         <LinkIssueDialog
@@ -313,6 +345,25 @@ export function FeatureView({
       )}
     </div>
   )
+}
+
+/** The conversation in the Claude Code CLI, which takes the place of the transcript and the message box. */
+function CliView({ tab }: { tab: TerminalTab }) {
+  const host = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = host.current
+    if (!el) return
+    attachTerminal(tab, el)
+    const observer = new ResizeObserver(() => fitTerminal(tab))
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      tab.el.remove()
+    }
+  }, [tab])
+
+  return <div className="terminal-host cli-host" ref={host} />
 }
 
 function PlanBanner({ todos }: { todos: Todo[] }) {

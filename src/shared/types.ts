@@ -702,6 +702,8 @@ export interface Api {
   linkIssue(featureId: string, issue: LinearIssue | null): Promise<void>
   /** Changes how much the agent may do on its own, mid-turn included. */
   setPermissionMode(featureId: string, mode: PermissionMode): Promise<void>
+  /** Imports into the transcript what the Claude Code CLI added to the conversation, once its terminal is over. */
+  cliEnd(featureId: string): Promise<void>
   /** Applies from the agent's next request. */
   setAgentModel(featureId: string, model: AgentModel): Promise<void>
   /** Whether agents stopped by the usage limit get a summarizing thread once it resets. */
