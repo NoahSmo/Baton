@@ -519,6 +519,7 @@ export type MenuAction =
   | 'new-feature'
   | 'project-settings'
   | 'continue-feature'
+  | 'resume-terminal'
   | 'compare-commit'
   | 'cherry-pick-commit'
   | 'revert-commit'
@@ -701,6 +702,9 @@ export interface Api {
   /** Applies from the agent's next request. */
   setAgentModel(featureId: string, model: AgentModel): Promise<void>
   /** Whether agents stopped by the usage limit get a summarizing thread once it resets. */
+  /** Whether agents whose branch has merged are deleted on their own after a while. */
+  getAutoRemoveMerged(): Promise<boolean>
+  setAutoRemoveMerged(enabled: boolean): Promise<void>
   getRemoveWorktreeOnArchive(): Promise<boolean>
   setRemoveWorktreeOnArchive(enabled: boolean): Promise<void>
   getAutoContinue(): Promise<boolean>
@@ -843,8 +847,11 @@ export interface Api {
   gitUnwatch(featureId: string): Promise<void>
   /** The status of a watched worktree may have changed. */
   onGitChanged(cb: (featureId: string) => void): () => void
-  /** Starts a shell; with `commandId`, it runs that launch command of the project right away. */
-  terminalOpen(target: TerminalTarget, commandId?: string): Promise<TerminalInfo>
+  /**
+   * Starts a shell; with `commandId`, it runs that launch command of the project right away.
+   * With `resume`, it carries on the conversation of the target's agent in Claude Code.
+   */
+  terminalOpen(target: TerminalTarget, commandId?: string, resume?: boolean): Promise<TerminalInfo>
   terminalWrite(id: string, data: string): void
   terminalResize(id: string, cols: number, rows: number): void
   terminalClose(id: string): Promise<void>

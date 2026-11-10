@@ -678,6 +678,17 @@ export class Manager {
     await this.sessions.get(featureId)?.interrupt()
   }
 
+  /**
+   * Stops the agent's process so Claude Code can take the conversation over: two
+   * processes writing the same session would corrupt it. The next message here
+   * starts the agent again, resuming the session from disk.
+   */
+  async releaseSession(featureId: string): Promise<void> {
+    await this.interrupt(featureId)
+    this.sessions.get(featureId)?.close()
+    this.sessions.delete(featureId)
+  }
+
   async removeFeature(featureId: string): Promise<void> {
     const feature = this.mustGet(featureId)
     const project = this.store.getProject(feature.projectId)

@@ -293,18 +293,18 @@ export function isTrunkRef(ref: string): boolean {
 /**
  * Whether a worktree has nothing left to lose: no uncommitted change, and commits
  * of its own that a trunk of a remote already holds. A branch still where it was
- * created has not landed, it has not started.
+ * created has not landed, it has not started, and neither has one only moved
+ * forward to a newer trunk (pull, fast-forward): only a commit made on it counts.
  */
 export async function hasLanded(root: string): Promise<boolean> {
   const status = await gitStatus(root)
   if (!status.branch || TRUNKS.has(status.branch) || status.changes.length) return false
-  const [tip, history, holders] = await Promise.all([
-    git(root, 'rev-parse', 'HEAD'),
-    git(root, 'reflog', 'show', '--format=%H', `refs/heads/${status.branch}`),
+  const [history, holders] = await Promise.all([
+    git(root, 'reflog', 'show', '--format=%gs', `refs/heads/${status.branch}`),
     git(root, 'for-each-ref', '--contains', 'HEAD', '--format=%(refname)', 'refs/remotes')
   ])
-  const created = history.split('\n').pop()
-  return tip !== created && holders.split('\n').some(isTrunkRef)
+  const committed = history.split('\n').some((entry) => /^(commit|cherry-pick|revert)\b/.test(entry))
+  return committed && holders.split('\n').some(isTrunkRef)
 }
 
 /**

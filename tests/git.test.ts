@@ -216,6 +216,17 @@ describe('hasLanded', () => {
   it('never takes a trunk itself for a merged branch', async () => {
     expect(await hasLanded(repo)).toBe(false)
   })
+
+  it('leaves alone a branch only moved forward to a newer trunk', async () => {
+    const idle = join(base, 'idle')
+    run(repo, 'worktree', 'add', '-b', 'feat/idle', idle, 'origin/main')
+    run(repo, 'merge', '--ff-only', 'origin/main')
+    writeFileSync(join(repo, 'a.txt'), 'newer\n')
+    run(repo, 'commit', '-am', 'newer')
+    run(repo, 'push', 'origin', 'main')
+    run(idle, 'merge', '--ff-only', 'origin/main')
+    expect(await hasLanded(idle)).toBe(false)
+  })
 })
 
 describe('commitChanges', () => {
