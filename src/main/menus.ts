@@ -76,6 +76,7 @@ export function contextMenuTemplate(spec: ContextMenuSpec, ctx: MenuContext): Me
           label: feature.archived ? t.menu.unarchive : t.menu.archive,
           click: () => void manager.setArchived(feature.id, !feature.archived)
         },
+        { label: t.menu.resumeTerminal, enabled: Boolean(feature.sessionId), click: () => ctx.choose('resume-terminal') },
         { label: t.menu.continueNew, enabled: Boolean(feature.sessionId), click: () => ctx.choose('continue-feature') },
         separator,
         { label: t.menu.delete, danger: true, click: () => ctx.removeFeature(feature.id) }

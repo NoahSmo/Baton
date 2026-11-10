@@ -96,9 +96,9 @@ function wire(): void {
 }
 
 /** Opens a terminal and puts it forward; with `commandId`, it runs that launch command of the project. */
-export async function openTerminal(target: TerminalTarget, commandId?: string): Promise<TerminalTab> {
+export async function openTerminal(target: TerminalTarget, commandId?: string, resume?: boolean): Promise<TerminalTab> {
   wire()
-  const info = await window.api.terminalOpen(target, commandId)
+  const info = await window.api.terminalOpen(target, commandId, resume)
   const term = new Terminal({
     fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
     fontSize: 12,

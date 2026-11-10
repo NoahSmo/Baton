@@ -107,6 +107,8 @@ const t = () => DICTS[lang]
 let maxRunning = DEFAULT_MAX_RUNNING
 let autoContinue = false
 let removeWorktreeOnArchive = false
+/** Off by default: a merged branch may well be worked on further. */
+let autoRemoveMerged = false
 let theme: Theme = DEFAULT_THEME
 let notificationPrefs: NotificationPrefs = normalizePrefs(undefined)
 /** Agent on screen, as the renderer last said. */
@@ -371,16 +373,18 @@ async function cancellable<T>(jobs: Map<string, AbortController>, id: string, ru
 const MERGED_SWEEP_INTERVAL_MS = 15 * 60 * 1000
 let sweeping = false
 
-/** A merged feature's worktree only takes up room. Nothing in it is unsaved, so it goes without asking. */
+/** With the setting on, a merged feature's worktree goes without asking: nothing in it is unsaved. */
 async function removeMergedFeatures(): Promise<void> {
   if (sweeping) return
   sweeping = true
   try {
-    await manager.refreshRemotes()
-    for (const feature of manager.getState().features) {
-      if (!(await manager.isMerged(feature.id))) continue
-      await removeFeature(feature.id)
-      new Notification({ title: feature.title, body: t().native.mergedRemoved(feature.branch) }).show()
+    if (autoRemoveMerged) {
+      await manager.refreshRemotes()
+      for (const feature of manager.getState().features) {
+        if (!(await manager.isMerged(feature.id))) continue
+        await removeFeature(feature.id)
+        new Notification({ title: feature.title, body: t().native.mergedRemoved(feature.branch) }).show()
+      }
     }
     await removeStrayWorktrees()
   } finally {
@@ -644,6 +648,11 @@ function registerIpc(): void {
     autoContinue = enabled === true
     writeSettings({ autoContinue })
   })
+  ipcMain.handle('settings:autoRemoveMerged', () => autoRemoveMerged)
+  ipcMain.handle('settings:setAutoRemoveMerged', (_e, enabled: boolean) => {
+    autoRemoveMerged = enabled === true
+    writeSettings({ autoRemoveMerged })
+  })
   ipcMain.handle('settings:removeWorktreeOnArchive', () => removeWorktreeOnArchive)
   ipcMain.handle('settings:setRemoveWorktreeOnArchive', (_e, enabled: boolean) => {
     removeWorktreeOnArchive = enabled === true
@@ -829,7 +838,7 @@ function registerIpc(): void {
   })
   ipcMain.handle('git:unwatch', (_e, id: string) => unwatchGit(id))
 
-  ipcMain.handle('terminal:open', (_e, target: TerminalTarget, commandId?: string) => {
+  ipcMain.handle('terminal:open', async (_e, target: TerminalTarget, commandId?: string, resume?: boolean) => {
     const { projects, features } = manager.getState()
     const feature = 'featureId' in target ? features.find((f) => f.id === target.featureId) : null
     if ('featureId' in target && !feature) throw new Error(t().errors.unknownFeature)
@@ -838,6 +847,13 @@ function registerIpc(): void {
     // Looked up here: only a command the user configured is ever typed for them.
     const launch = commandId ? project.commands.find((c) => c.id === commandId) : undefined
     if (commandId && !launch) throw new Error(t().errors.unknownCommand)
+    if (resume) {
+      if (!feature?.sessionId) throw new Error(t().errors.noConversation)
+      await manager.releaseSession(feature.id)
+      // The session id comes from the Claude SDK, never from the user: still quoted, as it lands in a shell.
+      const command = `claude --resume '${feature.sessionId}' --model ${feature.agentModel} --permission-mode ${feature.permissionMode}`
+      return terminals.open({ projectId: project.id, featureId: feature.id, cwd: feature.worktreePath }, { id: 'resume', name: 'claude', command })
+    }
     return terminals.open(
       { projectId: project.id, featureId: feature?.id ?? null, cwd: feature ? feature.worktreePath : project.path },
       launch
@@ -862,6 +878,7 @@ void app.whenReady().then(() => {
   maxRunning = loadMaxRunning()
   autoContinue = readSettings().autoContinue === true
   removeWorktreeOnArchive = readSettings().removeWorktreeOnArchive === true
+  autoRemoveMerged = readSettings().autoRemoveMerged === true
   notificationPrefs = normalizePrefs(readSettings().notifications)
   store = new Store(join(dataDir, 'state.db'))
   qaMonitor = new QaMonitor(store, () => lang, (run) => send('qa:run', run))

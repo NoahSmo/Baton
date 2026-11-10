@@ -67,6 +67,8 @@ const api: Api = {
   onFocusFeature: (cb) => subscribe('feature:focus', cb),
   setPermissionMode: (id, mode) => ipcRenderer.invoke('feature:setPermissionMode', id, mode),
   setAgentModel: (id, model) => ipcRenderer.invoke('feature:setAgentModel', id, model),
+  getAutoRemoveMerged: () => ipcRenderer.invoke('settings:autoRemoveMerged'),
+  setAutoRemoveMerged: (enabled) => ipcRenderer.invoke('settings:setAutoRemoveMerged', enabled),
   getRemoveWorktreeOnArchive: () => ipcRenderer.invoke('settings:removeWorktreeOnArchive'),
   setRemoveWorktreeOnArchive: (enabled) => ipcRenderer.invoke('settings:setRemoveWorktreeOnArchive', enabled),
   getAutoContinue: () => ipcRenderer.invoke('settings:autoContinue'),
@@ -125,7 +127,7 @@ const api: Api = {
   gitWatch: (id) => ipcRenderer.invoke('git:watch', id),
   gitUnwatch: (id) => ipcRenderer.invoke('git:unwatch', id),
   onGitChanged: (cb) => subscribe('git:changed', cb),
-  terminalOpen: (target, commandId) => ipcRenderer.invoke('terminal:open', target, commandId),
+  terminalOpen: (target, commandId, resume) => ipcRenderer.invoke('terminal:open', target, commandId, resume),
   // One-way: keystrokes and resizes need no answer.
   terminalWrite: (id, data) => ipcRenderer.send('terminal:write', id, data),
   terminalResize: (id, cols, rows) => ipcRenderer.send('terminal:resize', id, cols, rows),

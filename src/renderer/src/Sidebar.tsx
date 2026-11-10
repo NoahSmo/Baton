@@ -116,6 +116,15 @@ export function Sidebar({
     if (action === 'rename-feature') setRenamingId(feature.id)
     if (action === 'link-feature') onLink(feature)
     if (action === 'continue-feature') onContinue(feature)
+    if (action === 'resume-terminal') {
+      setTerminalError(null)
+      try {
+        await openTerminal({ featureId: feature.id }, undefined, true)
+        onShowTerminal()
+      } catch (err) {
+        setTerminalError(t.terminal.failed(cleanError(err)))
+      }
+    }
   }
 
   // The search shortcut lives in the app; the field is here.
