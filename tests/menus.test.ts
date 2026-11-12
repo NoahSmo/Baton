@@ -16,6 +16,7 @@ const feature = (over: Partial<Feature> = {}): Feature => ({
   status: 'idle',
   permissionMode: 'default',
   agentModel: 'sonnet',
+  agentEffort: null,
   sessionId: null,
   model: null,
   costUsd: 0,

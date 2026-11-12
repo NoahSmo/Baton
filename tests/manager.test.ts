@@ -62,6 +62,7 @@ function setup(maxRunning = 1) {
       status: 'idle',
       permissionMode: 'default',
       agentModel: 'sonnet',
+      agentEffort: null,
       sessionId: null,
       model: null,
       costUsd: 0,
