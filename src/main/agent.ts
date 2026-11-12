@@ -8,7 +8,7 @@ import {
   type SDKMessage,
   type SDKUserMessage
 } from '@anthropic-ai/claude-agent-sdk'
-import type { AgentModel, BackgroundTask, ImageInput, PermissionDecision, PermissionMode, UiEvent } from '../shared/types'
+import type { AgentEffort, AgentModel, BackgroundTask, ImageInput, PermissionDecision, PermissionMode, UiEvent } from '../shared/types'
 
 const MAX_TOOL_RESULT_CHARS = 20_000
 
@@ -30,6 +30,7 @@ export interface AgentOptions {
   attachmentsDir: string
   permissionMode: PermissionMode
   model: AgentModel
+  effort: AgentEffort | null
   /** Session to resume; the conversation survives app restarts through it. */
   sessionId: string | null
   emit(out: AgentOutput): void
@@ -103,6 +104,7 @@ export class AgentSession {
   private processCostUsd = 0
   private permissionMode: PermissionMode
   private model: AgentModel
+  private effort: AgentEffort | null
   /** Compactions asked for and not finished yet: their results are not turns of the user's. */
   private compactions = 0
   private compactedFrom: { preTokens: number; postTokens?: number } | null = null
@@ -112,6 +114,7 @@ export class AgentSession {
     this.sessionId = opts.sessionId
     this.permissionMode = opts.permissionMode
     this.model = opts.model
+    this.effort = opts.effort
   }
 
   /** Whether the agent is still blocked on an answer from the user. */
@@ -193,6 +196,12 @@ export class AgentSession {
     await this.q?.setModel(model)
   }
 
+  /** Takes effect from the next request; without an effort, the model's own default applies. */
+  async setEffort(effort: AgentEffort | null): Promise<void> {
+    this.effort = effort
+    await this.q?.applyFlagSettings({ effortLevel: effort })
+  }
+
   async interrupt(): Promise<void> {
     if (!this.q) return
     this.interrupted = true
@@ -218,6 +227,7 @@ export class AgentSession {
       options: {
         cwd: this.opts.cwd,
         model: this.model,
+        ...(this.effort ? { effort: this.effort } : {}),
         additionalDirectories: [this.opts.attachmentsDir],
         permissionMode: this.permissionMode,
         // Only makes bypass available, so the mode can be switched to it mid-session.

@@ -1,5 +1,5 @@
 import type { SidebarSort } from './features'
-import type { AgentModel, FeatureStatus, GitChangeKind, PermissionMode } from './types'
+import type { AgentEffort, AgentModel, FeatureStatus, GitChangeKind, PermissionMode } from './types'
 
 export type Lang = 'en' | 'fr'
 
@@ -376,6 +376,7 @@ const en = {
     promptPlaceholder: 'Leave empty to create the worktree and write the first message later.',
     permissions: 'Permissions',
     model: 'Model',
+    effort: 'Effort',
     creating: 'Creating…',
     create: 'Create agent'
   },
@@ -397,6 +398,15 @@ const en = {
     plan: { label: 'Plan', hint: 'Explores and proposes a plan first' },
     bypassPermissions: { label: 'Bypass', hint: 'Never asks. Runs any command unattended' }
   } as Record<PermissionMode, { label: string; hint: string }>,
+
+  efforts: {
+    default: { label: 'Auto', hint: "The model's own default" },
+    low: { label: 'Low', hint: 'Quickest and cheapest. Little thinking' },
+    medium: { label: 'Medium', hint: 'Balances speed and depth' },
+    high: { label: 'High', hint: 'Thinks deeply. Good for most coding' },
+    xhigh: { label: 'Extra high', hint: 'Thinks longer on hard problems. Uses more of the limit' },
+    max: { label: 'Max', hint: 'No limit on thinking. Slowest, and uses up the limit fastest' }
+  } as Record<AgentEffort | 'default', { label: string; hint: string }>,
 
   models: {
     haiku: { label: 'Haiku', hint: 'Fastest and lightest. Good for small, simple edits, and easy on the usage limit' },
@@ -1072,6 +1082,7 @@ const fr: Dict = {
     promptPlaceholder: 'Laisse vide pour créer le worktree et écrire le premier message plus tard.',
     permissions: 'Permissions',
     model: 'Modèle',
+    effort: 'Effort',
     creating: 'Création…',
     create: "Créer l'agent"
   },
@@ -1092,6 +1103,15 @@ const fr: Dict = {
     acceptEdits: { label: 'Edits auto', hint: 'Modifie les fichiers librement, demande pour les commandes' },
     plan: { label: 'Plan', hint: "Explore et propose un plan d'abord" },
     bypassPermissions: { label: 'Sans demande', hint: "Ne demande jamais. Lance n'importe quelle commande sans surveillance" }
+  },
+
+  efforts: {
+    default: { label: 'Auto', hint: 'Le réglage par défaut du modèle' },
+    low: { label: 'Faible', hint: 'Le plus rapide et le moins coûteux. Peu de réflexion' },
+    medium: { label: 'Moyen', hint: 'Équilibre vitesse et profondeur' },
+    high: { label: 'Élevé', hint: 'Réfléchit en profondeur. Convient à la plupart du code' },
+    xhigh: { label: 'Très élevé', hint: "Réfléchit plus longtemps sur les problèmes durs. Consomme plus de limite" },
+    max: { label: 'Max', hint: "Aucune limite de réflexion. Le plus lent, et consomme la limite le plus vite" }
   },
 
   models: {

@@ -81,6 +81,11 @@ export const AGENT_MODELS: AgentModel[] = ['haiku', 'sonnet', 'opus', 'opusplan'
 /** Models listed first in the picker; the others sit under "More models". */
 export const FEATURED_AGENT_MODELS: AgentModel[] = ['claude-fable-5-2', 'opus', 'sonnet', 'haiku']
 
+/** How hard the model thinks before answering; null leaves it to the model's own default. */
+export type AgentEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+
+export const AGENT_EFFORTS: AgentEffort[] = ['low', 'medium', 'high', 'xhigh', 'max']
+
 /** Opus spends the usage limit several times faster: it is picked per agent, never by default. */
 export const DEFAULT_AGENT_MODEL: AgentModel = 'sonnet'
 
@@ -365,6 +370,7 @@ export interface Feature {
   status: FeatureStatus
   permissionMode: PermissionMode
   agentModel: AgentModel
+  agentEffort: AgentEffort | null
   sessionId: string | null
   /** Model the session actually reported, e.g. "claude-sonnet-5". */
   model: string | null
@@ -487,6 +493,7 @@ export interface CreateFeatureInput {
   attachments?: MessageAttachments
   permissionMode: PermissionMode
   agentModel: AgentModel
+  agentEffort?: AgentEffort | null
   linearIssue?: LinearIssue
   /** Keeps an agent on an issue already linked, as when a thread carries on another's work. */
   linear?: LinearLink
@@ -706,6 +713,7 @@ export interface Api {
   cliEnd(featureId: string): Promise<void>
   /** Applies from the agent's next request. */
   setAgentModel(featureId: string, model: AgentModel): Promise<void>
+  setAgentEffort(featureId: string, effort: AgentEffort | null): Promise<void>
   /** Whether agents stopped by the usage limit get a summarizing thread once it resets. */
   /** Whether agents whose branch has merged are deleted on their own after a while. */
   getAutoRemoveMerged(): Promise<boolean>

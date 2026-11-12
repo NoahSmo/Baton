@@ -9,10 +9,12 @@ import { normalizePrefs, shouldNotify } from '../shared/notifications'
 import { formatReset } from '../shared/time'
 import { DEFAULT_THEME, themeById, type Theme } from '../shared/themes'
 import {
+  AGENT_EFFORTS,
   AGENT_MODELS,
   APP_NAME,
   APP_SLUG,
   DEFAULT_MAX_RUNNING,
+  type AgentEffort,
   type AgentModel,
   type ContextMenuSpec,
   type CreateFeatureInput,
@@ -721,6 +723,10 @@ function registerIpc(): void {
   })
   ipcMain.handle('feature:setAgentModel', (_e, id: string, model: AgentModel) => {
     if (AGENT_MODELS.includes(model)) return manager.setAgentModel(id, model)
+  })
+
+  ipcMain.handle('feature:setAgentEffort', (_e, id: string, effort: AgentEffort | null) => {
+    if (effort === null || AGENT_EFFORTS.includes(effort)) return manager.setAgentEffort(id, effort)
   })
 
   ipcMain.handle('files:list', (_e, id: string, dir: string) => listDir(manager.featureRoot(id), dir))
