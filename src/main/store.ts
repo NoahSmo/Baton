@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite'
-import { AGENT_MODELS, DEFAULT_AGENT_MODEL, DEFAULT_QA, PROJECT_COLORS, type AgentModel, type Feature, type LaunchCommand, type LinearLabel, type LinearProjectLink, type Project, type QaConfig, type QaRun, type PromptTemplate, type StoredEvent, type TurnCost, type UiEvent } from '../shared/types'
+import { AGENT_EFFORTS, AGENT_MODELS, DEFAULT_AGENT_MODEL, DEFAULT_QA, PROJECT_COLORS, type AgentEffort, type AgentModel, type Feature, type LaunchCommand, type LinearLabel, type LinearProjectLink, type Project, type QaConfig, type QaRun, type PromptTemplate, type StoredEvent, type TurnCost, type UiEvent } from '../shared/types'
 
 type Row = Record<string, unknown>
 
@@ -72,6 +72,7 @@ function toFeature(r: Row): Feature {
     status: r.status as Feature['status'],
     permissionMode: r.permission_mode as Feature['permissionMode'],
     agentModel: AGENT_MODELS.includes(r.agent_model as AgentModel) ? (r.agent_model as AgentModel) : DEFAULT_AGENT_MODEL,
+    agentEffort: AGENT_EFFORTS.includes(r.agent_effort as AgentEffort) ? (r.agent_effort as AgentEffort) : null,
     sessionId: (r.session_id as string | null) ?? null,
     model: (r.model as string | null) ?? null,
     costUsd: r.cost_usd as number,
@@ -140,6 +141,7 @@ export class Store {
       'linear_identifier TEXT',
       'linear_url TEXT',
       'agent_model TEXT',
+      'agent_effort TEXT',
       'context_tokens INTEGER',
       'pinned INTEGER',
       'archived INTEGER',
@@ -202,8 +204,8 @@ export class Store {
       .prepare(
         `INSERT INTO features (id, project_id, title, branch, worktree_path, status, permission_mode,
            session_id, model, cost_usd, limit_resets_at, created_at, updated_at,
-           linear_issue_id, linear_identifier, linear_url, agent_model, context_tokens)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           linear_issue_id, linear_identifier, linear_url, agent_model, context_tokens, agent_effort)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         f.id,
@@ -223,7 +225,8 @@ export class Store {
         f.linear?.identifier ?? null,
         f.linear?.url ?? null,
         f.agentModel,
-        f.contextTokens
+        f.contextTokens,
+        f.agentEffort
       )
   }
 
@@ -232,7 +235,7 @@ export class Store {
       .prepare(
         `UPDATE features SET title = ?, branch = ?, status = ?, permission_mode = ?, session_id = ?, model = ?, cost_usd = ?,
            limit_resets_at = ?, updated_at = ?, linear_issue_id = ?, linear_identifier = ?, linear_url = ?,
-           agent_model = ?, context_tokens = ?, pinned = ?, archived = ?, pr_url = ?, turn_base = ?
+           agent_model = ?, context_tokens = ?, pinned = ?, archived = ?, pr_url = ?, turn_base = ?, agent_effort = ?
          WHERE id = ?`
       )
       .run(
@@ -254,6 +257,7 @@ export class Store {
         f.archived ? 1 : 0,
         f.prUrl,
         f.turnBase,
+        f.agentEffort,
         f.id
       )
   }

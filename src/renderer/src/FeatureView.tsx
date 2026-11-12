@@ -20,6 +20,7 @@ import { openContextMenu } from './contextMenu'
 import { useLang, useT } from './i18n'
 import { LinkIssueDialog } from './LinkIssueDialog'
 import { ModelPicker } from './ModelPicker'
+import { EffortPicker } from './EffortPicker'
 import { cleanError } from './NewFeatureDialog'
 import { PermissionCard } from './PermissionCard'
 import { attachTerminal, closeTerminal, fitTerminal, openTerminal, useCliTab, type TerminalTab } from './terminalStore'
@@ -326,6 +327,8 @@ export function FeatureView({
             ))}
             <span className="composer-modes-sep">{t.newFeature.model}</span>
             <ModelPicker value={feature.agentModel} above onChange={(model) => void window.api.setAgentModel(feature.id, model)} />
+            <span className="composer-modes-sep">{t.newFeature.effort}</span>
+            <EffortPicker value={feature.agentEffort} above onChange={(effort) => void window.api.setAgentEffort(feature.id, effort)} />
           </div>
         </footer>
         </>

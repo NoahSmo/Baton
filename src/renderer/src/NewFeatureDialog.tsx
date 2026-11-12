@@ -3,6 +3,7 @@ import { issuePrompt, projectNames } from '../../shared/linear'
 import {
   DEFAULT_AGENT_MODEL,
   PERMISSION_MODES,
+  type AgentEffort,
   type AgentModel,
   type Feature,
   type LinearIssue,
@@ -15,6 +16,7 @@ import { useT } from './i18n'
 import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
 import { issuesOfProjects } from './linearIssues'
 import { ModelPicker } from './ModelPicker'
+import { EffortPicker } from './EffortPicker'
 import { TemplateChips } from './TemplatesDialog'
 import { toMessageAttachments, useAttachments } from './useAttachments'
 
@@ -44,6 +46,7 @@ export function NewFeatureDialog({
   const attachments = useAttachments()
   const [mode, setMode] = useState<PermissionMode>('default')
   const [model, setModel] = useState<AgentModel>(DEFAULT_AGENT_MODEL)
+  const [effort, setEffort] = useState<AgentEffort | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [issues, setIssues] = useState<LinearIssue[] | null>(null)
@@ -138,6 +141,7 @@ export function NewFeatureDialog({
         attachments: toMessageAttachments(attachments.drafts),
         permissionMode: mode,
         agentModel: model,
+        agentEffort: effort,
         ...(issue ? { linearIssue: issue } : {})
       }
       onCreated(await window.api.createFeature(input))
@@ -296,6 +300,12 @@ export function NewFeatureDialog({
           <ModelPicker value={model} onChange={setModel} />
         </div>
         <p className="hint">{t.models[model].hint}</p>
+
+        <label>{t.newFeature.effort}</label>
+        <div>
+          <EffortPicker value={effort} onChange={setEffort} />
+        </div>
+        <p className="hint">{t.efforts[effort ?? 'default'].hint}</p>
 
         {error && <p className="form-error">{error}</p>}
 

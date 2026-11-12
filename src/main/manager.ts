@@ -9,6 +9,7 @@ import { needsAttention, nextStatus, slugify } from '../shared/status'
 import {
   DEFAULT_AGENT_MODEL,
   DEFAULT_QA,
+  type AgentEffort,
   type AgentModel,
   type QaConfig,
   type AppState,
@@ -359,6 +360,13 @@ export class Manager {
     await this.sessions.get(featureId)?.setModel(model)
   }
 
+  /** Takes effect from the agent's next request. */
+  async setAgentEffort(featureId: string, effort: AgentEffort | null): Promise<void> {
+    this.mustGet(featureId)
+    this.patch(featureId, { agentEffort: effort })
+    await this.sessions.get(featureId)?.setEffort(effort)
+  }
+
   /** Folder a terminal or the editor works in. */
   featureRoot(featureId: string): string {
     return this.mustGet(featureId).worktreePath
@@ -494,6 +502,7 @@ export class Manager {
       status: 'idle',
       permissionMode: input.permissionMode,
       agentModel: input.agentModel ?? DEFAULT_AGENT_MODEL,
+      agentEffort: input.agentEffort ?? null,
       sessionId: null,
       model: null,
       costUsd: 0,
@@ -534,6 +543,7 @@ export class Manager {
         prompt: this.t().handoff.prompt(source.title, handoff.summary),
         permissionMode: source.permissionMode,
         agentModel: source.agentModel,
+        agentEffort: source.agentEffort,
         linear: source.linear ?? undefined
       })
     }
@@ -552,6 +562,7 @@ export class Manager {
       prompt: this.t().handoff.prompt(source.title, handoff.summary),
       permissionMode: source.permissionMode,
       agentModel: source.agentModel,
+      agentEffort: source.agentEffort,
       linear: source.linear ?? undefined
     })
   }
@@ -839,6 +850,7 @@ export class Manager {
         attachmentsDir: this.attachmentsDir(feature.id),
         permissionMode: feature.permissionMode,
         model: feature.agentModel,
+        effort: feature.agentEffort,
         sessionId: feature.sessionId,
         emit: (out) => this.onAgentOutput(feature.id, out)
       })
