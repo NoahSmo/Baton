@@ -3,10 +3,11 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { randomUUID } from 'node:crypto'
-import { basename, dirname, join, resolve } from 'node:path'
-import { claudeEnv, configDirOf, setAccounts } from './claudeAccount'
+import { basename, dirname, join } from 'node:path'
+import { configDirOf, setAccounts } from './claudeAccount'
+import { accountStatus, loginAccount } from './claudeLogin'
 import { fetchClaudeUsage } from './claudeUsage'
-import { expandHome, normalizeAccounts } from '../shared/accounts'
+import { normalizeAccounts } from '../shared/accounts'
 import { DICTS, LANGS, langFromLocale, type Lang } from '../shared/i18n'
 import { normalizePrefs, shouldNotify } from '../shared/notifications'
 import { formatReset } from '../shared/time'
@@ -663,12 +664,16 @@ function registerIpc(): void {
     writeSettings({ theme: id })
   })
   ipcMain.handle('accounts:get', () => claudeAccounts)
-  ipcMain.handle('accounts:add', (_e, name: string, configDir: string) => {
-    const dir = resolve(expandHome(String(configDir).trim(), homedir()))
-    const added = { id: randomUUID(), name: String(name).trim(), configDir: dir }
+  ipcMain.handle('accounts:add', (_e, name: string) => {
+    const id = randomUUID()
+    const dir = join(dataDir, 'claude-accounts', id)
+    mkdirSync(dir, { recursive: true })
+    const added = { id, name: String(name).trim(), configDir: dir }
     const next = normalizeAccounts([...claudeAccounts.accounts, added], claudeAccounts.activeId)
     return applyClaudeAccounts(next)
   })
+  ipcMain.handle('accounts:status', (_e, account: string) => accountStatus(String(account)))
+  ipcMain.handle('accounts:login', (_e, account: string) => loginAccount(String(account)))
   ipcMain.handle('accounts:remove', (_e, id: string) =>
     applyClaudeAccounts(
       normalizeAccounts(

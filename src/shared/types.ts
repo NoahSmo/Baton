@@ -109,6 +109,12 @@ export interface ClaudeAccount {
   configDir: string
 }
 
+/** Whether an account's login works, and for whom. */
+export interface ClaudeAccountStatus {
+  loggedIn: boolean
+  email?: string
+}
+
 export interface ClaudeAccounts {
   accounts: ClaudeAccount[]
   /** Account agents run under; null is the default login of Claude Code. */
@@ -740,7 +746,12 @@ export interface Api {
   getRemoveWorktreeOnArchive(): Promise<boolean>
   setRemoveWorktreeOnArchive(enabled: boolean): Promise<void>
   getClaudeAccounts(): Promise<ClaudeAccounts>
-  addClaudeAccount(name: string, configDir: string): Promise<ClaudeAccounts>
+  /** Adds an account with a config folder of its own, which the app creates. */
+  addClaudeAccount(name: string): Promise<ClaudeAccounts>
+  /** Who the account (a key: an account id, or the default login's) is logged in as. */
+  claudeAccountStatus(account: string): Promise<ClaudeAccountStatus>
+  /** Signs the account in through the browser; resolves once that is over. */
+  loginClaudeAccount(account: string): Promise<ClaudeAccountStatus>
   removeClaudeAccount(id: string): Promise<ClaudeAccounts>
   /** Applies to agents started from now on; running ones keep their login. */
   setActiveClaudeAccount(id: string | null): Promise<ClaudeAccounts>

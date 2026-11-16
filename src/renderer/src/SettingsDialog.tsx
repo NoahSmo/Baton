@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { LANGS, type Lang } from '../../shared/i18n'
 import { SHORTCUT_LIST, shortcutLabel } from '../../shared/shortcuts'
 import { THEMES, themeById } from '../../shared/themes'
-import type { ClaudeAccounts, Feature, NotificationPrefs, TrashEntry } from '../../shared/types'
+import { DEFAULT_ACCOUNT } from '../../shared/accounts'
+import type { ClaudeAccounts, ClaudeAccountStatus, Feature, NotificationPrefs, TrashEntry } from '../../shared/types'
 import { useLang, useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { IS_MAC } from './platform'
@@ -43,14 +44,18 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null)
   const [accounts, setAccounts] = useState<ClaudeAccounts | null>(null)
   const [accountName, setAccountName] = useState('')
-  const [accountDir, setAccountDir] = useState('')
+  const [accountStatus, setAccountStatus] = useState<Record<string, ClaudeAccountStatus>>({})
+  const [loggingIn, setLoggingIn] = useState<string | null>(null)
   const [trash, setTrash] = useState<TrashEntry[]>([])
   const [trashError, setTrashError] = useState('')
 
   useEffect(() => {
     void window.api.getNotificationPrefs().then(setPrefs)
     void window.api.trashList().then(setTrash)
-    void window.api.getClaudeAccounts().then(setAccounts)
+    void window.api.getClaudeAccounts().then((a) => {
+      setAccounts(a)
+      for (const key of [DEFAULT_ACCOUNT, ...a.accounts.map((x) => x.id)]) void refreshStatus(key)
+    })
     void window.api.getMaxRunning().then(setMaxRunning)
     void window.api.getAutoContinue().then(setAutoContinue)
     void window.api.getRemoveWorktreeOnArchive().then(setRemoveOnArchive)
@@ -92,11 +97,48 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
     void window.api.setNotificationPrefs(next)
   }
 
+  async function refreshStatus(key: string) {
+    const status = await window.api.claudeAccountStatus(key)
+    setAccountStatus((all) => ({ ...all, [key]: status }))
+  }
+
+  /** The browser opens for the sign-in; the row shows who is logged in once it is over. */
+  async function login(key: string) {
+    setLoggingIn(key)
+    try {
+      const status = await window.api.loginClaudeAccount(key)
+      setAccountStatus((all) => ({ ...all, [key]: status }))
+    } finally {
+      setLoggingIn(null)
+    }
+  }
+
+  /** A new account is useless until signed in: the sign-in starts right away. */
   async function addAccount() {
-    if (!accountName.trim() || !accountDir.trim()) return
-    setAccounts(await window.api.addClaudeAccount(accountName, accountDir))
+    const name = accountName.trim()
+    if (!name) return
+    const before = new Set(accounts?.accounts.map((a) => a.id))
+    const next = await window.api.addClaudeAccount(name)
+    setAccounts(next)
     setAccountName('')
-    setAccountDir('')
+    const added = next.accounts.find((a) => !before.has(a.id))
+    if (added) void login(added.id)
+  }
+
+  function accountState(key: string) {
+    if (loggingIn === key) return t.accounts.loggingIn
+    const status = accountStatus[key]
+    if (!status) return ''
+    return status.loggedIn ? (status.email ?? t.accounts.loggedIn) : t.accounts.notLoggedIn
+  }
+
+  function loginButton(key: string) {
+    const status = accountStatus[key]
+    return (
+      <button onClick={() => void login(key)} disabled={loggingIn !== null}>
+        {status?.loggedIn ? t.accounts.relogin : t.accounts.login}
+      </button>
+    )
   }
 
   async function restore(entry: TrashEntry) {
@@ -184,14 +226,16 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
               <div className="settings-card">
                 <label className="settings-row">
                   <span>{t.accounts.default}</span>
+                  <span className="hint">{accountState(DEFAULT_ACCOUNT)}</span>
                   <input type="radio" name="claude-account" checked={accounts.activeId === null} onChange={() => void window.api.setActiveClaudeAccount(null).then(setAccounts)} />
                 </label>
                 {accounts.accounts.map((a) => (
                   <div key={a.id} className="settings-row">
                     <label className="trash-name" title={a.configDir}>
                       <input type="radio" name="claude-account" checked={accounts.activeId === a.id} onChange={() => void window.api.setActiveClaudeAccount(a.id).then(setAccounts)} /> {a.name}
-                      <span className="hint"> · {a.configDir}</span>
+                      <span className="hint"> · {accountState(a.id)}</span>
                     </label>
+                    {loginButton(a.id)}
                     <button className="danger" onClick={() => void window.api.removeClaudeAccount(a.id).then(setAccounts)}>
                       {t.accounts.remove}
                     </button>
@@ -199,8 +243,7 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
                 ))}
                 <div className="settings-row">
                   <input value={accountName} placeholder={t.accounts.name} aria-label={t.accounts.name} onChange={(e) => setAccountName(e.target.value)} />
-                  <input value={accountDir} placeholder={t.accounts.dir} aria-label={t.accounts.dir} onChange={(e) => setAccountDir(e.target.value)} />
-                  <button onClick={() => void addAccount()} disabled={!accountName.trim() || !accountDir.trim()}>
+                  <button onClick={() => void addAccount()} disabled={!accountName.trim() || loggingIn !== null}>
                     {t.accounts.add}
                   </button>
                 </div>
