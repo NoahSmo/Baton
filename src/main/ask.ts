@@ -1,4 +1,5 @@
 import { query } from '@anthropic-ai/claude-agent-sdk'
+import { claudeEnv } from './claudeAccount'
 
 /**
  * Asks Claude a question about the files of a folder and returns the structured answer.
@@ -9,6 +10,7 @@ export async function askClaude(cwd: string, prompt: string, schema: Record<stri
   const q = query({
     prompt,
     options: {
+      env: claudeEnv(),
       cwd,
       abortController: abort,
       // Wording a diff or a conversation needs no large model.

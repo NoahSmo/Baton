@@ -132,6 +132,15 @@ const en = {
       `The automatic tests failed (\`${command}\`). Fix the code so they pass, then run them again.\n\n${recap ? `Recap:\n${recap}\n\n` : ''}Output:\n${output}`
   },
 
+  accounts: {
+    title: 'Claude accounts',
+    hint: 'Each account keeps its login in its own config folder. Agents started after a switch use the active one; running agents keep theirs. Log in once with: CLAUDE_CONFIG_DIR=<folder> claude, then /login.',
+    default: 'Default login (~/.claude)',
+    name: 'Name',
+    dir: 'Config folder, e.g. ~/.claude-work',
+    add: 'Add account',
+    remove: 'Remove'
+  },
   statusbar: {
     agents: (n: number) => `${n} ${n === 1 ? 'agent' : 'agents'}`,
     working: (n: number) => `${n} working`,
@@ -870,6 +879,15 @@ const fr: Dict = {
       `Les tests automatiques ont échoué (\`${command}\`). Corrige le code pour qu'ils passent, puis relance-les.\n\n${recap ? `Résumé :\n${recap}\n\n` : ''}Sortie :\n${output}`
   },
 
+  accounts: {
+    title: 'Comptes Claude',
+    hint: "Chaque compte garde sa connexion dans son propre dossier de config. Les agents démarrés après un changement utilisent le compte actif ; ceux en cours gardent le leur. Connecte-toi une fois avec : CLAUDE_CONFIG_DIR=<dossier> claude, puis /login.",
+    default: 'Connexion par défaut (~/.claude)',
+    name: 'Nom',
+    dir: 'Dossier de config, ex. ~/.claude-work',
+    add: 'Ajouter le compte',
+    remove: 'Retirer'
+  },
   statusbar: {
     agents: (n) => `${n} agent${n > 1 ? 's' : ''}`,
     working: (n) => `${n} en cours`,

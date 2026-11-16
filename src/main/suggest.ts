@@ -1,6 +1,7 @@
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import type { Lang } from '../shared/i18n'
 import type { LaunchSuggestion } from '../shared/types'
+import { claudeEnv } from './claudeAccount'
 
 const MAX_SUGGESTIONS = 8
 
@@ -56,6 +57,7 @@ export async function suggestCommands(cwd: string, lang: Lang, abort: AbortContr
   const q = query({
     prompt: prompt(lang),
     options: {
+      env: claudeEnv(),
       cwd,
       abortController: abort,
       // Reading a few manifests needs no large model.

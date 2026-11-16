@@ -2,8 +2,11 @@ import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, shell }
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, dirname, join } from 'node:path'
+import { randomUUID } from 'node:crypto'
+import { basename, dirname, join, resolve } from 'node:path'
+import { setActiveConfigDir } from './claudeAccount'
 import { fetchClaudeUsage } from './claudeUsage'
+import { expandHome, normalizeAccounts } from '../shared/accounts'
 import { DICTS, LANGS, langFromLocale, type Lang } from '../shared/i18n'
 import { normalizePrefs, shouldNotify } from '../shared/notifications'
 import { formatReset } from '../shared/time'
@@ -43,6 +46,7 @@ import {
   type TerminalTarget,
   type UpdateInfo,
   type UpdateProgress,
+  type ClaudeAccounts,
   type UsageWarning,
   type UsageWindow
 } from '../shared/types'
@@ -113,6 +117,7 @@ let removeWorktreeOnArchive = false
 let autoRemoveMerged = false
 let theme: Theme = DEFAULT_THEME
 let customThemes: Theme[] = []
+let claudeAccounts: ClaudeAccounts = { accounts: [], activeId: null }
 let notificationPrefs: NotificationPrefs = normalizePrefs(undefined)
 /** Agent on screen, as the renderer last said. */
 let shownFeatureId: string | null = null
@@ -129,6 +134,18 @@ function readSettings(): Record<string, unknown> {
 /** Keeps the settings it is not given. */
 function writeSettings(patch: Record<string, unknown>): void {
   writeFileSync(settingsFile, JSON.stringify({ ...readSettings(), ...patch }, null, 2))
+}
+
+function applyClaudeAccounts(next: ClaudeAccounts): ClaudeAccounts {
+  claudeAccounts = next
+  setActiveConfigDir(next.accounts.find((a) => a.id === next.activeId)?.configDir ?? null)
+  writeSettings({ claudeAccounts: next.accounts, activeClaudeAccount: next.activeId })
+  // The usage shown is the active account's.
+  polledWindows = []
+  reportedWindows = []
+  setUsageWindows([])
+  void pollUsage()
+  return next
 }
 
 /** Stored choice if there is one, system language otherwise. */
@@ -653,6 +670,24 @@ function registerIpc(): void {
     // The chosen theme may be one of them, edited or deleted.
     applyTheme(themeById(theme.id, customThemes))
   })
+  ipcMain.handle('accounts:get', () => claudeAccounts)
+  ipcMain.handle('accounts:add', (_e, name: string, configDir: string) => {
+    const dir = resolve(expandHome(String(configDir).trim(), homedir()))
+    const added = { id: randomUUID(), name: String(name).trim(), configDir: dir }
+    const next = normalizeAccounts([...claudeAccounts.accounts, added], claudeAccounts.activeId)
+    return applyClaudeAccounts(next)
+  })
+  ipcMain.handle('accounts:remove', (_e, id: string) =>
+    applyClaudeAccounts(
+      normalizeAccounts(
+        claudeAccounts.accounts.filter((a) => a.id !== id),
+        claudeAccounts.activeId
+      )
+    )
+  )
+  ipcMain.handle('accounts:setActive', (_e, id: string | null) =>
+    applyClaudeAccounts(normalizeAccounts(claudeAccounts.accounts, id))
+  )
   ipcMain.handle('settings:autoContinue', () => autoContinue)
   ipcMain.handle('settings:setAutoContinue', (_e, enabled: boolean) => {
     autoContinue = enabled === true
@@ -896,6 +931,8 @@ void app.whenReady().then(() => {
   removeWorktreeOnArchive = readSettings().removeWorktreeOnArchive === true
   autoRemoveMerged = readSettings().autoRemoveMerged === true
   notificationPrefs = normalizePrefs(readSettings().notifications)
+  claudeAccounts = normalizeAccounts(readSettings().claudeAccounts, readSettings().activeClaudeAccount)
+  setActiveConfigDir(claudeAccounts.accounts.find((a) => a.id === claudeAccounts.activeId)?.configDir ?? null)
   store = new Store(join(dataDir, 'state.db'))
   qaMonitor = new QaMonitor(store, () => lang, (run) => send('qa:run', run))
   manager = new Manager(store, join(dataDir, 'worktrees'), join(dataDir, 'attachments'), join(dataDir, 'trash'), linear, t, () => maxRunning, {

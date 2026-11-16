@@ -6,6 +6,7 @@ import type { ConflictCheck, ConflictEdit, ConflictResolution, ResolvedFile } fr
 import { resolveInside } from './files'
 import { gitStatus } from './git'
 import { fetchRemotes, git } from './worktree'
+import { claudeEnv } from './claudeAccount'
 
 const exec = promisify(execFile)
 
@@ -159,6 +160,7 @@ async function askClaude(root: string, target: string, files: string[], abort: A
   const q = query({
     prompt: prompt(target, files),
     options: {
+      env: claudeEnv(),
       cwd: root,
       abortController: abort,
       model: 'sonnet',
