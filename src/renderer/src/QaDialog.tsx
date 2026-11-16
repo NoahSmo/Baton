@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { Feature, Project, QaRun } from '../../shared/types'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
+import { DialogClose } from './DialogClose'
 
 interface Props {
   project: Project
@@ -59,6 +60,7 @@ export function QaDialog({ project, features, runs, onClose, onSaved }: Props) {
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="dialog qa-dialog" onSubmit={submit}>
+        <DialogClose onClose={onClose} />
         <h2>{t.qa.title}</h2>
         <p className="hint">{t.qa.hint}</p>
 
@@ -106,7 +108,7 @@ export function QaDialog({ project, features, runs, onClose, onSaved }: Props) {
           ))}
         </div>
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
 
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>

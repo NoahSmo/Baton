@@ -5,6 +5,7 @@ import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
 import { cleanError } from './NewFeatureDialog'
 import { projectNames } from '../../shared/linear'
 import { issuesOfProjects } from './linearIssues'
+import { DialogClose } from './DialogClose'
 
 interface Props {
   feature: Feature
@@ -56,6 +57,7 @@ export function LinkIssueDialog({ feature, project, onClose, onLinked }: Props) 
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog">
+        <DialogClose onClose={onClose} />
         <h2>
           {t.linkIssue.title} <span className="dialog-context">{feature.title}</span>
         </h2>
@@ -89,7 +91,7 @@ export function LinkIssueDialog({ feature, project, onClose, onLinked }: Props) 
           )
         )}
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
 
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>

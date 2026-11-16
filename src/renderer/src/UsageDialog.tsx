@@ -3,6 +3,7 @@ import type { Feature, Project, TurnCost } from '../../shared/types'
 import { summarizeUsage, type CostRow } from '../../shared/usage'
 import { formatUsd } from '../../shared/format'
 import { useT } from './i18n'
+import { DialogClose } from './DialogClose'
 
 interface Props {
   projects: Project[]
@@ -31,6 +32,7 @@ export function UsageDialog({ projects, features, onClose }: Props) {
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog usage-dialog" role="dialog" aria-labelledby="usage-title">
+        <DialogClose onClose={onClose} />
         <div className="commit-head">
           <h2 id="usage-title">{t.usage.title}</h2>
           <span className="lang-switch" role="group" aria-label={t.usage.title}>

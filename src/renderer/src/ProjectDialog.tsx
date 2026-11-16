@@ -11,6 +11,7 @@ import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { ProjectAvatar } from './ProjectRail'
 import { Icon } from './ui/Icon'
+import { DialogClose } from './DialogClose'
 
 interface Props {
   /** Present when editing; absent when creating. */
@@ -140,6 +141,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
         onSubmit={submit}
         onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === 'Enter' && void submit()}
       >
+        <DialogClose onClose={onClose} />
         <h2>{project ? t.project.settingsTitle : t.project.newTitle}</h2>
 
         <div className="project-body">
@@ -258,7 +260,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
                 )}
               </div>
               {linearError ? (
-                <p className="form-error">{linearError}</p>
+                <p className="form-error" role="alert">{linearError}</p>
               ) : (
                 <>
                   {visible.total > 6 && (
@@ -302,7 +304,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
             </div>
           )}
 
-          {error && <p className="form-error">{error}</p>}
+          {error && <p className="form-error" role="alert">{error}</p>}
         </div>
 
         <div className="dialog-actions">

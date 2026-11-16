@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { LinearStatus } from '../../shared/types'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
+import { DialogClose } from './DialogClose'
 
 interface Props {
   status: LinearStatus
@@ -38,6 +39,7 @@ export function LinearDialog({ status, onChange, onClose }: Props) {
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="dialog" onSubmit={connect}>
+        <DialogClose onClose={onClose} />
         <h2>Linear</h2>
         {status.connected ? (
           <>
@@ -65,7 +67,7 @@ export function LinearDialog({ status, onChange, onClose }: Props) {
               placeholder="lin_api_…"
             />
             <p className="hint">{t.linear.keyHint}</p>
-            {error && <p className="form-error">{error}</p>}
+            {error && <p className="form-error" role="alert">{error}</p>}
             <div className="dialog-actions">
               <button type="button" onClick={onClose}>
                 {t.common.cancel}

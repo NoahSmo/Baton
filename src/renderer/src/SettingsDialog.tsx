@@ -7,6 +7,7 @@ import { useLang, useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { IS_MAC } from './platform'
 import { applyTheme, cachedTheme } from './theme'
+import { DialogClose } from './DialogClose'
 
 interface Props {
   version: string
@@ -157,6 +158,7 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog settings-dialog" role="dialog" aria-labelledby="settings-title">
+        <DialogClose onClose={onClose} />
         <h2 id="settings-title">{t.update.settings}</h2>
         <div className="settings-body">
           <section className="settings-section">
@@ -332,7 +334,7 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
                 </div>
               ))}
             </div>
-            {trashError && <p className="form-error">{trashError}</p>}
+            {trashError && <p className="form-error" role="alert">{trashError}</p>}
           </section>
         </div>
 
