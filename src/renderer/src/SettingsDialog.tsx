@@ -204,7 +204,6 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
         <h2 id="settings-title">{t.update.settings}</h2>
         <div className="settings-body">
           <section className="settings-section">
-            <h3 className="settings-title">{t.update.settings}</h3>
             <div className="settings-card">
               <div className="settings-row">
                 <span>{t.statusbar.language}</span>

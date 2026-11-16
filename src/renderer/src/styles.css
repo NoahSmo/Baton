@@ -1980,27 +1980,41 @@ input.mono {
   gap: var(--sp-2);
 }
 
-.settings-row.theme-editor {
+.dialog .settings-row.theme-editor {
   flex-direction: column;
   align-items: stretch;
+  justify-content: flex-start;
   gap: var(--sp-3);
+  padding: var(--sp-4);
 }
 
-.theme-field {
+.dialog .theme-field {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
   margin: 0;
   color: var(--muted);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
+  font-weight: 400;
+}
+
+.theme-field.theme-name span {
+  flex: none;
+  min-width: 48px;
 }
 
 .theme-field.theme-name input {
   flex: 1;
+  width: auto;
 }
 
 .theme-field.theme-dark {
   color: var(--text);
+  cursor: pointer;
+}
+
+.theme-field.theme-dark input {
+  width: auto;
 }
 
 .theme-field input[type='color'] {
@@ -2015,8 +2029,10 @@ input.mono {
 
 .theme-colors {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: var(--sp-2) var(--sp-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3) var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border);
 }
 
 .topbar-settings {
