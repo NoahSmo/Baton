@@ -23,6 +23,14 @@ function linearProjectsOf(r: Row): LinearProjectLink[] {
   }
 }
 
+function accountIdsOf(r: Row): string[] {
+  try {
+    return typeof r.account_ids === 'string' ? (JSON.parse(r.account_ids) as string[]) : []
+  } catch {
+    return []
+  }
+}
+
 function toProject(r: Row): Project {
   return {
     id: r.id as string,
@@ -35,6 +43,7 @@ function toProject(r: Row): Project {
     commands: r.commands ? (JSON.parse(r.commands as string) as LaunchCommand[]) : [],
     templates: r.templates ? (JSON.parse(r.templates as string) as PromptTemplate[]) : [],
     worktrees: r.worktrees !== 0,
+    accountIds: accountIdsOf(r),
     qa: r.qa ? (JSON.parse(r.qa as string) as QaConfig) : DEFAULT_QA
   }
 }
@@ -73,6 +82,7 @@ function toFeature(r: Row): Feature {
     permissionMode: r.permission_mode as Feature['permissionMode'],
     agentModel: AGENT_MODELS.includes(r.agent_model as AgentModel) ? (r.agent_model as AgentModel) : DEFAULT_AGENT_MODEL,
     agentEffort: AGENT_EFFORTS.includes(r.agent_effort as AgentEffort) ? (r.agent_effort as AgentEffort) : null,
+    accountId: (r.account_id as string | null) ?? null,
     sessionId: (r.session_id as string | null) ?? null,
     model: (r.model as string | null) ?? null,
     costUsd: r.cost_usd as number,
@@ -137,6 +147,7 @@ export class Store {
       );
     `)
     this.addColumns('features', [
+      'account_id TEXT',
       'linear_issue_id TEXT',
       'linear_identifier TEXT',
       'linear_url TEXT',
@@ -148,7 +159,7 @@ export class Store {
       'pr_url TEXT',
       'turn_base TEXT'
     ])
-    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'linear_labels TEXT', 'linear_projects TEXT', 'commands TEXT', 'templates TEXT', 'worktrees INTEGER', 'qa TEXT', 'image TEXT'])
+    this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'linear_labels TEXT', 'linear_projects TEXT', 'commands TEXT', 'templates TEXT', 'worktrees INTEGER', 'qa TEXT', 'image TEXT', 'account_ids TEXT'])
   }
 
   /** Columns added after the first release; databases created before them are upgraded in place. */
@@ -181,8 +192,8 @@ export class Store {
 
   updateProject(p: Project): void {
     this.db
-      .prepare('UPDATE projects SET name = ?, color = ?, image = ?, linear_labels = ?, linear_projects = ?, commands = ?, templates = ?, worktrees = ?, qa = ? WHERE id = ?')
-      .run(p.name, p.color, p.image ?? null, JSON.stringify(p.linearLabels), JSON.stringify(p.linearProjects), JSON.stringify(p.commands), JSON.stringify(p.templates), p.worktrees ? 1 : 0, JSON.stringify(p.qa), p.id)
+      .prepare('UPDATE projects SET name = ?, color = ?, image = ?, linear_labels = ?, linear_projects = ?, commands = ?, templates = ?, worktrees = ?, qa = ?, account_ids = ? WHERE id = ?')
+      .run(p.name, p.color, p.image ?? null, JSON.stringify(p.linearLabels), JSON.stringify(p.linearProjects), JSON.stringify(p.commands), JSON.stringify(p.templates), p.worktrees ? 1 : 0, JSON.stringify(p.qa), JSON.stringify(p.accountIds), p.id)
   }
 
   deleteProject(id: string): void {
@@ -235,7 +246,7 @@ export class Store {
       .prepare(
         `UPDATE features SET title = ?, branch = ?, status = ?, permission_mode = ?, session_id = ?, model = ?, cost_usd = ?,
            limit_resets_at = ?, updated_at = ?, linear_issue_id = ?, linear_identifier = ?, linear_url = ?,
-           agent_model = ?, context_tokens = ?, pinned = ?, archived = ?, pr_url = ?, turn_base = ?, agent_effort = ?
+           agent_model = ?, context_tokens = ?, pinned = ?, archived = ?, pr_url = ?, turn_base = ?, agent_effort = ?, account_id = ?
          WHERE id = ?`
       )
       .run(
@@ -258,6 +269,7 @@ export class Store {
         f.prUrl,
         f.turnBase,
         f.agentEffort,
+        f.accountId,
         f.id
       )
   }

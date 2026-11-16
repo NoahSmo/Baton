@@ -34,6 +34,8 @@ export interface AgentOptions {
   effort: AgentEffort | null
   /** Session to resume; the conversation survives app restarts through it. */
   sessionId: string | null
+  /** Account whose login the agent runs under. */
+  account: string | null
   emit(out: AgentOutput): void
 }
 
@@ -226,7 +228,7 @@ export class AgentSession {
     this.q = query({
       prompt: this.input,
       options: {
-        env: claudeEnv(),
+        env: claudeEnv(this.opts.account),
         cwd: this.opts.cwd,
         model: this.model,
         ...(this.effort ? { effort: this.effort } : {}),

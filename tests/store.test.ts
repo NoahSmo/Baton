@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { Store } from '../src/main/store'
 
-const project = { id: 'p', name: 'P', path: '/p', color: '#fff', linearProjects: [], linearLabels: [], commands: [], templates: [], worktrees: true, qa: { enabled: false, command: '' } }
+const project = { id: 'p', name: 'P', path: '/p', color: '#fff', linearProjects: [], linearLabels: [], commands: [], templates: [], worktrees: true, accountIds: [], qa: { enabled: false, command: '' } }
 
 describe('project Linear links', () => {
   it('keeps the Linear projects a repository serves, and which one is the main repository', () => {
@@ -15,6 +15,16 @@ describe('project Linear links', () => {
     expect(store.getProject('p')?.linearProjects).toEqual(links)
     store.updateProject({ ...project, linearProjects: [] })
     expect(store.getProject('p')?.linearProjects).toEqual([])
+  })
+})
+
+describe('project accounts', () => {
+  it('keeps the accounts a project is pinned to', () => {
+    const store = new Store(':memory:')
+    store.insertProject(project)
+    expect(store.getProject('p')?.accountIds).toEqual([])
+    store.updateProject({ ...project, accountIds: ['default', 'work'] })
+    expect(store.getProject('p')?.accountIds).toEqual(['default', 'work'])
   })
 })
 

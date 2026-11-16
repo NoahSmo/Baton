@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import {
   PROJECT_COLORS,
+  type ClaudeAccount,
   type LinearProject,
   type LinearProjectLink,
   type LinearStatus,
   type Project,
   type RepoInfo
 } from '../../shared/types'
+import { DEFAULT_ACCOUNT } from '../../shared/accounts'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { ProjectAvatar } from './ProjectRail'
@@ -51,10 +53,16 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
   const [labelFilter, setLabelFilter] = useState('')
   const [linearError, setLinearError] = useState('')
   const [worktrees, setWorktrees] = useState(project?.worktrees ?? true)
+  const [accountIds, setAccountIds] = useState<string[]>(project?.accountIds ?? [])
+  const [accounts, setAccounts] = useState<ClaudeAccount[]>([])
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    void window.api.getClaudeAccounts().then((a) => setAccounts(a.accounts))
+  }, [])
 
   useEffect(() => {
     if (!linear.connected) return
@@ -108,7 +116,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
     setBusy(true)
     setError('')
     try {
-      const patch = { name, color, image, linearProjects: chosen, worktrees }
+      const patch = { name, color, image, linearProjects: chosen, worktrees, accountIds }
       onSaved(
         project
           ? await window.api.updateProject(project.id, patch)
@@ -231,6 +239,22 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
               ))}
             </div>
           </div>
+
+          {/* Pinning only means something once there is more than one login to choose from. */}
+          {accounts.length > 0 && (
+            <div>
+              <div className="dialog-section-head">
+                <label>{t.accounts.projectTitle}</label>
+              </div>
+              <p className="hint">{t.accounts.projectHint}</p>
+              {[{ id: DEFAULT_ACCOUNT, name: t.accounts.unnamedDefault }, ...accounts].map((a) => (
+                <label key={a.id} className="toggle-row">
+                  <span>{a.name}</span>
+                  <input type="checkbox" checked={accountIds.includes(a.id)} onChange={() => setAccountIds((ids) => (ids.includes(a.id) ? ids.filter((i) => i !== a.id) : [...ids, a.id]))} />
+                </label>
+              ))}
+            </div>
+          )}
 
           {/* Only a git repository can host worktrees; the main process refuses them for any other folder. */}
           {(project || repo?.isGit) && (
