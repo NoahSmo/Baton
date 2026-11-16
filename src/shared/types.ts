@@ -102,6 +102,19 @@ export interface UsageWarning {
 }
 
 /** How much of a usage window is spent, as last reported by an agent. */
+/** A Claude login kept in its own config folder (CLAUDE_CONFIG_DIR). */
+export interface ClaudeAccount {
+  id: string
+  name: string
+  configDir: string
+}
+
+export interface ClaudeAccounts {
+  accounts: ClaudeAccount[]
+  /** Account agents run under; null is the default login of Claude Code. */
+  activeId: string | null
+}
+
 export interface UsageWindow {
   limitType?: string
   /** Share of the window used, from 0 to 1. */
@@ -720,6 +733,11 @@ export interface Api {
   setAutoRemoveMerged(enabled: boolean): Promise<void>
   getRemoveWorktreeOnArchive(): Promise<boolean>
   setRemoveWorktreeOnArchive(enabled: boolean): Promise<void>
+  getClaudeAccounts(): Promise<ClaudeAccounts>
+  addClaudeAccount(name: string, configDir: string): Promise<ClaudeAccounts>
+  removeClaudeAccount(id: string): Promise<ClaudeAccounts>
+  /** Applies to agents started from now on; running ones keep their login. */
+  setActiveClaudeAccount(id: string | null): Promise<ClaudeAccounts>
   getAutoContinue(): Promise<boolean>
   setAutoContinue(enabled: boolean): Promise<void>
   getMaxRunning(): Promise<number>

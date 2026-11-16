@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import type { Lang } from '../shared/i18n'
+import { claudeEnv } from './claudeAccount'
 
 /** Output past this is cut from its start: a failure is reported last. */
 const MAX_OUTPUT_CHARS = 20_000
@@ -95,6 +96,7 @@ export async function recapRun(cwd: string, lang: Lang, feature: string, command
   const q = query({
     prompt: prompt(lang, feature, command, result),
     options: {
+      env: claudeEnv(),
       cwd,
       abortController: abort,
       // Reading a log needs no large model.
