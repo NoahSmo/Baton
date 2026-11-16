@@ -1605,6 +1605,8 @@ button.attach:hover:not(:disabled) {
 .dialog {
   width: 520px;
   max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
