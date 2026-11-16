@@ -1927,6 +1927,50 @@ input.mono {
   width: auto;
 }
 
+.theme-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.settings-row.theme-editor {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sp-3);
+}
+
+.theme-field {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.theme-field.theme-name input {
+  flex: 1;
+}
+
+.theme-field.theme-dark {
+  color: var(--text);
+}
+
+.theme-field input[type='color'] {
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm, 4px);
+  background: none;
+  cursor: pointer;
+}
+
+.theme-colors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--sp-2) var(--sp-4);
+}
+
 .topbar-settings {
   -webkit-app-region: no-drag;
   align-self: center;

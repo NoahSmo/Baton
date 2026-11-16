@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LANGS, type Lang } from '../../shared/i18n'
 import { SHORTCUT_LIST, shortcutLabel } from '../../shared/shortcuts'
-import { THEMES, themeById } from '../../shared/themes'
+import { newCustomTheme, THEMES, themeById, TRANSLUCENT_KEYS, type Palette, type Theme } from '../../shared/themes'
 import { DEFAULT_ACCOUNT } from '../../shared/accounts'
 import type { ClaudeAccounts, ClaudeAccountStatus, Feature, NotificationPrefs, TrashEntry } from '../../shared/types'
 import { useLang, useT } from './i18n'
@@ -39,6 +39,7 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
   const [removeOnArchive, setRemoveOnArchive] = useState<boolean | null>(null)
   const [autoRemoveMerged, setAutoRemoveMerged] = useState<boolean | null>(null)
   const [themeId, setThemeId] = useState(() => cachedTheme().id)
+  const [customs, setCustoms] = useState<Theme[]>([])
   const [checking, setChecking] = useState(false)
   const [result, setResult] = useState<'upToDate' | null>(null)
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null)
@@ -62,6 +63,7 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
     void window.api.getAutoRemoveMerged().then(setAutoRemoveMerged)
     // The stored choice wins over the cached one, which may come from another data folder.
     void window.api.getTheme().then(setThemeId)
+    void window.api.getCustomThemes().then(setCustoms)
   }, [])
 
   function changeAutoContinue(enabled: boolean) {
@@ -84,10 +86,39 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
     void window.api.setMaxRunning(max)
   }
 
-  function changeTheme(id: string) {
+  function changeTheme(id: string, list = customs) {
     setThemeId(id)
-    applyTheme(themeById(id))
+    applyTheme(themeById(id, list))
     void window.api.setTheme(id)
+  }
+
+  /** Saves the list; the chosen theme is repainted in case it is the one that changed. */
+  function saveCustoms(list: Theme[], chosen = themeId) {
+    setCustoms(list)
+    void window.api.setCustomThemes(list).then(() => changeTheme(chosen, list))
+  }
+
+  function addCustom(base: Theme) {
+    const made = newCustomTheme(base, `${base.name} ${t.statusbar.customThemes.toLowerCase()}`)
+    saveCustoms([...customs, made], made.id)
+  }
+
+  function editCustom(patch: Partial<Omit<Theme, 'colors'>> & { colors?: Partial<Palette> }) {
+    const current = customs.find((c) => c.id === themeId)
+    if (!current) return
+    const next = { ...current, ...patch, colors: { ...current.colors, ...patch.colors } }
+    const list = customs.map((c) => (c.id === current.id ? next : c))
+    // Painted at once; saved without the round trip the select needs.
+    setCustoms(list)
+    applyTheme(next)
+    void window.api.setCustomThemes(list)
+  }
+
+  function deleteCustom() {
+    saveCustoms(
+      customs.filter((c) => c.id !== themeId),
+      themeById(themeId).id
+    )
   }
 
   function changePrefs(patch: Partial<NotificationPrefs>) {
@@ -191,8 +222,55 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
                       {theme.name}
                     </option>
                   ))}
+                  {customs.length > 0 && (
+                    <optgroup label={t.statusbar.customThemes}>
+                      {customs.map((theme) => (
+                        <option key={theme.id} value={theme.id}>
+                          {theme.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
+              <div className="settings-row">
+                <span>{t.statusbar.customThemes}</span>
+                <span className="theme-actions">
+                  <button onClick={() => addCustom(themeById(themeId, customs))}>
+                    {customs.some((c) => c.id === themeId) ? t.statusbar.duplicateTheme : t.statusbar.newTheme}
+                  </button>
+                  {customs.some((c) => c.id === themeId) && (
+                    <button className="danger" onClick={deleteCustom}>
+                      {t.statusbar.deleteTheme}
+                    </button>
+                  )}
+                </span>
+              </div>
+              {customs.map(
+                (custom) =>
+                  custom.id === themeId && (
+                    <div className="settings-row theme-editor" key={custom.id}>
+                      <label className="theme-field theme-name">
+                        <span>{t.statusbar.themeName}</span>
+                        <input value={custom.name} maxLength={40} onChange={(e) => editCustom({ name: e.target.value })} />
+                      </label>
+                      <label className="theme-field theme-dark">
+                        <input type="checkbox" checked={custom.dark} onChange={(e) => editCustom({ dark: e.target.checked })} />
+                        <span>{t.statusbar.themeDark}</span>
+                      </label>
+                      <div className="theme-colors">
+                        {(Object.keys(custom.colors) as (keyof Palette)[])
+                          .filter((key) => !TRANSLUCENT_KEYS.includes(key))
+                          .map((key) => (
+                            <label className="theme-field" key={key}>
+                              <input type="color" value={custom.colors[key]} onChange={(e) => editCustom({ colors: { [key]: e.target.value } as Partial<Palette> })} />
+                              <span>{t.statusbar.themeColors[key] ?? key}</span>
+                            </label>
+                          ))}
+                      </div>
+                    </div>
+                  )
+              )}
             </div>
           </section>
 

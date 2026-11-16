@@ -1,4 +1,5 @@
 import type { Lang } from './i18n'
+import type { Theme } from './themes'
 
 // Single place to rename the app.
 export const APP_NAME = 'Baton'
@@ -793,6 +794,9 @@ export interface Api {
   /** Id of the chosen theme, from shared/themes. */
   getTheme(): Promise<string>
   setTheme(id: string): Promise<void>
+  /** Themes the user made, saved as a whole. */
+  getCustomThemes(): Promise<Theme[]>
+  setCustomThemes(themes: Theme[]): Promise<void>
   linearStatus(): Promise<LinearStatus>
   /** Validates the API key against Linear before storing it. */
   linearConnect(apiKey: string): Promise<LinearStatus>
