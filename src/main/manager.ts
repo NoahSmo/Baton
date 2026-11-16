@@ -45,9 +45,12 @@ import {
   type BackgroundTask,
   worksInPlace
 } from '../shared/types'
+import { DEFAULT_ACCOUNT, projectAccountKeys } from '../shared/accounts'
 import { AgentSession, type AgentOutput } from './agent'
 import { removeAttachments, saveFiles, saveImages, withFiles } from './attachments'
 import { sessionEvents } from './cliImport'
+import { accountKeys, accountName, configDirOf, copySession, getActiveKey } from './claudeAccount'
+import { conversationText } from './handoff'
 import { abortMerge, checkConflicts, finishMerge, mergeUpstream, resolveConflicts } from './conflicts'
 import { changesSince, commitChanges, commitOp, gitStatus, hasLanded, lastGitActivity, listBranches, pull, push, snapshotTree, strayWorktrees, switchBranch } from './git'
 import type { LinearClient } from './linear'
@@ -106,11 +109,16 @@ export class Manager {
   private queue = new Map<string, PendingMessage[]>()
   private warnedWindows = new Set<string>()
   private windows = new Map<string, UsageWindow>()
-  /** Epoch milliseconds until which the usage limit refuses requests: queued agents wait it out. */
-  private limitedUntil = 0
-  private limitTimer: ReturnType<typeof setTimeout> | null = null
-  /** Which usage window refused the last request, so an unrelated one allowing requests does not lift it. */
-  private limitedType: string | undefined
+  /**
+   * Accounts whose usage limit refuses requests, with the epoch milliseconds it lasts until: agents
+   * move to another account, or queue behind it when none is left. `type` is the usage window that
+   * refused the last request, so an unrelated one allowing requests does not lift it.
+   */
+  private limits = new Map<string, { until: number; type: string | undefined; timer: ReturnType<typeof setTimeout> }>()
+  /** What the running turn of each agent was sent, to send again under another account if its own runs out. */
+  private inflight = new Map<string, PendingMessage[]>()
+  /** Sessions replaced by one under another account: whatever they still say is stale. */
+  private retired = new WeakSet<AgentSession>()
 
   constructor(
     private readonly store: Store,
@@ -137,7 +145,7 @@ export class Manager {
         this.patch(f.id, { status: 'idle' })
       } else if (f.status === 'limited') {
         // The limit may have lifted while the app was closed; if not, keep waiting it out.
-        if (f.limitResetsAt && f.limitResetsAt * 1000 > Date.now()) this.holdQueueUntil(f.limitResetsAt * 1000)
+        if (f.limitResetsAt && f.limitResetsAt * 1000 > Date.now()) this.limitAccount(f.accountId ?? DEFAULT_ACCOUNT, f.limitResetsAt * 1000)
         else this.patch(f.id, { status: 'idle', limitResetsAt: null })
       }
     }
@@ -256,6 +264,7 @@ export class Manager {
       commands: [],
       templates: [],
       worktrees: isGit && input.worktrees,
+      accountIds: input.accountIds ?? [],
       qa: DEFAULT_QA
     }
     this.store.insertProject(project)
@@ -272,7 +281,8 @@ export class Manager {
       image: sanitizeImage(patch.image),
       linearProjects: patch.linearProjects,
       linearLabels: [],
-      worktrees: patch.worktrees && (await repoState(project.path)).isGit
+      worktrees: patch.worktrees && (await repoState(project.path)).isGit,
+      accountIds: patch.accountIds ?? []
     }
     this.store.updateProject(updated)
     // A Linear project has one main repository: the others lose the flag.
@@ -503,6 +513,7 @@ export class Manager {
       permissionMode: input.permissionMode,
       agentModel: input.agentModel ?? DEFAULT_AGENT_MODEL,
       agentEffort: input.agentEffort ?? null,
+      accountId: null,
       sessionId: null,
       model: null,
       costUsd: 0,
@@ -586,7 +597,7 @@ export class Manager {
     // Read before this message joins the journal.
     const idleSince = this.store.lastEventAt(featureId)
     // An agent already in a turn takes the message along; another one needs a free slot.
-    const runNow = isActive(feature) || (feature.status !== 'queued' && this.hasFreeSlot() && !this.isLimited())
+    const runNow = isActive(feature) || (feature.status !== 'queued' && this.hasFreeSlot() && !this.isLimited(feature))
     // A turn begins: remember the worktree as it is, to show later what the turn changed.
     if (!isActive(feature) && feature.status !== 'queued') void this.snapshotTurn(featureId)
     // The first message is when work on the issue actually begins.
@@ -630,11 +641,12 @@ export class Manager {
 
   /** Starts queued agents while slots are free; called whenever one may have freed up. */
   startQueued(): void {
-    if (this.isLimited()) return
     for (const [featureId, messages] of this.queue) {
       if (!this.hasFreeSlot()) return
-      this.queue.delete(featureId)
       const feature = this.store.getFeature(featureId)
+      // Behind a limit that holds every account its project may use: the next ones may be luckier.
+      if (feature && this.isLimited(feature)) continue
+      this.queue.delete(featureId)
       if (!feature) continue
       this.patch(featureId, { status: 'working' })
       this.dispatch(feature, messages)
@@ -649,7 +661,16 @@ export class Manager {
   }
 
   private dispatch(feature: Feature, messages: PendingMessage[]): void {
-    const session = this.sessionFor(feature)
+    let current = feature
+    let resumed = true
+    // A turn in progress stays on its account; a new one takes the best account that is free.
+    if (!isActive(feature)) {
+      const account = this.pickAccount(feature) ?? feature.accountId ?? accountKeys()[0]
+      if (account !== feature.accountId) ({ feature: current, resumed } = this.moveToAccount(feature, account))
+    }
+    this.inflight.set(feature.id, [...(this.inflight.get(feature.id) ?? []), ...messages])
+    if (!resumed) messages = this.withContext(current, messages)
+    const session = this.sessionFor(current)
     messages.forEach((m, i) => session.send(m.text, m.images, i === 0 && this.isCold(feature, m.idleSince)))
   }
 
@@ -822,7 +843,7 @@ export class Manager {
   }
 
   shutdown(): void {
-    if (this.limitTimer) clearTimeout(this.limitTimer)
+    for (const { timer } of this.limits.values()) clearTimeout(timer)
     for (const session of this.sessions.values()) session.close()
     this.sessions.clear()
   }
@@ -852,7 +873,8 @@ export class Manager {
         model: feature.agentModel,
         effort: feature.agentEffort,
         sessionId: feature.sessionId,
-        emit: (out) => this.onAgentOutput(feature.id, out)
+        account: feature.accountId,
+        emit: (out) => !this.retired.has(session!) && this.onAgentOutput(feature.id, out)
       })
       this.sessions.set(feature.id, session)
     }
@@ -896,6 +918,7 @@ export class Manager {
       }
       case 'closed':
         // A process that dies mid-turn leaves no result event behind.
+        this.inflight.delete(featureId)
         if (feature.status === 'working' || feature.status === 'waiting') this.patch(featureId, { status: 'idle' })
         return
     }
@@ -912,51 +935,124 @@ export class Manager {
     if (event.kind === 'permission_resolved' && this.sessions.get(featureId)?.hasPendingRequests) {
       patch.status = 'waiting'
     }
-    if (event.kind === 'result') patch.costUsd = feature.costUsd + event.turnCostUsd
-    if (event.kind === 'rate_limit' && event.status === 'rejected') {
-      patch.limitResetsAt = event.resetsAt ?? null
-      this.limitedType = event.limitType
-      // Without a reset time, retry later rather than stay refused for good.
-      this.holdQueueUntil(event.resetsAt ? event.resetsAt * 1000 : Date.now() + UNKNOWN_RESET_MS)
+    if (event.kind === 'result') {
+      patch.costUsd = feature.costUsd + event.turnCostUsd
+      this.inflight.delete(featureId)
     }
-    if (event.kind === 'rate_limit') this.trackWindow(event)
+    const account = feature.accountId ?? DEFAULT_ACCOUNT
+    let failoverTo: string | undefined
+    if (event.kind === 'rate_limit' && event.status === 'rejected') {
+      // Without a reset time, retry later rather than stay refused for good.
+      this.limitAccount(account, event.resetsAt ? event.resetsAt * 1000 : Date.now() + UNKNOWN_RESET_MS, event.limitType)
+      failoverTo = this.pickAccount(feature)
+      if (failoverTo) {
+        // Another account takes the turn over: the agent is not stopped.
+        patch.status = 'working'
+      } else {
+        patch.limitResetsAt = event.resetsAt ?? null
+        this.inflight.delete(featureId)
+      }
+    }
+    // Only the preferred account's usage is shown.
+    if (event.kind === 'rate_limit' && account === getActiveKey()) this.trackWindow(event)
     if (event.kind === 'rate_limit' && event.status === 'allowed_warning') this.warnUsage(event)
     if (event.kind === 'user') patch.limitResetsAt = null
     this.patch(featureId, patch)
+    if (failoverTo) this.failover(featureId, failoverTo)
     // Claude says the window we were refused on takes requests again, whatever the clock said.
-    if (event.kind === 'rate_limit' && event.status === 'allowed' && this.isLimited()) {
-      if (!this.limitedType || !event.limitType || this.limitedType === event.limitType) this.liftLimit()
+    const limit = this.limits.get(account)
+    if (event.kind === 'rate_limit' && event.status === 'allowed' && limit && Date.now() < limit.until) {
+      if (!limit.type || !event.limitType || limit.type === event.limitType) this.liftLimit(account)
     }
   }
 
-  private isLimited(): boolean {
-    return Date.now() < this.limitedUntil
+  private isAccountLimited(account: string): boolean {
+    const limit = this.limits.get(account)
+    return Boolean(limit && Date.now() < limit.until)
   }
 
-  /** Queued agents would only be refused until the limit resets. */
-  private holdQueueUntil(at: number): void {
-    if (at <= this.limitedUntil) return
-    this.limitedUntil = at
-    if (this.limitTimer) clearTimeout(this.limitTimer)
-    this.limitTimer = setTimeout(() => this.liftLimit(), at - Date.now() + 5000)
+  /** Accounts the project's agents may run under, the preferred one first. */
+  private accountsFor(projectId: string): string[] {
+    return projectAccountKeys(this.store.getProject(projectId)?.accountIds ?? [], accountKeys())
   }
 
-  /** The limit is over: agents it stopped may run again. */
-  private liftLimit(): void {
-    this.limitedUntil = 0
-    this.limitedType = undefined
-    if (this.limitTimer) clearTimeout(this.limitTimer)
-    this.limitTimer = null
+  /** The account an agent should run under: its own while it is free, else the first free one of its project. */
+  private pickAccount(feature: Feature): string | undefined {
+    const allowed = this.accountsFor(feature.projectId)
+    if (feature.accountId && allowed.includes(feature.accountId) && !this.isAccountLimited(feature.accountId)) return feature.accountId
+    return allowed.find((a) => !this.isAccountLimited(a))
+  }
+
+  /** Every account the agent may use is out of usage. */
+  private isLimited(feature: Feature): boolean {
+    return this.pickAccount(feature) === undefined
+  }
+
+  /** The account is refused until `at`: its agents move elsewhere or wait it out. */
+  private limitAccount(account: string, at: number, type?: string): void {
+    const current = this.limits.get(account)
+    if (current && at <= current.until) {
+      if (type) current.type = type
+      return
+    }
+    if (current) clearTimeout(current.timer)
+    const timer = setTimeout(() => this.liftLimit(account), at - Date.now() + 5000)
+    this.limits.set(account, { until: at, type, timer })
+  }
+
+  /** Puts an agent on another account: its conversation is copied over so the new login can resume it. */
+  private moveToAccount(feature: Feature, to: string): { feature: Feature; resumed: boolean } {
+    const old = this.sessions.get(feature.id)
+    if (old) {
+      this.retired.add(old)
+      old.close()
+      this.sessions.delete(feature.id)
+    }
+    let sessionId = feature.sessionId
+    if (sessionId && !copySession(sessionId, feature.worktreePath, configDirOf(feature.accountId), configDirOf(to))) sessionId = null
+    const resumed = sessionId === feature.sessionId
+    if (feature.accountId) {
+      const name = (key: string) => accountName(key) ?? this.t().accounts.unnamedDefault
+      this.record(feature.id, { kind: 'notice', notice: { code: 'account_switched', from: name(feature.accountId), to: name(to), resumed } })
+    }
+    this.patch(feature.id, { accountId: to, sessionId })
+    return { feature: this.store.getFeature(feature.id)!, resumed }
+  }
+
+  /** A session that could not be copied starts blank: the conversation goes along as text instead. */
+  private withContext(feature: Feature, messages: PendingMessage[]): PendingMessage[] {
+    const history = conversationText(this.store.listEvents(feature.id))
+    const [first, ...rest] = messages
+    return [{ ...first, text: `${this.t().handoff.prompt(feature.title, history)}\n\n${first.text}` }, ...rest]
+  }
+
+  /** The agent's account ran out mid-turn: the same turn goes again under the next one. */
+  private failover(featureId: string, to: string): void {
+    const feature = this.store.getFeature(featureId)
+    const messages = this.inflight.get(featureId)
+    this.inflight.delete(featureId)
+    if (!feature || !messages?.length) return
+    const { feature: moved, resumed } = this.moveToAccount(feature, to)
+    this.dispatch(moved, resumed ? messages : this.withContext(moved, messages))
+  }
+
+  /** The account's limit is over: agents it stopped may run again. */
+  private liftLimit(account: string): void {
+    const limit = this.limits.get(account)
+    if (limit) clearTimeout(limit.timer)
+    this.limits.delete(account)
     const stopped: Feature[] = []
     for (const f of this.store.listFeatures()) {
-      if (f.status !== 'limited') continue
+      if (f.status !== 'limited' || this.isLimited(f)) continue
       stopped.push(f)
       this.patch(f.id, { status: 'idle', limitResetsAt: null })
     }
-    this.warnedWindows.clear()
-    this.windows.clear()
-    this.sink.usageWindows([])
-    this.sink.usageWarning(null)
+    if (account === getActiveKey()) {
+      this.warnedWindows.clear()
+      this.windows.clear()
+      this.sink.usageWindows([])
+      this.sink.usageWarning(null)
+    }
     this.startQueued()
     if (stopped.length) this.sink.limitLifted(stopped)
   }

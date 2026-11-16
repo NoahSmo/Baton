@@ -4,7 +4,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { randomUUID } from 'node:crypto'
 import { basename, dirname, join, resolve } from 'node:path'
-import { setActiveConfigDir } from './claudeAccount'
+import { claudeEnv, configDirOf, setAccounts } from './claudeAccount'
 import { fetchClaudeUsage } from './claudeUsage'
 import { expandHome, normalizeAccounts } from '../shared/accounts'
 import { DICTS, LANGS, langFromLocale, type Lang } from '../shared/i18n'
@@ -137,7 +137,7 @@ function writeSettings(patch: Record<string, unknown>): void {
 
 function applyClaudeAccounts(next: ClaudeAccounts): ClaudeAccounts {
   claudeAccounts = next
-  setActiveConfigDir(next.accounts.find((a) => a.id === next.activeId)?.configDir ?? null)
+  setAccounts(next.accounts, next.activeId)
   writeSettings({ claudeAccounts: next.accounts, activeClaudeAccount: next.activeId })
   // The usage shown is the active account's.
   polledWindows = []
@@ -892,7 +892,9 @@ function registerIpc(): void {
       if (!feature?.sessionId) throw new Error(t().errors.noConversation)
       await manager.beginCli(feature.id)
       // The session id comes from the Claude SDK, never from the user: still quoted, as it lands in a shell.
-      const command = `claude --resume '${feature.sessionId}' --model ${feature.agentModel} --permission-mode ${feature.permissionMode}`
+      const dir = configDirOf(feature.accountId)
+      const login = dir ? `CLAUDE_CONFIG_DIR='${dir.replace(/'/g, `'\\''`)}' ` : ''
+      const command = `${login}claude --resume '${feature.sessionId}' --model ${feature.agentModel} --permission-mode ${feature.permissionMode}`
       return terminals.open({ projectId: project.id, featureId: feature.id, cwd: feature.worktreePath }, { id: 'resume', name: 'claude', command })
     }
     return terminals.open(
@@ -923,7 +925,7 @@ void app.whenReady().then(() => {
   autoRemoveMerged = readSettings().autoRemoveMerged === true
   notificationPrefs = normalizePrefs(readSettings().notifications)
   claudeAccounts = normalizeAccounts(readSettings().claudeAccounts, readSettings().activeClaudeAccount)
-  setActiveConfigDir(claudeAccounts.accounts.find((a) => a.id === claudeAccounts.activeId)?.configDir ?? null)
+  setAccounts(claudeAccounts.accounts, claudeAccounts.activeId)
   store = new Store(join(dataDir, 'state.db'))
   qaMonitor = new QaMonitor(store, () => lang, (run) => send('qa:run', run))
   manager = new Manager(store, join(dataDir, 'worktrees'), join(dataDir, 'attachments'), join(dataDir, 'trash'), linear, t, () => maxRunning, {

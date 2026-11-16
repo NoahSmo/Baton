@@ -51,6 +51,8 @@ function noticeText(notice: Notice, t: Dict): string {
       return t.notice.contextCompacted(notice.preTokens, notice.postTokens)
     case 'queued':
       return t.notice.queued(notice.maxRunning)
+    case 'account_switched':
+      return t.notice.accountSwitched(notice.from, notice.to, notice.resumed)
   }
 }
 

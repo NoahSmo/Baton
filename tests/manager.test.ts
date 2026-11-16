@@ -17,12 +17,14 @@ vi.mock('../src/main/agent', () => ({
       sent.push({ featureId: this.opts.cwd, text, compactFirst })
     }
     setModel = vi.fn()
+    close = vi.fn()
     get hasPendingRequests() {
       return false
     }
   }
 }))
 
+import { setAccounts } from '../src/main/claudeAccount'
 import { Manager, type ManagerSink } from '../src/main/manager'
 import { Store } from '../src/main/store'
 import { DICTS } from '../src/shared/i18n'
@@ -33,7 +35,7 @@ const HOUR = 60 * 60 * 1000
 function setup(maxRunning = 1) {
   const dir = mkdtempSync(join(tmpdir(), 'baton-manager-'))
   const store = new Store(':memory:')
-  store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearProjects: [], linearLabels: [], commands: [], templates: [], worktrees: true, qa: { enabled: false, command: '' } })
+  store.insertProject({ id: 'p', name: 'P', path: dir, color: '#fff', linearProjects: [], linearLabels: [], commands: [], templates: [], worktrees: true, accountIds: [], qa: { enabled: false, command: '' } })
   const warnings: (UsageWarning | null)[] = []
   const lifted: string[][] = []
   const sink: ManagerSink = {
@@ -63,6 +65,7 @@ function setup(maxRunning = 1) {
       permissionMode: 'default',
       agentModel: 'sonnet',
       agentEffort: null,
+      accountId: null,
       sessionId: null,
       model: null,
       costUsd: 0,
@@ -322,6 +325,39 @@ describe('the queue', () => {
     const { manager, add } = setup(1)
     add('a')
     expect(() => manager.promoteQueued('a')).not.toThrow()
+  })
+})
+
+describe('several accounts', () => {
+  const reject = (id: string) =>
+    agents.get(id)!.emit({ type: 'event', event: { kind: 'rate_limit', status: 'rejected', resetsAt: Math.floor(Date.now() / 1000) + 3600 } })
+
+  it('carries a turn over to the next account when one runs out, and stops when all have', () => {
+    setAccounts([{ id: 'w', name: 'Work', configDir: '/nowhere' }], null)
+    const { store, manager, add } = setup(0)
+    add('a')
+    manager.send('a', 'go')
+    expect(store.getFeature('a')?.accountId).toBe('default')
+
+    reject('a')
+    expect(store.getFeature('a')).toMatchObject({ accountId: 'w', status: 'working' })
+    expect(agents.get('a')!.account).toBe('w')
+    expect(sent.map((s) => s.text)).toEqual(['go', 'go'])
+
+    reject('a')
+    expect(store.getFeature('a')?.status).toBe('limited')
+    setAccounts([], null)
+  })
+
+  it('keeps a pinned project on its own accounts', () => {
+    setAccounts([{ id: 'w', name: 'Work', configDir: '/nowhere' }], null)
+    const { store, manager, add } = setup(0)
+    store.updateProject({ ...store.getProject('p')!, accountIds: ['default'] })
+    add('a')
+    manager.send('a', 'go')
+    reject('a')
+    expect(store.getFeature('a')).toMatchObject({ accountId: 'default', status: 'limited' })
+    setAccounts([], null)
   })
 })
 

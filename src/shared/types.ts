@@ -243,6 +243,8 @@ export interface Project {
   templates: PromptTemplate[]
   /** Each agent works in a worktree of its own. Off, they all work in the project folder itself. */
   worktrees: boolean
+  /** Accounts its agents may run under (DEFAULT_ACCOUNT for the default login); empty for any. */
+  accountIds: string[]
   qa: QaConfig
 }
 
@@ -269,6 +271,7 @@ export interface ProjectInput {
   linearProjects: LinearProjectLink[]
   /** Ignored for a folder that is not a git repository: agents can only work in place there. */
   worktrees: boolean
+  accountIds: string[]
 }
 
 export type ProjectPatch = Omit<ProjectInput, 'path'>
@@ -384,6 +387,8 @@ export interface Feature {
   permissionMode: PermissionMode
   agentModel: AgentModel
   agentEffort: AgentEffort | null
+  /** Account the agent runs under (DEFAULT_ACCOUNT for the default login); null until its first turn. */
+  accountId: string | null
   sessionId: string | null
   /** Model the session actually reported, e.g. "claude-sonnet-5". */
   model: string | null
@@ -486,6 +491,7 @@ export type Notice =
   | { code: 'linear_failed'; identifier: string; reason: string }
   | { code: 'context_compacted'; preTokens: number; postTokens?: number }
   | { code: 'queued'; maxRunning: number }
+  | { code: 'account_switched'; from: string; to: string; resumed: boolean }
 
 export interface StoredEvent {
   seq: number

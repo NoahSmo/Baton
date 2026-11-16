@@ -134,12 +134,15 @@ const en = {
 
   accounts: {
     title: 'Claude accounts',
-    hint: 'Each account keeps its login in its own config folder. Agents started after a switch use the active one; running agents keep theirs. Log in once with: CLAUDE_CONFIG_DIR=<folder> claude, then /login.',
+    hint: 'Each account keeps its login in its own config folder. The active account is tried first; when it hits its usage limit, agents move on to the next one that is free. Log in once with: CLAUDE_CONFIG_DIR=<folder> claude, then /login.',
     default: 'Default login (~/.claude)',
     name: 'Name',
     dir: 'Config folder, e.g. ~/.claude-work',
     add: 'Add account',
-    remove: 'Remove'
+    remove: 'Remove',
+    projectTitle: 'Claude accounts',
+    projectHint: 'Agents of this project only run under the ticked accounts, so the others keep their tokens. None ticked: any account.',
+    unnamedDefault: 'Default login'
   },
   statusbar: {
     agents: (n: number) => `${n} ${n === 1 ? 'agent' : 'agents'}`,
@@ -361,6 +364,8 @@ const en = {
       `Approaching the ${limitWindow(type) === 'weekly' ? 'weekly' : limitWindow(type) === 'daily' ? 'daily (5 h)' : 'usage'} limit.${time ? ` Resets at ${time}.` : ''}`,
     contextCompacted: (pre: number, post?: number) =>
       `Picked up after a long pause: conversation summarised (${kTokens(pre)}${post ? ` → ${kTokens(post)}` : ''} tokens) rather than paid for again in full.`,
+    accountSwitched: (from: string, to: string, resumed: boolean) =>
+      `${from} hit its usage limit: continuing under ${to}${resumed ? '' : ' (conversation re-sent as text, the session could not be copied)'}.`,
     queued: (max: number) => `Queued: ${max} ${max === 1 ? 'agent is' : 'agents are'} already running. Starts as soon as one finishes.`
   },
 
@@ -850,12 +855,15 @@ const fr: Dict = {
 
   accounts: {
     title: 'Comptes Claude',
-    hint: "Chaque compte garde sa connexion dans son propre dossier de config. Les agents démarrés après un changement utilisent le compte actif ; ceux en cours gardent le leur. Connecte-toi une fois avec : CLAUDE_CONFIG_DIR=<dossier> claude, puis /login.",
+    hint: "Chaque compte garde sa connexion dans son propre dossier de config. Le compte actif est essayé en premier ; quand il atteint sa limite, les agents passent au suivant disponible. Connecte-toi une fois avec : CLAUDE_CONFIG_DIR=<dossier> claude, puis /login.",
     default: 'Connexion par défaut (~/.claude)',
     name: 'Nom',
     dir: 'Dossier de config, ex. ~/.claude-work',
     add: 'Ajouter le compte',
-    remove: 'Retirer'
+    remove: 'Retirer',
+    projectTitle: 'Comptes Claude',
+    projectHint: "Les agents de ce projet ne tournent que sous les comptes cochés, les autres gardent leurs tokens. Aucun coché : n'importe quel compte.",
+    unnamedDefault: 'Connexion par défaut'
   },
   statusbar: {
     agents: (n) => `${n} agent${n > 1 ? 's' : ''}`,
@@ -1076,6 +1084,8 @@ const fr: Dict = {
       `Limite ${limitWindow(type) === 'weekly' ? 'hebdomadaire' : limitWindow(type) === 'daily' ? 'journalière (5 h)' : "d'utilisation"} bientôt atteinte.${time ? ` Réinitialisation à ${time}.` : ''}`,
     contextCompacted: (pre, post) =>
       `Reprise après une longue pause : conversation résumée (${kTokens(pre)}${post ? ` → ${kTokens(post)}` : ''} tokens) au lieu d'être repayée en entier.`,
+    accountSwitched: (from, to, resumed) =>
+      `${from} a atteint sa limite : suite sous ${to}${resumed ? '' : ' (conversation renvoyée en texte, la session n\'a pas pu être copiée)'}.`,
     queued: (max) => `En file : ${max} ${max > 1 ? 'agents tournent' : 'agent tourne'} déjà. Démarre dès qu'un a fini.`
   },
 
