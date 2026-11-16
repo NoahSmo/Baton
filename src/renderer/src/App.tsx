@@ -8,6 +8,7 @@ import { BoardView } from './BoardView'
 import { ContinueDialog } from './ContinueDialog'
 import { CommandPalette, type PaletteEntry } from './CommandPalette'
 import { ConfirmHost } from './ConfirmHost'
+import { DialogFocus } from './DialogFocus'
 import { ContextMenuHost } from './ContextMenuHost'
 import { EditorPane, type EditorPanel } from './EditorPane'
 import { FeatureView } from './FeatureView'
@@ -627,6 +628,7 @@ export function App() {
       {dialog?.kind === 'palette' && <CommandPalette entries={paletteEntries()} onClose={() => setDialog(null)} />}
       <ContextMenuHost />
       <ConfirmHost />
+      <DialogFocus />
     </div>
     </LangContext.Provider>
   )

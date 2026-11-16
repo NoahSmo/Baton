@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Feature } from '../../shared/types'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
+import { DialogClose } from './DialogClose'
 
 interface Props {
   feature: Feature
@@ -70,6 +71,7 @@ export function PullRequestDialog({ feature, onClose }: Props) {
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
       <div className="dialog commit-dialog" role="dialog" aria-labelledby="pr-title">
+        <DialogClose onClose={onClose} disabled={busy} />
         <h2 id="pr-title">{t.pr.title}</h2>
         <p className="hint">
           {feature.branch}
@@ -98,7 +100,7 @@ export function PullRequestDialog({ feature, onClose }: Props) {
             setBody(e.target.value)
           }}
         />
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
         <div className="dialog-actions">
           <button onClick={onClose} disabled={busy}>
             {t.common.cancel}

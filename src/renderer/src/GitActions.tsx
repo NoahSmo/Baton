@@ -5,6 +5,7 @@ import { cleanError } from './NewFeatureDialog'
 import { ConflictDialog } from './ConflictDialog'
 import { PullRequestDialog } from './PullRequestDialog'
 import { Icon } from './ui/Icon'
+import { DialogClose } from './DialogClose'
 
 interface Props {
   feature: Feature
@@ -172,6 +173,7 @@ function CommitDialog({ feature, git, onClose }: { feature: Feature; git: GitSta
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
       <div className="dialog commit-dialog" role="dialog" aria-labelledby="commit-title">
+        <DialogClose onClose={onClose} disabled={busy} />
         <h2 id="commit-title">{t.git.commitTitle}</h2>
         <p className="hint">{t.git.commitHint}</p>
         <div className="commit-head">
@@ -208,7 +210,7 @@ function CommitDialog({ feature, git, onClose }: { feature: Feature; git: GitSta
             </label>
           ))}
         </div>
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
         <div className="dialog-actions">
           <button onClick={onClose} disabled={busy}>
             {t.common.cancel}

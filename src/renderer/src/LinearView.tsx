@@ -338,7 +338,7 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
           </div>
         )}
 
-        {error && <p className="form-error linear-error">{error}</p>}
+        {error && <p className="form-error linear-error" role="alert">{error}</p>}
         {selectedProject && !reposFor(selectedId).length && projects.length > 1 && (
           <p className="hint linear-hint">{t.linearView.needRepository}</p>
         )}

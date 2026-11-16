@@ -19,6 +19,7 @@ import { ModelPicker } from './ModelPicker'
 import { EffortPicker } from './EffortPicker'
 import { TemplateChips } from './TemplatesDialog'
 import { toMessageAttachments, useAttachments } from './useAttachments'
+import { DialogClose } from './DialogClose'
 
 interface Props {
   project: Project
@@ -154,6 +155,7 @@ export function NewFeatureDialog({
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="dialog" onSubmit={submit}>
+        <DialogClose onClose={onClose} />
         <h2>
           {t.newFeature.title} <span className="dialog-context">{t.newFeature.inProject(project.name)}</span>
         </h2>
@@ -187,7 +189,7 @@ export function NewFeatureDialog({
                 </button>
               </div>
             ) : issuesError ? (
-              <p className="form-error">{issuesError}</p>
+              <p className="form-error" role="alert">{issuesError}</p>
             ) : !issues ? (
               <p className="hint">{t.newFeature.loadingIssues}</p>
             ) : (
@@ -307,7 +309,7 @@ export function NewFeatureDialog({
         </div>
         <p className="hint">{t.efforts[effort ?? 'default'].hint}</p>
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
 
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>

@@ -73,7 +73,7 @@ export function DraftAttachments({
           ))}
         </div>
       )}
-      {rejected.length > 0 && <p className="form-error">{t.feature.attachRejected(rejected.join(', '))}</p>}
+      {rejected.length > 0 && <p className="form-error" role="alert">{t.feature.attachRejected(rejected.join(', '))}</p>}
     </>
   )
 }

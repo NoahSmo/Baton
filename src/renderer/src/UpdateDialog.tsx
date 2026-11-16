@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { UpdateInfo } from '../../shared/types'
 import { downloadPercent } from '../../shared/version'
 import { useT } from './i18n'
+import { DialogClose } from './DialogClose'
 
 interface Props {
   update: UpdateInfo
@@ -44,6 +45,7 @@ export function UpdateDialog({ update, currentVersion, onClose }: Props) {
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && !busy && later()}>
       <div className="dialog" role="dialog" aria-labelledby="update-title">
+        <DialogClose onClose={later} disabled={busy} />
         <h2 id="update-title">{ready ? t.update.readyTitle(update.version) : t.update.title(update.version)}</h2>
         <p className="confirm-detail">{t.update.current(currentVersion)}</p>
 
@@ -66,7 +68,7 @@ export function UpdateDialog({ update, currentVersion, onClose }: Props) {
         )}
         {busy && phase === 'preparing' && <p className="hint">{t.update.preparing}</p>}
         {busy && phase === 'installing' && <p className="hint">{t.update.installing}</p>}
-        {progress?.phase === 'error' && <p className="update-error">{t.update.failed(progress.message ?? '')}</p>}
+        {progress?.phase === 'error' && <p className="update-error" role="alert">{t.update.failed(progress.message ?? '')}</p>}
 
         <div className="dialog-actions">
           <a className="button-link" href={update.url} target="_blank" rel="noreferrer">

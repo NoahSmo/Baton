@@ -99,7 +99,7 @@ export function ConflictDialog({ feature, check, onClose }: Props) {
                   )}
                 </div>
                 {resolution && f.summary && <p className="conflict-summary">{f.summary}</p>}
-                {resolution && !f.resolved && !edited && <p className="form-error">{t.git.needsYou}</p>}
+                {resolution && !f.resolved && !edited && <p className="form-error" role="alert">{t.git.needsYou}</p>}
                 {resolution && open.has(f.path) && (
                   <>
                     <textarea
@@ -126,8 +126,8 @@ export function ConflictDialog({ feature, check, onClose }: Props) {
             )
           })}
         </div>
-        {markersLeft && <p className="form-error">{t.git.markersLeft}</p>}
-        {error && <p className="form-error">{error}</p>}
+        {markersLeft && <p className="form-error" role="alert">{t.git.markersLeft}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
         <div className="dialog-actions">
           <button onClick={() => void abort()} disabled={busy} title={t.git.abortHint}>
             {t.git.abortMerge}

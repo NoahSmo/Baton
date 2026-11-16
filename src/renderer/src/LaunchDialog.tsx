@@ -3,6 +3,7 @@ import type { LaunchCommand, LaunchSuggestion, Project } from '../../shared/type
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { Icon } from './ui/Icon'
+import { DialogClose } from './DialogClose'
 
 interface Props {
   project: Project
@@ -69,6 +70,7 @@ export function LaunchDialog({ project, onClose, onSaved }: Props) {
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="dialog" onSubmit={submit}>
+        <DialogClose onClose={onClose} />
         <h2>{t.launch.title}</h2>
         <p className="hint">{t.launch.hint}</p>
 
@@ -147,7 +149,7 @@ export function LaunchDialog({ project, onClose, onSaved }: Props) {
           </button>
         </p>
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
 
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>

@@ -42,7 +42,22 @@ export function ContextMenuHost() {
   useEffect(() => {
     if (!open) return
     const dismiss = () => close()
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return close()
+      const step = ({ ArrowDown: 1, ArrowUp: -1, Home: 0, End: 0 } as Record<string, number>)[e.key]
+      if (step === undefined || !ref.current) return
+      // Focus only moves once the keyboard is used, so a mouse-opened menu keeps Copy and Paste working.
+      e.preventDefault()
+      const items = [...ref.current.querySelectorAll<HTMLButtonElement>('.ctx-item:not(:disabled)')]
+      if (!items.length) return
+      const at = items.indexOf(document.activeElement as HTMLButtonElement)
+      let next: number
+      if (e.key === 'Home') next = 0
+      else if (e.key === 'End') next = items.length - 1
+      else if (at < 0) next = step > 0 ? 0 : items.length - 1
+      else next = (at + step + items.length) % items.length
+      items[next].focus()
+    }
     const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && close()
     window.addEventListener('mousedown', onDown, true)
     window.addEventListener('keydown', onKey)

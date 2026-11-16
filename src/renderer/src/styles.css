@@ -1598,33 +1598,63 @@ button.attach:hover:not(:disabled) {
   inset: 0;
   z-index: var(--z-overlay);
   background: var(--overlay);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
   display: grid;
   place-items: center;
+  animation: overlay-in var(--dur-base) var(--ease);
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
 }
 
 .dialog {
+  --dialog-pad: 22px;
   width: 520px;
   max-width: calc(100vw - 40px);
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  padding: var(--dialog-pad);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px var(--shadow);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transform-origin: 50% 40%;
+  animation: pop-in var(--dur-base) var(--ease);
 }
 
 .dialog h2 {
-  margin: 0 0 6px;
+  margin: 0 0 8px;
   font-size: var(--fs-lg);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
 }
 
 .dialog label {
-  margin: 12px 0 4px;
+  margin: 14px 0 5px;
   color: var(--muted);
   font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+.dialog input:focus,
+.dialog textarea:focus,
+.dialog select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .row {
@@ -1666,6 +1696,24 @@ button.attach:hover:not(:disabled) {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 18px;
+}
+
+/* The buttons of a dialog sit on their own bar, so the way out is always in the same place. */
+.dialog > .dialog-actions:not(.settings-foot) {
+  margin: 22px calc(var(--dialog-pad) * -1) calc(var(--dialog-pad) * -1);
+  padding: 12px var(--dialog-pad);
+  background: color-mix(in srgb, var(--bg) 55%, var(--panel));
+  border-top: 1px solid var(--border);
+}
+
+.dialog-actions button {
+  min-width: 76px;
+  padding: 6px 14px;
+}
+
+.dialog-actions button.primary,
+.dialog-actions button.danger-fill {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset;
 }
 
 /* Linear */
@@ -2237,8 +2285,17 @@ input.mono {
   padding: 5px;
   background: var(--raised);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  box-shadow: 0 12px 36px var(--shadow);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transform-origin: top left;
+  animation: menu-in var(--dur-fast) var(--ease);
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
 }
 
 .ctx-item {
@@ -2247,22 +2304,30 @@ input.mono {
   text-align: left;
   background: transparent;
   border: none;
-  border-radius: var(--r-md);
-  padding: 5px 10px;
+  border-radius: 6px;
+  padding: 6px 10px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.ctx-item:hover:not(:disabled) {
+.ctx-item:hover:not(:disabled),
+.ctx-item:focus-visible {
   background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: transparent;
+  outline: none;
+}
+
+.ctx-item:disabled {
+  opacity: 0.4;
 }
 
 .ctx-item.danger {
   color: var(--red);
 }
 
-.ctx-item.danger:hover:not(:disabled) {
+.ctx-item.danger:hover:not(:disabled),
+.ctx-item.danger:focus-visible {
   background: color-mix(in srgb, var(--red) 18%, transparent);
 }
 
@@ -3261,11 +3326,9 @@ a.git-action:hover {
 }
 
 .settings-title {
-  margin: 0 0 var(--sp-2);
-  font-size: var(--fs-xs);
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-sm);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   color: var(--muted);
 }
 
@@ -3988,9 +4051,10 @@ kbd {
   max-width: calc(100vw - 40px);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 20px 60px var(--shadow);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   overflow: hidden;
+  animation: pop-in var(--dur-base) var(--ease);
 }
 
 .palette input {
@@ -4027,6 +4091,7 @@ kbd {
 .palette-item.active {
   background: var(--accent);
   color: var(--accent-text);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset;
 }
 
 .palette-label {
@@ -4567,4 +4632,40 @@ button.kanban-card {
   margin-right: auto;
   color: var(--faint);
   font-size: var(--fs-xs);
+}
+
+.dialog-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-md);
+  color: var(--muted);
+}
+
+.dialog-close:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* Keeps titles and the controls beside them clear of the corner button. */
+.dialog {
+  position: relative;
+}
+
+.dialog h2,
+.dialog .commit-head {
+  padding-right: 30px;
+}
+
+.settings-dialog h2,
+.project-dialog h2 {
+  padding-right: calc(var(--sp-6) + 24px);
 }
