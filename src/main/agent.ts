@@ -9,6 +9,7 @@ import {
   type SDKUserMessage
 } from '@anthropic-ai/claude-agent-sdk'
 import type { AgentEffort, AgentModel, BackgroundTask, ImageInput, PermissionDecision, PermissionMode, UiEvent } from '../shared/types'
+import { claudeEnv } from './claudeAccount'
 
 const MAX_TOOL_RESULT_CHARS = 20_000
 
@@ -225,6 +226,7 @@ export class AgentSession {
     this.q = query({
       prompt: this.input,
       options: {
+        env: claudeEnv(),
         cwd: this.opts.cwd,
         model: this.model,
         ...(this.effort ? { effort: this.effort } : {}),

@@ -4,6 +4,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { UsageWindow } from '../shared/types'
+import { getActiveConfigDir, keychainService } from './claudeAccount'
 
 const run = promisify(execFile)
 
@@ -14,12 +15,12 @@ interface Credentials {
 }
 
 /** The login Claude Code keeps: the macOS keychain, or a file elsewhere. */
-async function accessToken(): Promise<string | null> {
+async function accessToken(configDir: string | null): Promise<string | null> {
   let raw: string | null = null
   if (process.platform === 'darwin') {
-    raw = await run('security', ['find-generic-password', '-s', 'Claude Code-credentials', '-w']).then((r) => r.stdout, () => null)
+    raw = await run('security', ['find-generic-password', '-s', keychainService(configDir), '-w']).then((r) => r.stdout, () => null)
   }
-  raw ??= await readFile(join(homedir(), '.claude', '.credentials.json'), 'utf8').catch(() => null)
+  raw ??= await readFile(join(configDir ?? join(homedir(), '.claude'), '.credentials.json'), 'utf8').catch(() => null)
   if (!raw) return null
   try {
     const oauth = (JSON.parse(raw) as Credentials).claudeAiOauth
@@ -31,9 +32,9 @@ async function accessToken(): Promise<string | null> {
   }
 }
 
-/** How much of the session and weekly windows the account has used, or null when it cannot be read. */
+/** How much of the session and weekly windows the active account has used, or null when it cannot be read. */
 export async function fetchClaudeUsage(): Promise<UsageWindow[] | null> {
-  const token = await accessToken()
+  const token = await accessToken(getActiveConfigDir())
   if (!token) return null
   try {
     const res = await fetch('https://api.anthropic.com/api/oauth/usage', {

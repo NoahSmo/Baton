@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { LANGS, type Lang } from '../../shared/i18n'
 import { SHORTCUT_LIST, shortcutLabel } from '../../shared/shortcuts'
 import { THEMES, themeById } from '../../shared/themes'
-import type { Feature, NotificationPrefs, TrashEntry } from '../../shared/types'
+import type { ClaudeAccounts, Feature, NotificationPrefs, TrashEntry } from '../../shared/types'
 import { useLang, useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { IS_MAC } from './platform'
@@ -41,12 +41,16 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
   const [checking, setChecking] = useState(false)
   const [result, setResult] = useState<'upToDate' | null>(null)
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null)
+  const [accounts, setAccounts] = useState<ClaudeAccounts | null>(null)
+  const [accountName, setAccountName] = useState('')
+  const [accountDir, setAccountDir] = useState('')
   const [trash, setTrash] = useState<TrashEntry[]>([])
   const [trashError, setTrashError] = useState('')
 
   useEffect(() => {
     void window.api.getNotificationPrefs().then(setPrefs)
     void window.api.trashList().then(setTrash)
+    void window.api.getClaudeAccounts().then(setAccounts)
     void window.api.getMaxRunning().then(setMaxRunning)
     void window.api.getAutoContinue().then(setAutoContinue)
     void window.api.getRemoveWorktreeOnArchive().then(setRemoveOnArchive)
@@ -86,6 +90,13 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
     const next = { ...prefs, ...patch }
     setPrefs(next)
     void window.api.setNotificationPrefs(next)
+  }
+
+  async function addAccount() {
+    if (!accountName.trim() || !accountDir.trim()) return
+    setAccounts(await window.api.addClaudeAccount(accountName, accountDir))
+    setAccountName('')
+    setAccountDir('')
   }
 
   async function restore(entry: TrashEntry) {
@@ -162,6 +173,37 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
                 {autoContinue !== null && <Toggle label={t.statusbar.autoContinue} hint={t.statusbar.autoContinueHint} checked={autoContinue} onChange={changeAutoContinue} />}
                 {autoRemoveMerged !== null && <Toggle label={t.statusbar.autoRemoveMerged} hint={t.statusbar.autoRemoveMergedHint} checked={autoRemoveMerged} onChange={changeAutoRemoveMerged} />}
                 {removeOnArchive !== null && <Toggle label={t.statusbar.removeWorktreeOnArchive} hint={t.statusbar.removeWorktreeOnArchiveHint} checked={removeOnArchive} onChange={changeRemoveOnArchive} />}
+              </div>
+            </section>
+          )}
+
+          {accounts && (
+            <section className="settings-section">
+              <h3 className="settings-title">{t.accounts.title}</h3>
+              <p className="hint">{t.accounts.hint}</p>
+              <div className="settings-card">
+                <label className="settings-row">
+                  <span>{t.accounts.default}</span>
+                  <input type="radio" name="claude-account" checked={accounts.activeId === null} onChange={() => void window.api.setActiveClaudeAccount(null).then(setAccounts)} />
+                </label>
+                {accounts.accounts.map((a) => (
+                  <div key={a.id} className="settings-row">
+                    <label className="trash-name" title={a.configDir}>
+                      <input type="radio" name="claude-account" checked={accounts.activeId === a.id} onChange={() => void window.api.setActiveClaudeAccount(a.id).then(setAccounts)} /> {a.name}
+                      <span className="hint"> · {a.configDir}</span>
+                    </label>
+                    <button className="danger" onClick={() => void window.api.removeClaudeAccount(a.id).then(setAccounts)}>
+                      {t.accounts.remove}
+                    </button>
+                  </div>
+                ))}
+                <div className="settings-row">
+                  <input value={accountName} placeholder={t.accounts.name} aria-label={t.accounts.name} onChange={(e) => setAccountName(e.target.value)} />
+                  <input value={accountDir} placeholder={t.accounts.dir} aria-label={t.accounts.dir} onChange={(e) => setAccountDir(e.target.value)} />
+                  <button onClick={() => void addAccount()} disabled={!accountName.trim() || !accountDir.trim()}>
+                    {t.accounts.add}
+                  </button>
+                </div>
               </div>
             </section>
           )}

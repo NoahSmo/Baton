@@ -1,6 +1,7 @@
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import { gitStatus } from './git'
 import { git, gitRaw } from './worktree'
+import { claudeEnv } from './claudeAccount'
 
 /** A diff past this is cut: the start of it says what the commit is about. */
 const MAX_DIFF_CHARS = 30_000
@@ -68,6 +69,7 @@ export async function draftCommitMessage(root: string, paths: string[], abort: A
   const q = query({
     prompt: prompt(files, clip(diff), recent),
     options: {
+      env: claudeEnv(),
       cwd: root,
       abortController: abort,
       // Wording a diff needs no large model.
