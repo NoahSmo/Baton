@@ -231,14 +231,88 @@ export const THEMES: Theme[] = [
       shadow: 'rgba(20, 30, 50, 0.16)',
       overlay: 'rgba(20, 30, 50, 0.28)'
     }
+  },
+  {
+    id: 'rosy',
+    name: 'Rosy',
+    dark: false,
+    colors: {
+      bg: '#fff9fa',
+      panel: '#fbf0f3',
+      raised: '#f5e3e9',
+      hover: '#efd7df',
+      border: '#ecd3db',
+      borderStrong: '#dbb4c2',
+      text: '#33202a',
+      muted: '#80626f',
+      faint: '#bb9eab',
+      accent: '#d6457f',
+      accentHover: '#bd356c',
+      accentText: '#fff5f8',
+      blue: '#3a6cc2',
+      amber: '#a96a05',
+      green: '#2f8a58',
+      red: '#c8374b',
+      redHover: '#a92a3c',
+      dangerText: '#fff5f6',
+      purple: '#9150c4',
+      cyan: '#0f8794',
+      orange: '#b8602a',
+      punct: '#5a424d',
+      comment: '#a28a96',
+      shadow: 'rgba(90, 30, 55, 0.16)',
+      overlay: 'rgba(60, 20, 40, 0.3)'
+    }
   }
 ]
 
 export const DEFAULT_THEME = THEMES[0]
 
-/** The theme stored under `id`, the default one if there is none. */
-export function themeById(id: unknown): Theme {
-  return THEMES.find((theme) => theme.id === id) ?? DEFAULT_THEME
+/** Custom themes carry this prefix in their id, so they never clash with a built-in one. */
+export const CUSTOM_PREFIX = 'custom-'
+
+const HEX = /^#[0-9a-f]{6}$/i
+const RGBA = /^rgba\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*(0|1|0?\.\d+)\s*\)$/i
+
+/** Colors that are not opaque, so the editor cannot offer a plain color picker for them. */
+export const TRANSLUCENT_KEYS = ['shadow', 'overlay']
+
+/** A stored custom theme, every color checked; `null` when it is not usable. Missing colors come from `base`. */
+export function sanitizeTheme(raw: unknown, base: Theme = DEFAULT_THEME): Theme | null {
+  if (!raw || typeof raw !== 'object') return null
+  const { id, name, dark, colors } = raw as Record<string, unknown>
+  if (typeof id !== 'string' || !id.startsWith(CUSTOM_PREFIX) || typeof name !== 'string') return null
+  const out: Palette = { ...base.colors }
+  for (const key of Object.keys(out) as (keyof Palette)[]) {
+    const value = (colors as Record<string, unknown> | undefined)?.[key]
+    if (typeof value === 'string' && (HEX.test(value) || (TRANSLUCENT_KEYS.includes(key) && RGBA.test(value)))) out[key] = value
+  }
+  return { id, name: name.trim().slice(0, 40) || 'Custom', dark: dark === true, colors: out }
+}
+
+/** The list as stored, with anything unusable and any duplicate dropped. */
+export function sanitizeThemes(raw: unknown): Theme[] {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set<string>()
+  const out: Theme[] = []
+  for (const item of raw) {
+    const theme = sanitizeTheme(item)
+    if (theme && !seen.has(theme.id)) {
+      seen.add(theme.id)
+      out.push(theme)
+    }
+  }
+  return out
+}
+
+/** A new custom theme starting from `base`'s colors. */
+export function newCustomTheme(base: Theme, name: string): Theme {
+  return { id: `${CUSTOM_PREFIX}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name, dark: base.dark, colors: { ...base.colors } }
+}
+
+/** The theme stored under `id`, among the built-in ones and `customs`; the default one if there is none. */
+export function themeById(id: unknown, customs: Theme[] = []): Theme {
+  return THEMES.find((theme) => theme.id === id) ?? customs.find((theme) => theme.id === id) ?? DEFAULT_THEME
 }
 
 /** `accentText` → `--accent-text`. */

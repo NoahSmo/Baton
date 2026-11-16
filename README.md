@@ -165,7 +165,7 @@ Everything stays on your machine, in `~/.baton/` (override with `BATON_DATA_DIR`
 |---|---|
 | `state.db` | projects, features and conversation history (SQLite) |
 | `worktrees/` | one git worktree per feature |
-| `settings.json` | interface language, theme, agents allowed at once, notifications |
+| `settings.json` | interface language, theme (built-in or custom), agents allowed at once, notifications |
 | `trash/` | uncommitted changes of deleted agents, for 7 days |
 | `linear.key` | your Linear API key, encrypted with the system keychain |
 | `update.log` | output of the last Homebrew upgrade |

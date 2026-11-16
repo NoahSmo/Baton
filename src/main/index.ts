@@ -10,7 +10,7 @@ import { expandHome, normalizeAccounts } from '../shared/accounts'
 import { DICTS, LANGS, langFromLocale, type Lang } from '../shared/i18n'
 import { normalizePrefs, shouldNotify } from '../shared/notifications'
 import { formatReset } from '../shared/time'
-import { DEFAULT_THEME, themeById, type Theme } from '../shared/themes'
+import { DEFAULT_THEME, sanitizeThemes, themeById, type Theme } from '../shared/themes'
 import {
   AGENT_EFFORTS,
   AGENT_MODELS,
@@ -116,6 +116,7 @@ let removeWorktreeOnArchive = false
 /** Off by default: a merged branch may well be worked on further. */
 let autoRemoveMerged = false
 let theme: Theme = DEFAULT_THEME
+let customThemes: Theme[] = []
 let claudeAccounts: ClaudeAccounts = { accounts: [], activeId: null }
 let notificationPrefs: NotificationPrefs = normalizePrefs(undefined)
 /** Agent on screen, as the renderer last said. */
@@ -657,10 +658,17 @@ function registerIpc(): void {
   })
   ipcMain.handle('theme:get', () => theme.id)
   ipcMain.handle('theme:set', (_e, id: string) => {
-    const next = themeById(id)
+    const next = themeById(id, customThemes)
     if (next.id !== id) return
     applyTheme(next)
     writeSettings({ theme: id })
+  })
+  ipcMain.handle('theme:getCustom', () => customThemes)
+  ipcMain.handle('theme:setCustom', (_e, list: unknown) => {
+    customThemes = sanitizeThemes(list)
+    writeSettings({ customThemes })
+    // The chosen theme may be one of them, edited or deleted.
+    applyTheme(themeById(theme.id, customThemes))
   })
   ipcMain.handle('accounts:get', () => claudeAccounts)
   ipcMain.handle('accounts:add', (_e, name: string, configDir: string) => {
@@ -916,7 +924,8 @@ app.setName(APP_NAME)
 void app.whenReady().then(() => {
   mkdirSync(dataDir, { recursive: true })
   lang = loadLanguage()
-  applyTheme(themeById(readSettings().theme))
+  customThemes = sanitizeThemes(readSettings().customThemes)
+  applyTheme(themeById(readSettings().theme, customThemes))
   maxRunning = loadMaxRunning()
   autoContinue = readSettings().autoContinue === true
   removeWorktreeOnArchive = readSettings().removeWorktreeOnArchive === true
