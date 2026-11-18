@@ -271,7 +271,7 @@ function createWindow(): void {
   win = new BrowserWindow({
     width: 1280,
     height: 820,
-    minWidth: 900,
+    minWidth: 560,
     minHeight: 560,
     title: APP_NAME,
     // Elsewhere the system draws its own title bar.

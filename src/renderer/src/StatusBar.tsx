@@ -117,7 +117,7 @@ export function StatusBar({ features, current, linear, onOpenLinear, version, up
       )}
       <span className="statusbar-sep" />
       {current && (current.feature.branch || current.git) && <BranchPicker feature={current.feature} git={current.git} above />}
-      <span>
+      <span className="statusbar-stats">
         {t.statusbar.agents(features.length)}
         {stats && (
           <>

@@ -32,6 +32,7 @@ import { UpdateDialog } from './UpdateDialog'
 import { UsageDialog } from './UsageDialog'
 import { usePersisted } from './usePersisted'
 import { useGitStatus } from './useGitStatus'
+import { useMediaQuery } from './useMediaQuery'
 import { useResize } from './useResize'
 
 /** Stable empty list, so features without background work do not re-render on every update. */
@@ -39,6 +40,16 @@ const NO_TASKS: BackgroundTask[] = []
 const SIDEBAR_WIDTH = 64 + 300
 /** Room the conversation keeps when the editor is dragged wide. */
 const MIN_CHAT_WIDTH = 340
+/** Room the conversation keeps when the editor, stacked below it, is dragged tall. */
+const MIN_CHAT_HEIGHT = 240
+/** Top bar and status bar. */
+const CHROME_HEIGHT = 48 + 28
+
+/** Where the conversation column starts: the sidebar narrows on small windows. */
+function sidebarRight(): number {
+  const sidebar = document.querySelector('.app:not(.compact) .sidebar')
+  return sidebar ? sidebar.getBoundingClientRect().right : document.querySelector('.app.compact') ? 0 : SIDEBAR_WIDTH
+}
 
 type Dialog =
   | { kind: 'feature'; project?: Project; issue?: LinearIssue; repositories?: Project[] }
@@ -84,8 +95,32 @@ export function App() {
     key: 'editor-width',
     initial: 520,
     min: 360,
-    max: () => window.innerWidth - SIDEBAR_WIDTH - MIN_CHAT_WIDTH,
+    max: () => window.innerWidth - sidebarRight() - MIN_CHAT_WIDTH,
     edge: 'left'
+  })
+  /** A small window keeps the conversation full width: projects and agents slide in from a drawer. */
+  const compact = useMediaQuery('(max-width: 1099px)')
+  const [navOpen, setNavOpen] = useState(false)
+  const drawer = compact && navOpen
+  const closeNav = () => setNavOpen(false)
+  useEffect(() => {
+    if (!drawer) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || dialog) return
+      e.stopPropagation()
+      setNavOpen(false)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [drawer, dialog])
+  /** A portrait window has no width to spare: the editor goes under the conversation instead of beside it. */
+  const stacked = useMediaQuery('(orientation: portrait)')
+  const [editorHeight, startEditorHeightResize] = useResize({
+    key: 'editor-height',
+    initial: 420,
+    min: 200,
+    max: () => window.innerHeight - CHROME_HEIGHT - MIN_CHAT_HEIGHT,
+    edge: 'top'
   })
   const [terminalHeight, startTerminalResize] = useResize({
     key: 'terminal-height',
@@ -377,13 +412,19 @@ export function App() {
 
   return (
     <LangContext.Provider value={lang}>
-    <div className="app">
+    <div className={`app${compact ? ' compact' : ''}${drawer ? ' nav-open' : ''}`}>
       <TopBar
         project={project}
         onSearch={() => setDialog({ kind: 'palette' })}
         searchShortcut={shortcutLabel('palette', IS_MAC)}
         editor={feature && !boardShown ? { open: panelOpen, toggle: toggleEditor } : undefined}
+        nav={
+          compact
+            ? { open: navOpen, toggle: () => setNavOpen((open) => !open), waiting: features.filter((f) => f.status === 'waiting').length }
+            : undefined
+        }
       />
+      {drawer && <div className="nav-scrim" onClick={closeNav} />}
       <ProjectRail
         projects={projects}
         features={features}
@@ -406,13 +447,20 @@ export function App() {
             features={projectFeatures}
             selectedId={feature?.id ?? null}
             board={boardKind}
-            onBoard={setBoard}
+            onBoard={(kind) => {
+              setBoard(kind)
+              closeNav()
+            }}
             onBoardSlot={setBoardSlot}
             onSelect={(f) => {
               setBoard(null)
               showFeature(f)
+              closeNav()
             }}
-            onNew={() => setDialog({ kind: 'feature' })}
+            onNew={() => {
+              closeNav()
+              setDialog({ kind: 'feature' })
+            }}
             onLink={(f) => {
               showFeature(f)
               setLinkingId(f.id)
@@ -459,7 +507,7 @@ export function App() {
               />
             )}
             {/* Kept mounted behind the board: editors hold unsaved changes. */}
-            <div className="workspace" hidden={boardShown}>
+            <div className={`workspace${stacked ? ' stacked' : ''}`} hidden={boardShown}>
               {feature ? (
                 <FeatureView
                   key={feature.id}
@@ -487,7 +535,12 @@ export function App() {
                   </button>
                 </div>
               )}
-              {feature && panelOpen && <div className="resizer vertical" onPointerDown={startEditorResize} />}
+              {feature && panelOpen && (
+                <div
+                  className={`resizer ${stacked ? 'horizontal' : 'vertical'}`}
+                  onPointerDown={stacked ? startEditorHeightResize : startEditorResize}
+                />
+              )}
               {features
                 .filter((f) => f.id in editors)
                 .map((f) => (
@@ -495,7 +548,7 @@ export function App() {
                     key={f.id}
                     feature={f}
                     visible={f.id === feature?.id && panelOpen && !boardShown}
-                    width={editorWidth}
+                    size={stacked ? { height: editorHeight } : { width: editorWidth }}
                     git={f.id === feature?.id ? git : null}
                     panel={editorPanel}
                     onPanel={setEditorPanel}
