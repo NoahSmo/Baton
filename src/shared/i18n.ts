@@ -430,6 +430,25 @@ const en = {
     create: 'Create agent'
   },
 
+  presets: {
+    label: 'Preset',
+    save: 'Save as preset',
+    savePrompt: 'Name of the preset',
+    remove: 'Delete preset',
+    builtin: {
+      quick: { name: 'Quick', hint: 'Haiku, low effort, edits accepted. For small changes' },
+      balanced: { name: 'Balanced', hint: 'Sonnet, asks before acting. The everyday setup' },
+      deep: { name: 'Deep', hint: 'Opus, high effort, plans first. For the hardest tasks' },
+      autonomous: { name: 'Autonomous', hint: 'Sonnet, never asks. Runs unattended' }
+    }
+  },
+
+  commands: {
+    label: 'Commands',
+    switchedModel: (model: string) => `Model switched to ${model}`,
+    unknownModel: (arg: string) => `Unknown model "${arg}". Pick one from the model list.`
+  },
+
   modelPicker: {
     more: 'More models',
     back: 'Back',
@@ -463,7 +482,12 @@ const en = {
     opus: { label: 'Opus', hint: 'For the hardest tasks. Uses up the limit several times faster' },
     opusplan: { label: 'Opus Plan', hint: 'Opus while planning, Sonnet while writing the code' },
     'claude-fable-5-2': { label: 'Fable 5.2', hint: 'The most capable model. Uses up the usage limit fastest.' },
-    'claude-fable-5-1': { label: 'Fable 5.1', hint: 'The previous Fable. Uses up the usage limit fastest.' }
+    'claude-fable-5-1': { label: 'Fable 5.1', hint: 'The previous Fable. Uses up the usage limit fastest.' },
+    'sonnet[1m]': { label: 'Sonnet (1M context)', hint: 'Sonnet with the 1M-token context window, for very large codebases' },
+    'opus[1m]': { label: 'Opus (1M context)', hint: 'Opus with the 1M-token context window. Uses up the limit fastest' },
+    'claude-opus-5-5': { label: 'Opus 5.5', hint: 'Pinned to this version, even once a newer Opus comes out' },
+    'claude-sonnet-5-5': { label: 'Sonnet 5.5', hint: 'Pinned to this version, even once a newer Sonnet comes out' },
+    'claude-haiku-5-5': { label: 'Haiku 5.5', hint: 'Pinned to this version, even once a newer Haiku comes out' }
   } as Record<AgentModel, { label: string; hint: string }>,
 
   project: {
@@ -1185,6 +1209,25 @@ const fr: Dict = {
     create: "Créer l'agent"
   },
 
+  presets: {
+    label: 'Préréglage',
+    save: 'Enregistrer comme préréglage',
+    savePrompt: 'Nom du préréglage',
+    remove: 'Supprimer le préréglage',
+    builtin: {
+      quick: { name: 'Rapide', hint: 'Haiku, effort faible, modifications acceptées. Pour les petits changements' },
+      balanced: { name: 'Équilibré', hint: 'Sonnet, demande avant d’agir. Le réglage de tous les jours' },
+      deep: { name: 'Approfondi', hint: 'Opus, effort élevé, planifie d’abord. Pour les tâches les plus dures' },
+      autonomous: { name: 'Autonome', hint: 'Sonnet, ne demande jamais. Tourne sans surveillance' }
+    }
+  },
+
+  commands: {
+    label: 'Commandes',
+    switchedModel: (model) => `Modèle changé pour ${model}`,
+    unknownModel: (arg) => `Modèle « ${arg} » inconnu. Choisis-en un dans la liste des modèles.`
+  },
+
   modelPicker: {
     more: 'Plus de modèles',
     back: 'Retour',
@@ -1218,7 +1261,12 @@ const fr: Dict = {
     opus: { label: 'Opus', hint: 'Pour les tâches les plus dures. Consomme la limite plusieurs fois plus vite' },
     opusplan: { label: 'Opus Plan', hint: "Opus pour planifier, Sonnet pour écrire le code" },
     'claude-fable-5-2': { label: 'Fable 5.2', hint: "Le modèle le plus performant. Consomme la limite d'utilisation le plus vite." },
-    'claude-fable-5-1': { label: 'Fable 5.1', hint: "Le Fable précédent. Consomme la limite d'utilisation le plus vite." }
+    'claude-fable-5-1': { label: 'Fable 5.1', hint: "Le Fable précédent. Consomme la limite d'utilisation le plus vite." },
+    'sonnet[1m]': { label: 'Sonnet (contexte 1M)', hint: 'Sonnet avec la fenêtre de contexte de 1M de tokens, pour les très gros dépôts' },
+    'opus[1m]': { label: 'Opus (contexte 1M)', hint: 'Opus avec la fenêtre de contexte de 1M de tokens. Consomme la limite le plus vite' },
+    'claude-opus-5-5': { label: 'Opus 5.5', hint: "Figé sur cette version, même quand un Opus plus récent sort" },
+    'claude-sonnet-5-5': { label: 'Sonnet 5.5', hint: "Figé sur cette version, même quand un Sonnet plus récent sort" },
+    'claude-haiku-5-5': { label: 'Haiku 5.5', hint: "Figé sur cette version, même quand un Haiku plus récent sort" }
   },
 
   project: {

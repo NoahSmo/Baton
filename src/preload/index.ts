@@ -69,6 +69,7 @@ const api: Api = {
   onFocusFeature: (cb) => subscribe('feature:focus', cb),
   setPermissionMode: (id, mode) => ipcRenderer.invoke('feature:setPermissionMode', id, mode),
   setAgentModel: (id, model) => ipcRenderer.invoke('feature:setAgentModel', id, model),
+  slashCommands: (id) => ipcRenderer.invoke('feature:slashCommands', id),
   setAgentEffort: (id, effort) => ipcRenderer.invoke('feature:setAgentEffort', id, effort),
   getAutoRemoveMerged: () => ipcRenderer.invoke('settings:autoRemoveMerged'),
   setAutoRemoveMerged: (enabled) => ipcRenderer.invoke('settings:setAutoRemoveMerged', enabled),

@@ -17,6 +17,7 @@ import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
 import { issuesOfProjects } from './linearIssues'
 import { ModelPicker } from './ModelPicker'
 import { EffortPicker } from './EffortPicker'
+import { PresetPicker } from './PresetPicker'
 import { TemplateChips } from './TemplatesDialog'
 import { toMessageAttachments, useAttachments } from './useAttachments'
 import { DialogClose } from './DialogClose'
@@ -280,6 +281,18 @@ export function NewFeatureDialog({
           <AttachButton onPick={(files) => void attachments.add(files)} />
           <DraftAttachments drafts={attachments.drafts} rejected={attachments.rejected} onRemove={attachments.remove} />
         </div>
+
+        <label>{t.presets.label}</label>
+        <PresetPicker
+          model={model}
+          effort={effort}
+          mode={mode}
+          onPick={(preset) => {
+            setModel(preset.model)
+            setEffort(preset.effort)
+            setMode(preset.permissionMode)
+          }}
+        />
 
         <label>{t.newFeature.permissions}</label>
         <div className="modes">

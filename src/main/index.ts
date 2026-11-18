@@ -773,6 +773,8 @@ function registerIpc(): void {
     if (AGENT_MODELS.includes(model)) return manager.setAgentModel(id, model)
   })
 
+  ipcMain.handle('feature:slashCommands', (_e, id: string) => manager.slashCommands(id))
+
   ipcMain.handle('feature:setAgentEffort', (_e, id: string, effort: AgentEffort | null) => {
     if (effort === null || AGENT_EFFORTS.includes(effort)) return manager.setAgentEffort(id, effort)
   })
