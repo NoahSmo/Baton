@@ -43,7 +43,7 @@ const en = {
 
   common: { cancel: 'Cancel', save: 'Save', delete: 'Delete' },
 
-  topbar: { newProject: 'New project', waitingBadge: 'Agents waiting for an answer', search: 'Search', editor: 'Editor' },
+  topbar: { newProject: 'New project', waitingBadge: 'Agents waiting for an answer', search: 'Search', editor: 'Editor', menu: 'Projects and agents' },
 
   rail: { projects: 'Projects' },
 
@@ -823,7 +823,7 @@ const fr: Dict = {
 
   common: { cancel: 'Annuler', save: 'Enregistrer', delete: 'Supprimer' },
 
-  topbar: { newProject: 'Nouveau projet', waitingBadge: 'Agents en attente de réponse', search: 'Rechercher', editor: 'Éditeur' },
+  topbar: { newProject: 'Nouveau projet', waitingBadge: 'Agents en attente de réponse', search: 'Rechercher', editor: 'Éditeur', menu: 'Projets et agents' },
 
   rail: { projects: 'Projets' },
 

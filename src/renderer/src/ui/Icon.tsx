@@ -17,6 +17,7 @@ const PATHS = {
   chart: 'M3 13V8M8 13V3M13 13V6',
   pencil: 'M10.5 3.5l2 2L6 12l-3 1 1-3z',
   more: 'M3.5 8h.01M8 8h.01M12.5 8h.01',
+  menu: 'M2.5 4.5h11M2.5 8h11M2.5 11.5h11',
   'panel-right': 'M2.5 3h11v10h-11zM9.5 3v10'
 } as const
 

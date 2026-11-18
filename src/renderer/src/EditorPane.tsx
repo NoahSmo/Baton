@@ -18,7 +18,8 @@ interface Props {
   feature: Feature
   /** A hidden editor stays mounted, so open files and unsaved changes survive. */
   visible: boolean
-  width: number
+  /** Width beside the conversation, or height when stacked below it. */
+  size: { width: number } | { height: number }
   /** Status of the worktree; null while unknown or hidden. */
   git: GitStatus | null
   /** Which list the side column shows. */
@@ -59,7 +60,7 @@ interface Buffer {
 const parentOf = (path: string) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '')
 
 /** File tree and code editor over a feature's worktree. */
-export function EditorPane({ feature, visible, width, git, panel, onPanel }: Props) {
+export function EditorPane({ feature, visible, size, git, panel, onPanel }: Props) {
   const t = useT()
   const id = feature.id
   /** Loaded directories, by path; '' is the root. */
@@ -315,7 +316,7 @@ export function EditorPane({ feature, visible, width, git, panel, onPanel }: Pro
   }
 
   return (
-    <section className="editor" hidden={!visible} style={{ width }}>
+    <section className="editor" hidden={!visible} style={size}>
       <nav className="editor-tree" aria-label={t.editor.files}>
         <div className="editor-tree-head" role="tablist">
           {(

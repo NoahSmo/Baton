@@ -263,6 +263,39 @@ export const THEMES: Theme[] = [
       shadow: 'rgba(90, 30, 55, 0.16)',
       overlay: 'rgba(60, 20, 40, 0.3)'
     }
+  },
+  {
+    // Brushed aluminium, black print and one orange key. Its layout overrides live in styles.css, under its id.
+    id: 'teenage',
+    name: 'Teenage Engineering',
+    dark: false,
+    colors: {
+      bg: '#e6e6e1',
+      panel: '#efefeb',
+      raised: '#f8f8f5',
+      hover: '#dadad4',
+      border: '#c9c9c2',
+      borderStrong: '#1b1b1b',
+      text: '#121212',
+      muted: '#55554f',
+      faint: '#8f8f88',
+      accent: '#ff4f00',
+      accentHover: '#e84700',
+      accentText: '#121212',
+      blue: '#1f5bea',
+      amber: '#a87300',
+      green: '#0a8a50',
+      red: '#d81f26',
+      redHover: '#b8181e',
+      dangerText: '#ffffff',
+      purple: '#6a45e0',
+      cyan: '#00808f',
+      orange: '#c23d00',
+      punct: '#2e2e2b',
+      comment: '#87877f',
+      shadow: 'rgba(0, 0, 0, 0.18)',
+      overlay: 'rgba(18, 18, 18, 0.32)'
+    }
   }
 ]
 

@@ -4761,3 +4761,578 @@ button.kanban-card {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Small and portrait windows */
+
+.topbar-menu {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  flex: none;
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.topbar-menu:hover,
+.topbar-menu.toggled {
+  color: var(--text);
+  background: var(--raised);
+  border-color: var(--border);
+}
+
+.topbar-menu-badge {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--amber);
+  color: var(--bg);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.nav-scrim {
+  display: none;
+}
+
+/* Header meta wraps rather than clipping its last links. */
+.feature-meta {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+
+.statusbar {
+  overflow: hidden;
+}
+
+/* Portrait: the editor sits under the conversation at full width, its file list back beside the code. */
+.workspace.stacked {
+  flex-direction: column;
+}
+
+.workspace.stacked > .feature {
+  min-height: 0;
+}
+
+.workspace.stacked > .editor {
+  flex-direction: row;
+  min-width: 0;
+  border-left: none;
+}
+
+.workspace.stacked > .editor > .editor-tree {
+  width: clamp(200px, 32%, 280px);
+  height: auto;
+  min-height: 0;
+  border-bottom: none;
+  border-right: 1px solid var(--border);
+}
+
+.workspace.stacked > .editor > .editor-main {
+  min-width: 0;
+}
+
+@media (max-width: 1360px) {
+  .credit-reset,
+  .statusbar-right {
+    display: none;
+  }
+}
+
+/* Compact: the conversation takes the whole width; rail and sidebar slide in as one drawer. */
+.app.compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app.compact .main,
+.app.compact .main.wide {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.app.compact .rail,
+.app.compact .sidebar {
+  position: fixed;
+  top: 48px;
+  bottom: 28px;
+  z-index: calc(var(--z-overlay) - 1);
+  transform: translateX(calc(-100% - 64px));
+  transition: transform var(--dur-base) var(--ease), visibility 0s linear var(--dur-base);
+  visibility: hidden;
+}
+
+.app.compact .rail {
+  left: 0;
+  width: 64px;
+}
+
+.app.compact .sidebar {
+  left: 64px;
+  width: min(320px, calc(100vw - 64px - 48px));
+  box-shadow: var(--shadow-lg);
+}
+
+.app.compact.nav-open .rail,
+.app.compact.nav-open .sidebar {
+  transform: none;
+  visibility: visible;
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.app.compact .nav-scrim {
+  display: block;
+  position: fixed;
+  inset: 48px 0 28px;
+  z-index: calc(var(--z-overlay) - 2);
+  background: var(--overlay);
+  animation: scrim-in var(--dur-base) var(--ease);
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.app.compact .topbar {
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 360px) minmax(0, 1fr);
+}
+
+.app.compact .statusbar-stats,
+.app.compact .statusbar-sep {
+  display: none;
+}
+
+.app.compact .statusbar {
+  gap: 12px;
+}
+
+.app.compact .feature-head {
+  padding: 12px 16px 10px;
+  column-gap: 12px;
+}
+
+.app.compact .feature-stats {
+  gap: 16px;
+}
+
+.app.compact .composer {
+  padding: 10px 14px;
+}
+
+@media (max-width: 760px) {
+  .credit-label,
+  .topbar-search kbd,
+  .topbar-editor-label,
+  .topbar-search span {
+    display: none;
+  }
+
+  .topbar-search {
+    justify-content: center;
+  }
+
+  /* Title alone on its line; the view switch and the numbers share the next one. */
+  .feature-head-main {
+    flex-basis: 100%;
+  }
+
+  .feature-stats {
+    margin-left: auto;
+  }
+
+  .credit-bar {
+    width: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app.compact .rail,
+  .app.compact .sidebar,
+  .app.compact .nav-scrim {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* Teenage Engineering: a refit, not a recolor. Flat aluminium panels, hard black rules, mono caps labels,
+   round color knobs for projects and a black display for the status bar. Every other theme keeps the base style. */
+
+:root[data-theme='teenage'] {
+  --radius: 2px;
+  --r-sm: 1px;
+  --r-md: 2px;
+  --r-lg: 3px;
+  --shadow-sm: none;
+  --shadow-md: 0 0 0 1px var(--border-strong), 6px 6px 0 rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 0 0 1px var(--border-strong), 8px 8px 0 rgba(0, 0, 0, 0.14);
+  --mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, monospace;
+  --te-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --te-display: #141414;
+  --te-display-text: #f2f2ee;
+  --ease: cubic-bezier(0.3, 0, 0, 1);
+}
+
+:root[data-theme='teenage'] body {
+  font-family: var(--te-sans);
+  letter-spacing: 0.005em;
+}
+
+/* Labels: small mono caps, as printed on the hardware. */
+:root[data-theme='teenage'] :is(
+    .sidebar-title,
+    .stat-label,
+    .status-pill,
+    .composer-modes > span,
+    .feature-row-status,
+    .credit-label,
+    .rail-name,
+    .tool-name,
+    .turn-end,
+    .sidebar-tab,
+    .view-switch button,
+    .topbar-editor,
+    button.primary,
+    .editor-tree-head .tree-tab
+  ) {
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10.5px;
+}
+
+:root[data-theme='teenage'] h1,
+:root[data-theme='teenage'] .topbar-name {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+:root[data-theme='teenage'] .feature-head h1 {
+  font-size: 20px;
+  text-transform: lowercase;
+}
+
+/* Controls: flat keys with a hard edge, pressed straight down. */
+:root[data-theme='teenage'] button {
+  border-color: var(--border);
+  background: var(--raised);
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+:root[data-theme='teenage'] button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--raised);
+}
+
+:root[data-theme='teenage'] button:active:not(:disabled) {
+  scale: 1;
+  translate: 0 1px;
+  box-shadow: none;
+}
+
+:root[data-theme='teenage'] button.primary {
+  background: var(--accent);
+  border-color: var(--border-strong);
+  color: var(--accent-text);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme='teenage'] button.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+:root[data-theme='teenage'] :is(input, textarea, select) {
+  background: var(--raised);
+  border-color: var(--border);
+}
+
+:root[data-theme='teenage'] :is(input, textarea, select):focus {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+:root[data-theme='teenage'] :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+:root[data-theme='teenage'] a,
+:root[data-theme='teenage'] button.link,
+:root[data-theme='teenage'] .feature-row-issue {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+/* Top bar: a plain rule, the search as an inset field. */
+:root[data-theme='teenage'] .topbar {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+:root[data-theme='teenage'] .topbar-search {
+  background: var(--raised);
+  border-color: var(--border);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme='teenage'] .topbar-editor.toggled,
+:root[data-theme='teenage'] .topbar-menu.toggled {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+
+/* Rail: projects as round knobs, the selected one ringed in black. */
+:root[data-theme='teenage'] .rail {
+  background: var(--bg);
+  border-right: 1px solid var(--border-strong);
+}
+
+:root[data-theme='teenage'] .rail-avatar {
+  border-radius: 50%;
+  background: var(--tab-color);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 10px;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18), inset 0 2px 0 rgba(255, 255, 255, 0.25);
+}
+
+:root[data-theme='teenage'] .rail-item:hover:not(.active) .rail-avatar,
+:root[data-theme='teenage'] .rail-item.active .rail-avatar {
+  border-radius: 50%;
+}
+
+:root[data-theme='teenage'] .rail-item.active .rail-avatar {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--border-strong);
+}
+
+:root[data-theme='teenage'] .rail-item.active::before {
+  border-radius: 0;
+  background: var(--accent);
+  width: 4px;
+}
+
+/* Sidebar: a printed panel; the selected agent inverts like a lit display row. */
+:root[data-theme='teenage'] .sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border-strong);
+}
+
+:root[data-theme='teenage'] .sidebar-tabs {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  padding: 0;
+  gap: 0;
+}
+
+:root[data-theme='teenage'] .sidebar-tab {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:root[data-theme='teenage'] .sidebar-tab + .sidebar-tab {
+  border-left: 1px solid var(--border-strong);
+}
+
+:root[data-theme='teenage'] .sidebar-tab.selected {
+  background: var(--text);
+  color: var(--bg);
+}
+
+:root[data-theme='teenage'] :is(.sidebar-project, .sidebar-section) {
+  border-top: 1px solid var(--border-strong);
+}
+
+:root[data-theme='teenage'] .feature-row {
+  border-radius: 0;
+  margin-bottom: 0;
+  border-width: 0 0 1px;
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+:root[data-theme='teenage'] .feature-row:hover:not(.selected) {
+  background: var(--hover);
+}
+
+:root[data-theme='teenage'] .feature-row.selected {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+:root[data-theme='teenage'] .feature-row.selected :is(.feature-row-sub, .feature-row-status, .feature-row-issue) {
+  color: color-mix(in srgb, var(--bg) 75%, transparent);
+}
+
+/* LEDs: square, unglowing. */
+:root[data-theme='teenage'] .dot {
+  border-radius: 1px;
+}
+
+:root[data-theme='teenage'] .status-pill {
+  border-radius: 0;
+  border: 1px solid currentColor;
+  background: transparent;
+}
+
+/* Conversation header and stats read as a spec plate. */
+:root[data-theme='teenage'] .feature-head {
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--panel);
+}
+
+:root[data-theme='teenage'] .feature-stats {
+  gap: 0;
+  border: 1px solid var(--border-strong);
+}
+
+:root[data-theme='teenage'] .stat {
+  padding: 3px 10px;
+  align-items: flex-start;
+}
+
+:root[data-theme='teenage'] .stat + .stat {
+  border-left: 1px solid var(--border-strong);
+}
+
+:root[data-theme='teenage'] .stat-value {
+  font-family: var(--mono);
+  font-size: 15px;
+}
+
+:root[data-theme='teenage'] .view-switch {
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+:root[data-theme='teenage'] .view-switch button {
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+}
+
+:root[data-theme='teenage'] .view-switch button.selected {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* Transcript on a dot grid, like the back of a field unit. */
+:root[data-theme='teenage'] .transcript {
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.11) 1px, transparent 1.2px);
+  background-size: 16px 16px;
+}
+
+:root[data-theme='teenage'] .msg.user {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+  border-radius: 0;
+}
+
+:root[data-theme='teenage'] .msg.assistant pre,
+:root[data-theme='teenage'] .tool {
+  border-radius: 0;
+  background: var(--raised);
+  border-color: var(--border);
+}
+
+:root[data-theme='teenage'] .tool-name {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+:root[data-theme='teenage'] .turn-end {
+  color: var(--muted);
+}
+
+/* Composer: the input sits in a black bezel, the send key is the orange one. */
+:root[data-theme='teenage'] .composer textarea {
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+}
+
+:root[data-theme='teenage'] .composer-modes .filter {
+  border-radius: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+:root[data-theme='teenage'] .composer-modes .filter.selected {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+/* Status bar: the unit's black display. */
+:root[data-theme='teenage'] .statusbar {
+  background: var(--te-display);
+  border-top: 1px solid var(--border-strong);
+  color: #a9a9a2;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+}
+
+:root[data-theme='teenage'] .statusbar :is(.strong, .num.strong) {
+  color: var(--te-display-text);
+}
+
+:root[data-theme='teenage'] .statusbar :is(button, .statusbar-linear) {
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+}
+
+:root[data-theme='teenage'] .statusbar .credit-bar {
+  background: #2c2c2a;
+  border-radius: 0;
+}
+
+:root[data-theme='teenage'] .statusbar-sep {
+  background: #3a3a37;
+}
+
+/* Panels, menus and dialogs: no blur, a hard offset shadow. */
+:root[data-theme='teenage'] .dialog {
+  border-radius: 3px;
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-lg);
+}
+
+:root[data-theme='teenage'] .editor {
+  border-left: 1px solid var(--border-strong);
+}
+
+:root[data-theme='teenage'] .workspace.stacked > .editor {
+  border-top: 1px solid var(--border-strong);
+}
+
+:root[data-theme='teenage'] .resizer {
+  background: var(--border-strong);
+}
+
+:root[data-theme='teenage'] .app.compact .sidebar {
+  box-shadow: 8px 0 0 rgba(0, 0, 0, 0.12);
+}
