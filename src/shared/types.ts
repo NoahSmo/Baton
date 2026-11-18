@@ -1,7 +1,9 @@
 import type { Lang } from './i18n'
+import type { SlashCommandInfo } from './slashCommands'
 import type { Theme } from './themes'
 
 // Single place to rename the app.
+
 export const APP_NAME = 'Baton'
 export const APP_SLUG = 'baton'
 /** Where releases are published and how Homebrew knows the app. */
@@ -74,10 +76,36 @@ export type PermissionMode = 'default' | 'acceptEdits' | 'plan' | 'bypassPermiss
 
 export const PERMISSION_MODES: PermissionMode[] = ['default', 'acceptEdits', 'plan', 'bypassPermissions']
 
-/** Model an agent runs on, as Claude Code aliases it. */
-export type AgentModel = 'haiku' | 'sonnet' | 'opus' | 'opusplan' | 'claude-fable-5-2' | 'claude-fable-5-1'
+/**
+ * Model an agent runs on: a Claude Code alias, which follows the latest version
+ * of its family, or a pinned version. "[1m]" asks for the 1M-token context window.
+ */
+export type AgentModel =
+  | 'haiku'
+  | 'sonnet'
+  | 'opus'
+  | 'opusplan'
+  | 'sonnet[1m]'
+  | 'opus[1m]'
+  | 'claude-fable-5-2'
+  | 'claude-fable-5-1'
+  | 'claude-opus-5-5'
+  | 'claude-sonnet-5-5'
+  | 'claude-haiku-5-5'
 
-export const AGENT_MODELS: AgentModel[] = ['haiku', 'sonnet', 'opus', 'opusplan', 'claude-fable-5-2', 'claude-fable-5-1']
+export const AGENT_MODELS: AgentModel[] = [
+  'haiku',
+  'sonnet',
+  'opus',
+  'opusplan',
+  'sonnet[1m]',
+  'opus[1m]',
+  'claude-fable-5-2',
+  'claude-fable-5-1',
+  'claude-opus-5-5',
+  'claude-sonnet-5-5',
+  'claude-haiku-5-5'
+]
 
 /** Models listed first in the picker; the others sit under "More models". */
 export const FEATURED_AGENT_MODELS: AgentModel[] = ['claude-fable-5-2', 'opus', 'sonnet', 'haiku']
@@ -740,6 +768,8 @@ export interface Api {
   /** Applies from the agent's next request. */
   setAgentModel(featureId: string, model: AgentModel): Promise<void>
   setAgentEffort(featureId: string, effort: AgentEffort | null): Promise<void>
+  /** Commands the agent's process offers after "/"; null while it is not running. */
+  slashCommands(featureId: string): Promise<SlashCommandInfo[] | null>
   /** Whether agents stopped by the usage limit get a summarizing thread once it resets. */
   /** Whether agents whose branch has merged are deleted on their own after a while. */
   getAutoRemoveMerged(): Promise<boolean>

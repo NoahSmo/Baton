@@ -1437,6 +1437,7 @@ button.link:hover:not(:disabled) {
 /* Composer */
 
 .composer {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -4684,4 +4685,79 @@ button.kanban-card {
 .settings-dialog h2,
 .project-dialog h2 {
   padding-right: calc(var(--sp-6) + 24px);
+}
+
+/* Agent presets */
+
+.preset-chips {
+  align-items: center;
+}
+
+.preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.preset-remove {
+  opacity: 0.6;
+}
+
+.preset-name {
+  width: 160px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: var(--fs-xs);
+}
+
+/* Slash commands */
+
+.command-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  margin-bottom: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 20;
+}
+
+.command-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+}
+
+.command-item.selected {
+  background: var(--hover);
+}
+
+.command-name {
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+}
+
+.command-arg,
+.command-desc {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.command-desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

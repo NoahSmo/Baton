@@ -8,6 +8,7 @@ import {
   type SDKMessage,
   type SDKUserMessage
 } from '@anthropic-ai/claude-agent-sdk'
+import type { SlashCommandInfo } from '../shared/slashCommands'
 import type { AgentEffort, AgentModel, BackgroundTask, ImageInput, PermissionDecision, PermissionMode, UiEvent } from '../shared/types'
 import { claudeEnv } from './claudeAccount'
 
@@ -193,6 +194,13 @@ export class AgentSession {
     }
   }
 
+  /** Commands the session understands, its skills and the user's own included; null before the process is up. */
+  async commands(): Promise<SlashCommandInfo[] | null> {
+    if (!this.q) return null
+    const list = await this.q.supportedCommands()
+    return list.map((c) => ({ name: c.name, description: c.description, ...(c.argumentHint ? { argumentHint: c.argumentHint } : {}) }))
+  }
+
   /** Takes effect from the next request. */
   async setModel(model: AgentModel): Promise<void> {
     this.model = model
@@ -328,7 +336,12 @@ export class AgentSession {
               .map((task) => ({ id: task.task_id, kind: task.subagent_type ?? task.task_type, description: task.description }))
           })
         } else if (m.subtype === 'compact_boundary') {
-          this.compactedFrom = { preTokens: m.compact_metadata.pre_tokens, postTokens: m.compact_metadata.post_tokens }
+          const from = { preTokens: m.compact_metadata.pre_tokens, postTokens: m.compact_metadata.post_tokens }
+          // Typed by the user as /compact: the turn is theirs, only the notice is ours to add.
+          if (this.compactions > 0) this.compactedFrom = from
+          else this.opts.emit({ type: 'compacted', ok: true, ...from, costUsd: 0 })
+        } else if (m.subtype === 'local_command_output') {
+          if (m.content.trim()) emit({ kind: 'assistant_text', text: m.content })
         }
         return
 

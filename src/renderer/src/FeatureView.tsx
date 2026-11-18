@@ -21,6 +21,8 @@ import { useLang, useT } from './i18n'
 import { LinkIssueDialog } from './LinkIssueDialog'
 import { ModelPicker } from './ModelPicker'
 import { EffortPicker } from './EffortPicker'
+import { CommandMenu } from './CommandMenu'
+import { commandQuery, matchCommands, mergeCommands, modelFromArgument, parseSlashCommand, type SlashCommandInfo } from '../../shared/slashCommands'
 import { cleanError } from './NewFeatureDialog'
 import { PermissionCard } from './PermissionCard'
 import { attachTerminal, closeTerminal, fitTerminal, openTerminal, useCliTab, type TerminalTab } from './terminalStore'
@@ -72,6 +74,20 @@ export function FeatureView({
   /** Caret position to restore once a message recalled from the history is on screen. */
   const caretAtEnd = useRef(false)
   const [finding, setFinding] = useState(false)
+  const [commands, setCommands] = useState<SlashCommandInfo[] | null>(null)
+  const [commandIndex, setCommandIndex] = useState(0)
+  const query = commandQuery(draft)
+  const suggestions = useMemo(() => (query === null ? [] : matchCommands(mergeCommands(commands), query)), [commands, query])
+  // The session lists its own commands, skills included, once its process is up.
+  useEffect(() => {
+    if (query === null) return
+    let stale = false
+    window.api.slashCommands(feature.id).then((list) => !stale && list && setCommands(list), () => {})
+    return () => {
+      stale = true
+    }
+  }, [feature.id, query === null])
+  useEffect(() => setCommandIndex(0), [query])
   /** Changes with the transcript, to find the matches again; the stream is not part of `items`. */
   const searchRevision = useMemo(() => ({}), [items, stream])
   useEffect(() => saveDraft(feature.id, draft), [feature.id, draft])
@@ -99,6 +115,16 @@ export function FeatureView({
   function submit() {
     const text = draft.trim()
     if (!text && !attachments.drafts.length) return
+    // The model is this app's to switch: the agent's process would change it without the app knowing.
+    const command = parseSlashCommand(text)
+    if (command?.name === 'model' && !attachments.drafts.length) {
+      const model = modelFromArgument(command.args)
+      if (model) {
+        setDraft('')
+        void window.api.setAgentModel(feature.id, model)
+        return
+      }
+    }
     setDraft('')
     cursor.current = START
     attachments.clear()
@@ -108,7 +134,29 @@ export function FeatureView({
 
   const stop = () => void window.api.interrupt(feature.id)
 
+  function pickCommand(command: SlashCommandInfo) {
+    cursor.current = START
+    caretAtEnd.current = true
+    setDraft(`/${command.name} `)
+    box.current?.focus()
+  }
+
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (suggestions.length && !e.nativeEvent.isComposing) {
+      const last = suggestions.length - 1
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        setCommandIndex((i) => (e.key === 'ArrowDown' ? (i >= last ? 0 : i + 1) : i <= 0 ? last : i - 1))
+        return
+      }
+      // Enter sends a command typed in full; it completes one that is only started.
+      const typed = suggestions[commandIndex] ?? suggestions[0]
+      if ((e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey && query !== typed.name)) && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        pickCommand(typed)
+        return
+      }
+    }
     // Ctrl+C keeps copying when text is selected.
     const { selectionStart, selectionEnd } = e.currentTarget
     const ctrlC = e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'c' && selectionStart === selectionEnd
@@ -276,6 +324,7 @@ export function FeatureView({
         </div>
 
         <footer className="composer" onDragOver={attachments.onDragOver} onDrop={attachments.onDrop}>
+          {suggestions.length > 0 && <CommandMenu commands={suggestions} selected={commandIndex} onPick={pickCommand} />}
           <DraftAttachments drafts={attachments.drafts} rejected={attachments.rejected} onRemove={attachments.remove} />
           {project && (
             <TemplateChips

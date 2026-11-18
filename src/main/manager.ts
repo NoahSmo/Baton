@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import type { Dict } from '../shared/i18n'
 import { needsAttention, nextStatus, slugify } from '../shared/status'
+import type { SlashCommandInfo } from '../shared/slashCommands'
 import {
   DEFAULT_AGENT_MODEL,
   DEFAULT_QA,
@@ -368,6 +369,12 @@ export class Manager {
     this.mustGet(featureId)
     this.patch(featureId, { agentModel: model })
     await this.sessions.get(featureId)?.setModel(model)
+  }
+
+  /** Slash commands the agent's process offers; null while it is not running. */
+  async slashCommands(featureId: string): Promise<SlashCommandInfo[] | null> {
+    this.mustGet(featureId)
+    return (await this.sessions.get(featureId)?.commands()) ?? null
   }
 
   /** Takes effect from the agent's next request. */
