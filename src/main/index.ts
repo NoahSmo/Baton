@@ -759,6 +759,7 @@ function registerIpc(): void {
 
   ipcMain.handle('linear:createIssue', (_e, input: CreateLinearIssueInput) => linear.createIssue(input))
   ipcMain.handle('linear:teamStates', (_e, teamId: string) => linear.teamStates(teamId))
+  ipcMain.handle('linear:issueDetails', (_e, issueId: string) => linear.issueDetails(issueId))
   ipcMain.handle('linear:setIssueState', (_e, issueId: string, stateId: string) =>
     linear.setIssueState(issueId, stateId)
   )

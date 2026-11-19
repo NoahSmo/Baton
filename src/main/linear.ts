@@ -1,5 +1,5 @@
 import { DICTS, type Dict } from '../shared/i18n'
-import type { CreateLinearIssueInput, LinearIssue, LinearLabel, LinearProject, LinearProjectStatus, LinearState, LinearTeam } from '../shared/types'
+import type { CreateLinearIssueInput, LinearIssue, LinearIssueDetails, LinearLabel, LinearProject, LinearProjectStatus, LinearState, LinearTeam } from '../shared/types'
 
 // Overridable so the app can be exercised against a local stand-in for Linear.
 const ENDPOINT = process.env.BATON_LINEAR_URL ?? 'https://api.linear.app/graphql'
@@ -159,6 +159,37 @@ export class LinearClient {
     )
     if (!data.issueCreate.success || !data.issueCreate.issue) throw new Error(this.t().errors.linearCreateFailed)
     return toIssue(data.issueCreate.issue)
+  }
+
+  /** Description, labels, author and comments of an issue, for its detail view. */
+  async issueDetails(issueId: string): Promise<LinearIssueDetails> {
+    const data = await this.request<{
+      issue: {
+        description: string | null
+        createdAt: string
+        creator: { name: string } | null
+        labels: { nodes: { name: string; color: string }[] }
+        comments: { nodes: { id: string; body: string; createdAt: string; user: { name: string } | null }[] }
+      }
+    }>(
+      `query($id: String!) {
+        issue(id: $id) {
+          description createdAt creator { name }
+          labels(first: 20) { nodes { name color } }
+          comments(first: 100) { nodes { id body createdAt user { name } } }
+        }
+      }`,
+      { id: issueId }
+    )
+    const { creator, labels, comments, ...issue } = data.issue
+    return {
+      ...issue,
+      creatorName: creator?.name ?? null,
+      labels: labels.nodes,
+      comments: comments.nodes
+        .map(({ user, ...c }) => ({ ...c, userName: user?.name ?? null }))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    }
   }
 
   async setIssueState(issueId: string, stateId: string): Promise<void> {

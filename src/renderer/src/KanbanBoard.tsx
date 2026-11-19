@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { issuesInColumn, priorityColumns, statesOfType, statusColumns, type BoardGrouping, type KanbanColumn, type KanbanLane } from '../../shared/kanban'
+import { opensIssue } from '../../shared/linear'
 import type { Feature, LinearIssue, LinearState, Project } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
 import { useT } from './i18n'
@@ -23,6 +24,8 @@ interface Props {
   onSetState(issue: LinearIssue, stateId: string): void
   onStart(issue: LinearIssue, repos: Project[]): void
   onOpenFeature(feature: Feature): void
+  /** The user clicked a card to read the issue. */
+  onOpenIssue(issue: LinearIssue): void
 }
 
 /** Bars of the priority glyph that are lit, per Linear priority. */
@@ -55,7 +58,7 @@ function ColumnHead({ col, count }: { col: KanbanColumn; count: number }) {
 }
 
 /** Issues laid out as columns of cards; dropping a card on a column changes its status or priority in Linear. */
-export function KanbanBoard({ issues, teamStates, grouping, lanes, collapsed, onToggleLane, projects, features, reposFor, onMove, onSetState, onStart, onOpenFeature }: Props) {
+export function KanbanBoard({ issues, teamStates, grouping, lanes, collapsed, onToggleLane, projects, features, reposFor, onMove, onSetState, onStart, onOpenFeature, onOpenIssue }: Props) {
   const t = useT()
   const [dragged, setDragged] = useState<LinearIssue | null>(null)
   /** The cell under the dragged card: the column key, prefixed by the lane key when there are lanes. */
@@ -105,11 +108,10 @@ export function KanbanBoard({ issues, teamStates, grouping, lanes, collapsed, on
           const { identifier, url, branchName } = issue
           void openContextMenu(e, { kind: 'issue', identifier, url, branchName })
         }}
+        onClick={(e) => opensIssue(e.target as Element, String(window.getSelection() ?? '')) && onOpenIssue(issue)}
       >
         <div className="kanban-card-top">
-          <a className="issue-id" href={issue.url} target="_blank" rel="noreferrer" draggable={false}>
-            {issue.identifier}
-          </a>
+          <span className="issue-id">{issue.identifier}</span>
           {grouping === 'priority' ? (
             renderStatus(issue)
           ) : (

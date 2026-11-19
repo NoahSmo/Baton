@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BOARD_GROUPINGS, LANE_AXES, groupByAssignee, groupByProject, stateForColumn, type LaneAxis, type BoardGrouping, type BoardKind, type KanbanColumn } from '../../shared/kanban'
-import { CLOSED_PROJECT_STATUSES, groupProjectsByStatus, issuePrompt, reposForLinearProject } from '../../shared/linear'
+import { CLOSED_PROJECT_STATUSES, groupProjectsByStatus, issuePrompt, opensIssue, reposForLinearProject } from '../../shared/linear'
 import { DEFAULT_AGENT_MODEL, type Feature, type LinearIssue, type LinearProject, type LinearState, type LinearStatus, type Project } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
+import { CreateIssueDialog } from './CreateIssueDialog'
 import { useT } from './i18n'
+import { IssueDetailDialog } from './IssueDetailDialog'
 import { IssueStateFilter, matchesIssueFilter } from './IssueStateFilter'
 import { KanbanBoard } from './KanbanBoard'
 import { cleanError } from './NewFeatureDialog'
@@ -60,6 +62,9 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
   const [reload, setReload] = useState(0)
   const [selection, setSelection] = useState<string[]>([])
   const [starting, setStarting] = useState(false)
+  const [creatingIssue, setCreatingIssue] = useState(false)
+  /** Issue shown in the detail view; read from the list so its edits show there at once. */
+  const [openIssueId, setOpenIssueId] = useState<string | null>(null)
 
   function toggleLane(key: string) {
     const next = collapsedLanes.includes(key) ? collapsedLanes.filter((k) => k !== key) : [...collapsedLanes, key]
@@ -147,28 +152,37 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
     }
   }
 
+  async function changePriority(issue: LinearIssue, priority: number) {
+    if (priority === issue.priority) return
+    const patch = (next: number) =>
+      setIssues((list) => list?.map((i) => (i.id === issue.id ? { ...i, priority: next } : i)) ?? null)
+    patch(priority)
+    setError('')
+    try {
+      await window.api.linearSetIssuePriority(issue.id, priority)
+    } catch (err) {
+      patch(issue.priority)
+      setError(cleanError(err))
+    }
+  }
+
   /** A card dropped on a column: the issue takes that status or priority, undone if Linear refuses. */
   async function moveIssue(issue: LinearIssue, column: KanbanColumn) {
     setError('')
-    const patch = (next: Partial<LinearIssue>) =>
-      setIssues((list) => list?.map((i) => (i.id === issue.id ? { ...i, ...next } : i)) ?? null)
-    if (column.priority !== undefined) {
-      if (column.priority === issue.priority) return
-      patch({ priority: column.priority })
-      try {
-        await window.api.linearSetIssuePriority(issue.id, column.priority)
-      } catch (err) {
-        patch({ priority: issue.priority })
-        setError(cleanError(err))
-      }
-      return
-    }
+    if (column.priority !== undefined) return changePriority(issue, column.priority)
     if (column.type === issue.stateType) return
     const state = stateForColumn(teamStates[issue.teamId] ?? [], column)
     if (!state) return setError(t.linearView.noStateInTeam(t.linearView.stateTypes[column.type ?? ''] ?? column.key))
     await changeState(issue, state.id)
   }
 
+  /** A new issue joins the list when it belongs to the view: all of them are the user's, but not all in this project. */
+  function issueCreated(issue: LinearIssue) {
+    setCreatingIssue(false)
+    if (selectedId === null || issue.linearProjectId === selectedId) setIssues((list) => (list ? [issue, ...list] : [issue]))
+  }
+
+  const openIssue = issues?.find((i) => i.id === openIssueId) ?? null
   const shown = (issues ?? []).filter((i) => matchesIssueFilter(i, stateFilter, text))
   const hasFeature = (issue: LinearIssue) => features.some((f) => f.linear?.issueId === issue.id)
   const startable = shown.filter((i) => !hasFeature(i))
@@ -306,6 +320,9 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
             </label>
           )}
           <button onClick={() => setReload((n) => n + 1)}>{t.linearView.refresh}</button>
+          <button className="primary" disabled={!linearProjects} onClick={() => setCreatingIssue(true)}>
+            {t.linearView.newIssue}
+          </button>
         </header>
 
         <div className="linear-tools">
@@ -364,6 +381,7 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
             onSetState={(issue, stateId) => void changeState(issue, stateId)}
             onStart={onStart}
             onOpenFeature={onOpenFeature}
+            onOpenIssue={(issue) => setOpenIssueId(issue.id)}
           />
         )}
 
@@ -381,6 +399,7 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
                   const { identifier, url, branchName } = issue
                   void openContextMenu(e, { kind: 'issue', identifier, url, branchName })
                 }}
+                onClick={(e) => opensIssue(e.target as Element, String(window.getSelection() ?? '')) && setOpenIssueId(issue.id)}
               >
                 <input
                   type="checkbox"
@@ -390,9 +409,7 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
                   checked={!feature && selection.includes(issue.id)}
                   onChange={() => toggle(issue.id)}
                 />
-                <a className="issue-id" href={issue.url} target="_blank" rel="noreferrer">
-                  {issue.identifier}
-                </a>
+                <span className="issue-id">{issue.identifier}</span>
                 <span className="issue-title" title={issue.title}>
                   {issue.title}
                 </span>
@@ -430,6 +447,36 @@ export function LinearView({ mode, linear, projects, features, defaultProjectId,
         </div>
         )}
       </section>
+
+      {openIssue && (
+        <IssueDetailDialog
+          issue={openIssue}
+          states={teamStates[openIssue.teamId] ?? null}
+          projectName={linearProjects?.find((p) => p.id === openIssue.linearProjectId)?.name ?? null}
+          feature={features.find((f) => f.linear?.issueId === openIssue.id) ?? null}
+          canStart={projects.length > 0}
+          onSetState={(stateId) => void changeState(openIssue, stateId)}
+          onSetPriority={(priority) => void changePriority(openIssue, priority)}
+          onStart={() => {
+            setOpenIssueId(null)
+            onStart(openIssue, reposFor(openIssue.linearProjectId))
+          }}
+          onOpenFeature={(feature) => {
+            setOpenIssueId(null)
+            onOpenFeature(feature)
+          }}
+          onClose={() => setOpenIssueId(null)}
+        />
+      )}
+
+      {creatingIssue && linearProjects && (
+        <CreateIssueDialog
+          linearProjects={linearProjects}
+          initialProjectId={selectedId}
+          onClose={() => setCreatingIssue(false)}
+          onCreated={issueCreated}
+        />
+      )}
     </div>
   )
 }

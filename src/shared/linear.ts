@@ -7,6 +7,14 @@ export function issuePrompt(issue: LinearIssue): string {
     .join('\n\n')
 }
 
+/**
+ * Whether a click on an issue row or card opens its detail view:
+ * not when it lands on one of its controls, nor when it ends a text selection.
+ */
+export function opensIssue(target: Element, selectedText: string): boolean {
+  return !target.closest('button, select, input, a, textarea') && !selectedText
+}
+
 /** Repositories serving a Linear project, the main one first. */
 export function reposForLinearProject(projects: readonly Project[], linearProjectId: string): Project[] {
   const linked = projects.filter((p) => p.linearProjects.some((l) => l.id === linearProjectId))
