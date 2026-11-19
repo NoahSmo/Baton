@@ -130,6 +130,15 @@ describe('LinearClient', () => {
     expect((calls[1].body.variables as { input: { description?: string } }).input.description).toBeUndefined()
   })
 
+  it('creates an issue outside any project', async () => {
+    const { client, calls } = fakeLinear(
+      { body: { data: { viewer: { id: 'u1' } } } },
+      { body: { data: { issueCreate: { success: true, issue: rawIssue } } } }
+    )
+    await client.createIssue({ title: 'Dark mode', description: '', teamId: 't1' })
+    expect(calls[1].body.variables).toEqual({ input: { title: 'Dark mode', teamId: 't1', assigneeId: 'u1' } })
+  })
+
   it('fails when Linear does not create the issue', async () => {
     const { client } = fakeLinear(
       { body: { data: { viewer: { id: 'u1' } } } },
@@ -138,6 +147,38 @@ describe('LinearClient', () => {
     await expect(
       client.createIssue({ title: 'x', description: '', teamId: 't1', projectId: 'p1' })
     ).rejects.toThrow('Linear did not create the issue.')
+  })
+
+  it('reads the details of an issue, comments oldest first', async () => {
+    const { client, calls } = fakeLinear({
+      body: {
+        data: {
+          issue: {
+            description: 'Add a toggle.',
+            createdAt: '2026-01-01T00:00:00Z',
+            creator: { name: 'Ada' },
+            labels: { nodes: [{ name: 'UI', color: '#f00' }] },
+            comments: {
+              nodes: [
+                { id: 'c2', body: 'Done', createdAt: '2026-01-03T00:00:00Z', user: null },
+                { id: 'c1', body: 'On it', createdAt: '2026-01-02T00:00:00Z', user: { name: 'Bob' } }
+              ]
+            }
+          }
+        }
+      }
+    })
+    expect(await client.issueDetails('i1')).toEqual({
+      description: 'Add a toggle.',
+      createdAt: '2026-01-01T00:00:00Z',
+      creatorName: 'Ada',
+      labels: [{ name: 'UI', color: '#f00' }],
+      comments: [
+        { id: 'c1', body: 'On it', createdAt: '2026-01-02T00:00:00Z', userName: 'Bob' },
+        { id: 'c2', body: 'Done', createdAt: '2026-01-03T00:00:00Z', userName: null }
+      ]
+    })
+    expect(calls[0].body.variables).toEqual({ id: 'i1' })
   })
 
   it('returns team states in workflow order', async () => {

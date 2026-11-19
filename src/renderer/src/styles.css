@@ -5336,3 +5336,103 @@ button.kanban-card {
 :root[data-theme='teenage'] .app.compact .sidebar {
   box-shadow: 8px 0 0 rgba(0, 0, 0, 0.12);
 }
+
+/* Issue detail view, opened from a row or card of the Linear tab. */
+.linear-row,
+.kanban-card {
+  cursor: pointer;
+}
+
+.issue-dialog {
+  width: 680px;
+}
+
+.issue-dialog h2 .issue-id {
+  margin-right: 4px;
+}
+
+.issue-fields {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 16px;
+  margin: 12px 0 16px;
+}
+
+.issue-fields dt {
+  color: var(--muted);
+}
+
+.issue-fields dd {
+  margin: 0;
+}
+
+.issue-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.issue-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: var(--fs-sm);
+}
+
+.issue-label::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--label-color);
+}
+
+.issue-markdown {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.issue-markdown > :first-child {
+  margin-top: 0;
+}
+
+.issue-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.issue-markdown img {
+  max-width: 100%;
+}
+
+.issue-markdown pre {
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+
+.issue-comments {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.issue-comments h3 {
+  font-size: var(--fs-md);
+  margin: 0 0 8px;
+}
+
+.issue-comment + .issue-comment {
+  margin-top: 12px;
+}
+
+.issue-comment header {
+  margin: 0 0 4px;
+}

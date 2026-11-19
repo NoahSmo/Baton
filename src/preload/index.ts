@@ -59,6 +59,7 @@ const api: Api = {
   linearTeamStates: (teamId) => ipcRenderer.invoke('linear:teamStates', teamId),
   linearSetIssueState: (issueId, stateId) => ipcRenderer.invoke('linear:setIssueState', issueId, stateId),
   linearSetIssuePriority: (issueId, priority) => ipcRenderer.invoke('linear:setIssuePriority', issueId, priority),
+  linearIssueDetails: (issueId) => ipcRenderer.invoke('linear:issueDetails', issueId),
   linearCreateIssue: (input) => ipcRenderer.invoke('linear:createIssue', input),
   linearIssues: (linearProjectId) => ipcRenderer.invoke('linear:issues', linearProjectId),
   onEvent: (cb) => subscribe('event', cb),

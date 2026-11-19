@@ -212,7 +212,8 @@ export interface CreateLinearIssueInput {
   title: string
   description: string
   teamId: string
-  projectId: string
+  /** Linear project the issue goes in; none leaves it outside any project. */
+  projectId?: string
 }
 
 /** A shell command of a project the user starts with one click, e.g. its dev server. */
@@ -397,6 +398,23 @@ export interface LinearIssue {
   assigneeName: string | null
   /** Linear's priority: 0 none, 1 urgent, 2 high, 3 medium, 4 low. */
   priority: number
+}
+
+/** What the detail view of an issue shows beyond the fields of the list. */
+export interface LinearIssueDetails {
+  description: string | null
+  createdAt: string
+  creatorName: string | null
+  labels: { name: string; color: string }[]
+  /** Oldest first, as they read in Linear. */
+  comments: LinearComment[]
+}
+
+export interface LinearComment {
+  id: string
+  body: string
+  userName: string | null
+  createdAt: string
 }
 
 export interface LinearState {
@@ -838,6 +856,7 @@ export interface Api {
   linearTeamStates(teamId: string): Promise<LinearState[]>
   linearSetIssueState(issueId: string, stateId: string): Promise<void>
   linearSetIssuePriority(issueId: string, priority: number): Promise<void>
+  linearIssueDetails(issueId: string): Promise<LinearIssueDetails>
   linearCreateIssue(input: CreateLinearIssueInput): Promise<LinearIssue>
   onEvent(cb: (ev: StoredEvent) => void): () => void
   onFeature(cb: (feature: Feature) => void): () => void
