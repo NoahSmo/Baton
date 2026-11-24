@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installs or upgrades Baton on Linux.
+# Installs or upgrades Guru (formerly Baton) on Linux.
 #
 #   curl -fsSL https://raw.githubusercontent.com/NoahSmo/Baton/main/install.sh | sh
 #
@@ -10,7 +10,7 @@ set -eu
 
 REPO="NoahSmo/Baton"
 
-say() { printf '%s\n' "baton: $*"; }
+say() { printf '%s\n' "guru: $*"; }
 fail() { say "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || fail "$1 is required"; }
 
@@ -53,20 +53,20 @@ case "$mode" in
   deb)
     # Debian names the architectures its own way.
     [ "$arch" = x64 ] && deb_arch=amd64 || deb_arch=arm64
-    file="Baton-$version-linux-$deb_arch.deb"
+    file="Guru-$version-linux-$deb_arch.deb"
     fetch "$file"
     $sudo apt-get install -y "$tmp/$file"
     ;;
   rpm)
     [ "$arch" = x64 ] && rpm_arch=x86_64 || rpm_arch=aarch64
-    file="Baton-$version-linux-$rpm_arch.rpm"
+    file="Guru-$version-linux-$rpm_arch.rpm"
     fetch "$file"
     if command -v dnf >/dev/null 2>&1; then $sudo dnf install -y "$tmp/$file"
     else $sudo zypper --non-interactive install --allow-unsigned-rpm "$tmp/$file"
     fi
     ;;
   user)
-    file="Baton-$version-linux-$arch.tar.gz"
+    file="Guru-$version-linux-$arch.tar.gz"
     fetch "$file"
     dest="$HOME/.local/share/baton"
     rm -rf "$dest"
@@ -80,7 +80,7 @@ case "$mode" in
       gtk-update-icon-cache -q -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
     cat >"$HOME/.local/share/applications/baton.desktop" <<DESKTOP
 [Desktop Entry]
-Name=Baton
+Name=Guru
 Comment=Feature-first orchestrator for Claude Code agents
 Exec=$dest/baton %U
 Icon=$icon
@@ -94,7 +94,7 @@ DESKTOP
     if [ -n "$sudo" ] && command -v sudo >/dev/null 2>&1; then
       say "setting up Chromium's sandbox helper (sudo)"
       sudo chown root:root "$dest/chrome-sandbox" && sudo chmod 4755 "$dest/chrome-sandbox" ||
-        say "could not; if Baton does not start, run: $dest/baton --no-sandbox"
+        say "could not; if Guru does not start, run: $dest/baton --no-sandbox"
     fi
     case ":$PATH:" in
       *":$HOME/.local/bin:"*) ;;
@@ -104,4 +104,4 @@ DESKTOP
   *) fail "BATON_INSTALL must be deb, rpm or user" ;;
 esac
 
-say "Baton $version installed. It needs git, and Claude Code installed and logged in (run: claude)."
+say "Guru $version installed. It needs git, and Claude Code installed and logged in (run: claude)."

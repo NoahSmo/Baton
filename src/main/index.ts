@@ -15,11 +15,13 @@ import { DEFAULT_THEME, sanitizeThemes, themeById, type Theme } from '../shared/
 import {
   AGENT_EFFORTS,
   AGENT_MODELS,
+  APP_ICONS,
   APP_NAME,
   APP_SLUG,
   DEFAULT_MAX_RUNNING,
   type AgentEffort,
   type AgentModel,
+  type AppIcon,
   type ContextMenuSpec,
   type CreateFeatureInput,
   type CreateLinearIssueInput,
@@ -119,6 +121,7 @@ let removeWorktreeOnArchive = false
 let autoRemoveMerged = false
 let theme: Theme = DEFAULT_THEME
 let customThemes: Theme[] = []
+let appIcon: AppIcon = APP_ICONS[0]
 let claudeAccounts: ClaudeAccounts = { accounts: [], activeId: null }
 let notificationPrefs: NotificationPrefs = normalizePrefs(undefined)
 /** Agent on screen, as the renderer last said. */
@@ -154,6 +157,28 @@ function applyClaudeAccounts(next: ClaudeAccounts): ClaudeAccounts {
 function loadLanguage(): Lang {
   const stored = readSettings().language as Lang
   return LANGS.includes(stored) ? stored : langFromLocale(app.getLocale())
+}
+
+/** Icon files, under build/ in development and app-icons/ of the resources once packaged. */
+function iconFile(icon: AppIcon): string {
+  const root = app.isPackaged ? join(process.resourcesPath, 'app-icons') : join(app.getAppPath(), 'build')
+  // The default icon is the bundle's own; the others each have a folder.
+  if (icon === APP_ICONS[0]) return join(root, process.platform === 'darwin' ? 'icon.png' : 'icons/512x512.png')
+  return join(root, icon, process.platform === 'darwin' ? 'icon.png' : '512x512.png')
+}
+
+/**
+ * The Dock shows the bundle's icon unless told otherwise, and in development
+ * the bundle is Electron's. Linux has no bundle: the window carries the icon.
+ */
+function applyAppIcon(next: AppIcon, initial = false): void {
+  appIcon = next
+  if (process.platform === 'darwin') {
+    // A packaged app starting with its own icon leaves the Dock to the bundle.
+    if (!(initial && app.isPackaged && next === APP_ICONS[0])) app.dock?.setIcon(iconFile(next))
+  } else if (process.platform === 'linux') {
+    win?.setIcon(iconFile(next))
+  }
 }
 
 /** Native parts of the window (title bar, scrollbars, pickers) go light or dark with the theme. */
@@ -278,7 +303,7 @@ function createWindow(): void {
     // Elsewhere the system draws its own title bar.
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 16 } } : {}),
     // Linux has no bundle to take the window icon from.
-    ...(process.platform === 'linux' ? { icon: app.isPackaged ? join(process.resourcesPath, 'icon.png') : join(app.getAppPath(), 'build/icons/512x512.png') } : {}),
+    ...(process.platform === 'linux' ? { icon: iconFile(appIcon) } : {}),
     backgroundColor: theme.colors.bg,
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),
@@ -672,6 +697,12 @@ function registerIpc(): void {
     // The chosen theme may be one of them, edited or deleted.
     applyTheme(themeById(theme.id, customThemes))
   })
+  ipcMain.handle('appIcon:get', () => appIcon)
+  ipcMain.handle('appIcon:set', (_e, icon: AppIcon) => {
+    if (!APP_ICONS.includes(icon)) return
+    applyAppIcon(icon)
+    writeSettings({ appIcon: icon })
+  })
   ipcMain.handle('accounts:get', () => claudeAccounts)
   ipcMain.handle('accounts:add', (_e, name: string) => {
     const id = randomUUID()
@@ -994,8 +1025,8 @@ void app.whenReady().then(() => {
     usageWindows: setUsageWindows,
     limitLifted: (stopped) => void continueLimited(stopped)
   })
-  // In development the Dock shows the icon of the Electron bundle, not the app's.
-  if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
+  const storedIcon = readSettings().appIcon as AppIcon
+  applyAppIcon(APP_ICONS.includes(storedIcon) ? storedIcon : APP_ICONS[0], true)
   registerIpc()
   createWindow()
   void pollUsage()

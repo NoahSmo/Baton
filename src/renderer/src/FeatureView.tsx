@@ -256,7 +256,7 @@ export function FeatureView({
         </div>
         <div className="view-switch" role="group" aria-label={t.feature.viewSwitch}>
           <button className={cliTab ? '' : 'selected'} aria-pressed={!cliTab} onClick={() => cliTab && closeTerminal(cliTab.info.id)}>
-            {t.feature.viewBaton}
+            {t.feature.viewApp}
           </button>
           <button
             className={cliTab ? 'selected' : ''}

@@ -5289,6 +5289,31 @@ button.kanban-card {
   color: var(--bg);
 }
 
+/* Choices: the key style above outranks the base .selected rules, so the picked one is restated, lit like a pressed key. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .option.selected,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .option.selected:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--border-strong);
+  color: var(--accent-text);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .option.selected .option-desc {
+  color: inherit;
+  opacity: 0.8;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .lang-switch button {
+  background: transparent;
+  box-shadow: none;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .lang-switch button.selected,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .lang-switch button.selected:hover:not(:disabled) {
+  background: var(--text);
+  color: var(--bg);
+}
+
 /* Status bar: the unit's black display. */
 :root:is([data-theme='teenage'], [data-theme='teenage-dark']) .statusbar {
   background: var(--te-display);

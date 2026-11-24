@@ -3,7 +3,7 @@ import { LANGS, type Lang } from '../../shared/i18n'
 import { SHORTCUT_LIST, shortcutLabel } from '../../shared/shortcuts'
 import { newCustomTheme, THEMES, themeById, TRANSLUCENT_KEYS, type Palette, type Theme } from '../../shared/themes'
 import { DEFAULT_ACCOUNT } from '../../shared/accounts'
-import type { ClaudeAccounts, ClaudeAccountStatus, Feature, NotificationPrefs, TrashEntry } from '../../shared/types'
+import { APP_ICONS, type AppIcon, type ClaudeAccounts, type ClaudeAccountStatus, type Feature, type NotificationPrefs, type TrashEntry } from '../../shared/types'
 import { useLang, useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { IS_MAC } from './platform'
@@ -41,6 +41,7 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
   const [autoRemoveMerged, setAutoRemoveMerged] = useState<boolean | null>(null)
   const [themeId, setThemeId] = useState(() => cachedTheme().id)
   const [customs, setCustoms] = useState<Theme[]>([])
+  const [appIcon, setAppIcon] = useState<AppIcon | null>(null)
   const [checking, setChecking] = useState(false)
   const [result, setResult] = useState<'upToDate' | null>(null)
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null)
@@ -65,6 +66,7 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
     // The stored choice wins over the cached one, which may come from another data folder.
     void window.api.getTheme().then(setThemeId)
     void window.api.getCustomThemes().then(setCustoms)
+    void window.api.getAppIcon().then(setAppIcon)
   }, [])
 
   function changeAutoContinue(enabled: boolean) {
@@ -85,6 +87,11 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
   function changeMaxRunning(max: number) {
     setMaxRunning(max)
     void window.api.setMaxRunning(max)
+  }
+
+  function changeAppIcon(icon: AppIcon) {
+    setAppIcon(icon)
+    void window.api.setAppIcon(icon)
   }
 
   function changeTheme(id: string, list = customs) {
@@ -271,6 +278,18 @@ export function SettingsDialog({ version, onLanguage, onUpdateFound, onRestored,
                       </div>
                     </div>
                   )
+              )}
+              {appIcon && (
+                <div className="settings-row" title={t.statusbar.appIconHint}>
+                  <span>{t.statusbar.appIcon}</span>
+                  <span className="lang-switch" role="group" aria-label={t.statusbar.appIcon}>
+                    {APP_ICONS.map((icon) => (
+                      <button key={icon} className={icon === appIcon ? 'selected' : ''} aria-pressed={icon === appIcon} onClick={() => changeAppIcon(icon)}>
+                        {t.statusbar.appIcons[icon]}
+                      </button>
+                    ))}
+                  </span>
+                </div>
               )}
             </div>
           </section>
