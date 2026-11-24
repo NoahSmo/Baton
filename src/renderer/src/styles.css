@@ -204,7 +204,7 @@ pre {
 
 .app {
   display: grid;
-  grid-template-columns: 64px 300px minmax(0, 1fr);
+  grid-template-columns: var(--rail-w) 300px minmax(0, 1fr);
   grid-template-rows: 48px minmax(0, 1fr) 28px;
   height: 100%;
 }
@@ -295,6 +295,10 @@ kbd {
 
 /* Project rail */
 
+:root {
+  --rail-w: 80px;
+}
+
 .rail {
   grid-row: 2;
   grid-column: 1;
@@ -337,9 +341,9 @@ kbd {
 .rail-avatar {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
   background: color-mix(in srgb, var(--tab-color) 80%, #000);
   color: #fff;
   font-weight: 700;
@@ -382,7 +386,7 @@ kbd {
   content: '';
   position: absolute;
   left: 0;
-  top: 12px;
+  top: 14px;
   width: 3px;
   height: 20px;
   border-radius: 0 3px 3px 0;
@@ -390,7 +394,7 @@ kbd {
 }
 
 .rail-name {
-  max-width: 56px;
+  max-width: 70px;
   font-size: 10px;
   white-space: nowrap;
   overflow: hidden;
@@ -424,8 +428,8 @@ kbd {
 .rail-tool {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   background: transparent;
   border: 1px dashed var(--border-strong);
@@ -4865,19 +4869,19 @@ button.kanban-card {
   top: 48px;
   bottom: 28px;
   z-index: calc(var(--z-overlay) - 1);
-  transform: translateX(calc(-100% - 64px));
+  transform: translateX(calc(-100% - var(--rail-w)));
   transition: transform var(--dur-base) var(--ease), visibility 0s linear var(--dur-base);
   visibility: hidden;
 }
 
 .app.compact .rail {
   left: 0;
-  width: 64px;
+  width: var(--rail-w);
 }
 
 .app.compact .sidebar {
-  left: 64px;
-  width: min(320px, calc(100vw - 64px - 48px));
+  left: var(--rail-w);
+  width: min(320px, calc(100vw - var(--rail-w) - 48px));
   box-shadow: var(--shadow-lg);
 }
 
@@ -5481,8 +5485,8 @@ button.kanban-card {
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, 1fr);
   gap: 2px;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   padding: 4px;
   border: 2px solid transparent;
   border-radius: 10px;
@@ -5526,7 +5530,7 @@ button.kanban-card {
   content: '';
   position: absolute;
   left: 0;
-  top: 12px;
+  top: 14px;
   width: 3px;
   height: 20px;
   border-radius: 0 3px 3px 0;
@@ -5591,7 +5595,7 @@ button.kanban-card {
 }
 
 .rail-item.grouped .rail-name {
-  max-width: 44px;
+  max-width: 58px;
 }
 
 /* Inside a tray the selection bar still sits on the rail's edge. */
