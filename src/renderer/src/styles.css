@@ -1640,6 +1640,12 @@ button.attach:hover:not(:disabled) {
   animation: pop-in var(--dur-base) var(--ease);
 }
 
+/* A dialog taller than the window scrolls as a whole: its parts keep their height instead of being squeezed,
+   which would collapse a scrolling child such as the issue list to nothing. Bodies meant to shrink set flex: 1. */
+:where(.dialog) > * {
+  flex-shrink: 0;
+}
+
 .dialog h2 {
   margin: 0 0 8px;
   font-size: var(--fs-lg);
@@ -5321,9 +5327,10 @@ button.kanban-card {
 
 /* Panels, menus and dialogs: no blur, a hard offset shadow. */
 :root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dialog {
-  border-radius: 3px;
+  border-radius: 0;
   border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-lg);
+  animation: te-flick 0.09s steps(3, end);
 }
 
 :root:is([data-theme='teenage'], [data-theme='teenage-dark']) .editor {
@@ -5340,6 +5347,473 @@ button.kanban-card {
 
 :root:is([data-theme='teenage'], [data-theme='teenage-dark']) .app.compact .sidebar {
   box-shadow: 8px 0 0 rgba(0, 0, 0, 0.12);
+}
+
+/* Menus, pickers and the palette: modules clipped onto the panel. They switch on like a screen, in steps,
+   rows are printed (not keys), the row under the cursor lights up inverted and the current choice is a lit square. */
+
+@keyframes te-flick {
+  from {
+    opacity: 0;
+  }
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .overlay {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.ctx-menu, .command-menu) {
+  padding: 3px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  box-shadow: var(--shadow-md);
+  animation: te-flick 0.09s steps(3, end);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.ctx-item, .command-item),
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.ctx-item, .command-item):hover:not(:disabled) {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  translate: none;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .ctx-item:hover:not(:disabled),
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .ctx-item:focus-visible,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .command-item.selected,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .command-item.selected:hover:not(:disabled),
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .command-item:hover:not(:disabled) {
+  background: var(--text);
+  color: var(--bg);
+  outline: none;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.ctx-item:hover:not(:disabled), .ctx-item:focus-visible, .command-item.selected, .command-item:hover)
+  :is(.model-hint, .branch-tag, .branch-caret, .command-arg, .command-desc) {
+  color: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .ctx-item.danger:hover:not(:disabled),
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .ctx-item.danger:focus-visible {
+  background: var(--red);
+  color: var(--danger-text);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .ctx-sep {
+  margin: 3px 0;
+  background: var(--border-strong);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .command-name {
+  font-weight: 700;
+}
+
+/* Model and effort: a column of LEDs, the one in use lit. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .model-item::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  box-shadow: inset 0 0 0 1px currentColor;
+  opacity: 0.45;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .model-item.current {
+  color: inherit;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .model-item.current::before {
+  background: var(--accent);
+  box-shadow: none;
+  opacity: 1;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .model-note {
+  border-top-color: var(--border-strong);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .branch-item.current:disabled {
+  color: var(--text);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .branch-item.current .branch-check {
+  color: var(--accent);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .branch-tag {
+  font-family: var(--te-sans);
+}
+
+/* Command palette: the unit's black display on top, the list printed underneath. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .palette {
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  box-shadow: var(--shadow-lg);
+  animation: te-flick 0.09s steps(3, end);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .palette input,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .palette input:focus {
+  padding: 16px 18px;
+  background: var(--te-display);
+  color: var(--te-display-text);
+  caret-color: var(--accent);
+  border: 0;
+  border-bottom: 1px solid var(--border-strong);
+  box-shadow: none;
+  outline: none;
+  font-family: var(--mono);
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .palette input::placeholder {
+  color: #8a8a83;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .palette-list {
+  padding: 3px;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .palette-group {
+  padding: 10px 10px 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .palette-item {
+  border-radius: 0;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .palette-item.active {
+  background: var(--text);
+  color: var(--bg);
+  box-shadow: none;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .palette-hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) kbd {
+  border-radius: 0;
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: inset 0 -1px 0 var(--border-strong);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+/* Dialogs: a lowercase title, field names printed in caps above each field, the actions on a ruled strip. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dialog h2 {
+  font-weight: 700;
+  text-transform: lowercase;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dialog label:not([class], .label-option label) {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* A field takes focus by lighting its own frame, not with a ring set off from it. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dialog :is(input:not([type='checkbox'], .switch), textarea, select):focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  outline: none;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dialog > .dialog-actions:not(.settings-foot),
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.settings-foot, .project-dialog .dialog-actions) {
+  background: var(--bg);
+  border-top: 1px solid var(--border-strong);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dialog-actions button.primary,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dialog-actions button.danger-fill {
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dialog-close,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dialog-close:hover:not(:disabled) {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dialog-close {
+  background: transparent;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dialog-close:hover:not(:disabled) {
+  background: var(--text);
+  color: var(--bg);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.option, .toggle-row) {
+  border-radius: 0;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .option.selected,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .option.selected:hover:not(:disabled) {
+  background: var(--raised);
+  border-color: var(--border-strong);
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .mode {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .mode.selected,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .mode.selected:hover:not(:disabled) {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+
+/* Issue picker: a ruled list of printed rows, the row under the cursor lit like a menu's. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.issue-list, .issue-picked) {
+  border-color: var(--border-strong);
+  border-radius: 0;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .issue-picked {
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .issue-row,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .issue-row:hover:not(:disabled) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  translate: none;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .issue-row + .issue-row {
+  box-shadow: inset 0 1px 0 var(--border);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .issue-row:hover:not(:disabled),
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .issue-row:focus-visible {
+  background: var(--text);
+  color: var(--bg);
+  outline: none;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .issue-row:is(:hover, :focus-visible) :is(.issue-id, .issue-state) {
+  color: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+
+/* Settings: each section a printed heading with its rule run out to the edge, rows on a hard-edged card. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .settings-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .settings-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-strong);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .settings-card {
+  background: var(--raised);
+  border-color: var(--border-strong);
+  border-radius: 0;
+}
+
+/* The switch is a slide switch: a square cap in a ruled slot, the slot lit orange when on. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .switch,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .switch:focus {
+  width: 34px;
+  height: 16px;
+  border: 0;
+  border-radius: 0;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .switch::after {
+  top: 3px;
+  left: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 0;
+  background: var(--text);
+  box-shadow: none;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .switch:checked {
+  background: var(--accent);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .switch:checked::after {
+  transform: translateX(18px);
+  background: #121212;
+}
+
+/* Segmented switches (language, ranges): a row of keys sharing one bezel, the chosen one inverted. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .lang-switch {
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .lang-switch button,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .lang-switch button:hover:not(:disabled) {
+  padding: 1px 8px;
+  background: transparent;
+  box-shadow: none;
+  translate: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .lang-switch button + button {
+  border-left: 1px solid var(--border-strong);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .lang-switch button:hover:not(:disabled, .selected) {
+  color: var(--text);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .lang-switch button.selected,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .lang-switch button.selected:hover:not(:disabled) {
+  background: var(--text);
+  color: var(--bg);
+}
+
+/* Filter chips: small printed keys, not pills. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .filter {
+  border-radius: 0;
+  border-color: var(--border);
+  background: transparent;
+  box-shadow: none;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .filter.selected,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .filter.selected:hover:not(:disabled) {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .filter.bypassPermissions.selected,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .filter.bypassPermissions.selected:hover:not(:disabled) {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--danger-text);
+}
+
+/* Tabs in the editor and terminal: the open one sits forward with the orange tab on top. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.terminal-tabs, .editor-tabs) {
+  border-bottom-color: var(--border-strong);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.editor-tab, .terminal-tab) {
+  border-right-color: var(--border-strong);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.editor-tab, .terminal-tab).selected {
+  box-shadow: inset 0 3px 0 var(--accent);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.editor-tab-dirty) {
+  border-radius: 0;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.editor-tab-close, .terminal-tab-close, .tree-tab),
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.editor-tab-close, .terminal-tab-close, .tree-tab):hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .tree-tab {
+  border-width: 0 0 2px;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .tree-tab.selected,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .tree-tab.selected:hover:not(:disabled) {
+  border-bottom-color: var(--accent);
+}
+
+/* Linear and usage: ruled rows, square tags and bars, no rounding left anywhere. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.linear-row, .linear-project, .kanban-card, .issue-label, .issue-markdown pre) {
+  border-radius: 0;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .issue-label::before {
+  border-radius: 0;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .linear-project.selected,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .linear-project.selected:hover:not(:disabled) {
+  background: var(--raised);
+  border-color: var(--border-strong);
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .kanban-card:hover {
+  border-color: var(--border-strong);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.usage-title, .kanban-lane-head) {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .usage-days {
+  border-color: var(--border-strong);
+  border-radius: 0;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.usage-day span, .usage-bar) {
+  border-radius: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.dialog, .palette, .ctx-menu, .command-menu) {
+    animation: none;
+  }
 }
 
 /* Issue detail view, opened from a row or card of the Linear tab. */
