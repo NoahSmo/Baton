@@ -78,6 +78,8 @@ const en = {
     sort: { status: 'Status', activity: 'Recent activity', created: 'Creation date', cost: 'Cost', name: 'Name' } as Record<SidebarSort, string>,
     archived: (n: number) => `Archived · ${n}`,
     queueRank: (n: number) => `#${n} in line`,
+    /** A stopped agent's status once the limit's reset is known. */
+    limitUntil: (time: string) => `Limit · resets ${time}`,
     prompts: 'Prompts',
     promptsSettings: 'Edit the prompts',
     qa: 'Tests',
@@ -935,6 +937,7 @@ const fr: Dict = {
     sort: { status: 'Statut', activity: 'Activité récente', created: 'Date de création', cost: 'Coût', name: 'Nom' },
     archived: (n) => `Archivés · ${n}`,
     queueRank: (n) => `n° ${n} dans la file`,
+    limitUntil: (time) => `Limite · reset à ${time}`,
     prompts: 'Prompts',
     promptsSettings: 'Modifier les prompts',
     qa: 'Tests',

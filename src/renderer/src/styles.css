@@ -4840,8 +4840,9 @@ button.kanban-card {
   min-width: 0;
 }
 
+/* The session's reset stays: it is the one that says when stopped agents can go on. */
 @media (max-width: 1360px) {
-  .credit-reset,
+  .credit-reset.weekly,
   .statusbar-right {
     display: none;
   }
@@ -5438,7 +5439,8 @@ button.kanban-card {
 }
 
 /* Rail groups and drag-to-reorder.
-   A group is a bracket: a small label that folds, and a thin rule down the left edge tying its projects together. */
+   A folded group is a folder tile: its projects in a 2×2 mosaic, named underneath like a project.
+   An open group is a tray holding its projects, with the folder's name as a lid that folds it back. */
 
 .rail-group {
   position: relative;
@@ -5447,59 +5449,125 @@ button.kanban-card {
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding-bottom: 8px;
 }
 
-.rail-group:not(.collapsed)::before {
-  content: '';
-  position: absolute;
-  left: 5px;
-  top: 22px;
-  bottom: 12px;
-  width: 2px;
-  border-radius: 1px;
-  background: var(--border-strong);
-  opacity: 0.55;
-  pointer-events: none;
+.rail-group:not(.collapsed) {
+  width: calc(100% - 12px);
+  padding: 2px 0 8px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 8%, transparent);
 }
 
 .rail-group-head {
   width: 100%;
-  padding: 0 6px 0 8px;
 }
 
-.rail-group-toggle {
+.rail-folder {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 3px;
   width: 100%;
-  min-height: 20px;
-  padding: 2px 4px 2px 2px;
+  padding: 4px 0;
   background: transparent;
   border: none;
-  border-radius: var(--r-sm, 4px);
   color: var(--muted);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  cursor: pointer;
 }
 
-.rail-group-toggle .icon-svg {
-  flex: none;
-  transition: transform var(--dur-fast, 0.12s) var(--ease, ease);
+.rail-folder-tile {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 2px;
+  width: 36px;
+  height: 36px;
+  padding: 4px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text) 9%, var(--bg));
+  transition: border-radius var(--dur-fast, 0.12s) var(--ease, ease);
 }
 
-.rail-group-toggle:hover,
-.rail-group-head.has-active .rail-group-toggle {
+.rail-folder:hover .rail-folder-tile {
+  border-radius: 14px;
+}
+
+.rail-folder-cell {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--tab-color) 80%, #000);
+}
+
+.rail-folder-cell.empty {
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.rail-folder-cell img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The project on screen is inside a folded group: the group carries its marker. */
+.rail-group-head.has-active .rail-folder {
   color: var(--text);
 }
 
-.rail-group-toggle:hover {
-  background: var(--raised);
+.rail-group-head.has-active .rail-folder .rail-name {
+  font-weight: 600;
 }
 
-.rail-group-toggle:focus-visible,
+.rail-group-head.has-active .rail-folder::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  width: 3px;
+  height: 20px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+.rail-group-lid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 24px;
+  padding: 4px 6px 0;
+  background: transparent;
+  border: none;
+  border-radius: 12px 12px 4px 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rail-group-lid .icon-svg {
+  flex: none;
+  transform: rotate(180deg);
+  opacity: 0;
+  transition: opacity var(--dur-fast, 0.12s) var(--ease, ease);
+}
+
+.rail-group-lid:hover {
+  color: var(--text);
+}
+
+.rail-group-lid:hover .icon-svg,
+.rail-group-lid:focus-visible .icon-svg {
+  opacity: 1;
+}
+
+.rail-group-lid:focus-visible,
+.rail-folder:focus-visible,
 .rail-item:focus-visible,
 .rail-group-input:focus-visible {
   outline: 2px solid var(--accent);
@@ -5508,50 +5576,27 @@ button.kanban-card {
 
 .rail-group-name {
   min-width: 0;
-  flex: 1;
   overflow: hidden;
-  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* A folded group still tells what is inside: agents waiting, agents working, the project on screen. */
-.rail-group-badge {
-  flex: none;
-  min-width: 14px;
-  padding: 0 3px;
-  border-radius: 7px;
-  background: var(--amber);
-  color: #1a1204;
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 14px;
+.rail-group-input {
+  width: calc(100% - 8px);
+  min-width: 0;
+  margin: 2px 4px 0;
+  padding: 2px 4px;
+  font-size: 10px;
   text-align: center;
 }
 
-.rail-group-dot {
-  flex: none;
+.rail-item.grouped .rail-name {
+  max-width: 44px;
 }
 
-.rail-group-head.has-active .rail-group-toggle::after {
-  content: '';
-  flex: none;
-  width: 5px;
-  height: 5px;
-  margin-left: 2px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-.rail-group-input {
-  width: 100%;
-  min-width: 0;
-  padding: 2px 4px;
-  font-size: 10px;
-}
-
-.rail-group.collapsed {
-  padding-bottom: 0;
+/* Inside a tray the selection bar still sits on the rail's edge. */
+.rail-item.grouped.active::before {
+  left: -6px;
 }
 
 .rail-item.dragging,
@@ -5585,7 +5630,7 @@ button.kanban-card {
 }
 
 .rail-group.drop-into {
-  border-radius: var(--r-md, 8px);
+  border-radius: 14px;
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   outline: 2px dashed var(--accent);
   outline-offset: -2px;
@@ -5600,33 +5645,62 @@ button.kanban-card {
   background: var(--accent);
 }
 
-.rail-item.grouped {
-  padding-left: 6px;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .rail-group-toggle .icon-svg {
+  .rail-folder-tile,
+  .rail-group-lid .icon-svg {
     transition: none;
   }
 }
 
-/* Teenage Engineering: group labels are printed caps like the rest, and the bracket is a hard black rule. */
-:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group-toggle {
+/* Teenage Engineering: the folder is a key panel of little knobs, the tray a printed frame, the lid printed caps. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-folder-tile {
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 4px;
+  gap: 3px;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-folder:hover .rail-folder-tile {
+  border-radius: 6px;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-folder-cell {
+  border-radius: 50%;
+  background: var(--tab-color);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-folder-cell.empty {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group-head.has-active .rail-folder::before {
+  border-radius: 0;
+  width: 4px;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group:not(.collapsed) {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group-lid {
+  margin-top: -2px;
+  padding: 3px 4px;
+  border-radius: 0;
+  background: var(--border-strong);
+  color: var(--bg);
   font-family: var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-size: 9px;
 }
 
-:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group:not(.collapsed)::before {
-  width: 3px;
-  border-radius: 0;
-  background: var(--border-strong);
-  opacity: 1;
-}
-
-:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group-toggle:hover,
-:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group-head.has-active .rail-group-toggle {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group-lid:hover,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group-head.has-active .rail-group-lid {
   background: var(--accent);
   color: var(--accent-text);
 }

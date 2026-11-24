@@ -153,7 +153,7 @@ export function StatusBar({ features, current, linear, onOpenLinear, version, up
               <span style={{ width: `${used * 100}%` }} />
             </span>
             <span className="num strong">{Math.round(used * 100)}%</span>
-            {reset && <span className="credit-reset">{t.statusbar.creditReset(reset)}</span>}
+            {reset && <span className={`credit-reset ${kind}`}>{t.statusbar.creditReset(reset)}</span>}
           </span>
         )
       })}

@@ -5,12 +5,20 @@ import { arrangeFeatures, SIDEBAR_SORTS, type SidebarSort } from '../../shared/f
 import type { Feature, FeatureStatus, Project, QaRun, TerminalTarget } from '../../shared/types'
 import { openContextMenu } from './contextMenu'
 import { formatUsd } from '../../shared/format'
-import { useT } from './i18n'
+import { formatReset } from '../../shared/time'
+import { useLang, useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { closeTerminal, inTarget, openTerminal, showTerminal, useTerminals } from './terminalStore'
 import { IS_MAC } from './platform'
 import type { BoardKind } from '../../shared/kanban'
 import { Icon } from './ui/Icon'
+
+/** The status as a row or header says it: a place in line, or when a usage limit lets the agent go on. */
+export function statusText(f: Feature, t: ReturnType<typeof useT>, lang: string): string {
+  if (f.status === 'queued' && f.queuePosition) return t.sidebar.queueRank(f.queuePosition)
+  const reset = f.status === 'limited' ? formatReset(f.limitResetsAt ?? undefined, lang) : undefined
+  return reset ? t.sidebar.limitUntil(reset) : t.status[f.status]
+}
 
 /** Order of the filter chips: what needs the user first. */
 const STATUS_ORDER: FeatureStatus[] = ['waiting', 'working', 'queued', 'done', 'error', 'limited', 'idle']
@@ -85,6 +93,7 @@ export function Sidebar({
   linearConnected
 }: Props) {
   const t = useT()
+  const lang = useLang()
   // Terminals belong to the feature on screen, as in the panel; without one they are the project's.
   const target: TerminalTarget = selectedId ? { featureId: selectedId } : { projectId: project.id }
   const terminals = useTerminals().filter((tab) => inTarget(tab.info, target))
@@ -189,7 +198,7 @@ export function Sidebar({
             </span>
           )}
           <span className={`feature-row-status ${f.status}`}>
-            {f.status === 'queued' && f.queuePosition ? t.sidebar.queueRank(f.queuePosition) : t.status[f.status]}
+            {statusText(f, t, lang)}
           </span>
         </span>
         <span className="feature-row-sub">
