@@ -169,4 +169,9 @@ describe('install scripts', () => {
     expect(script).toContain("open '/Applications/Guru.app'")
     expect(script).not.toContain('open -a')
   })
+
+  it('opens the bundle under its new name when the upgrade renamed it', () => {
+    const script = brewScript('/opt/homebrew/bin/brew', 42, '/Applications/Baton.app')
+    expect(script).toContain("if [ -d '/Applications/Baton.app' ]; then open '/Applications/Baton.app'; else open '/Applications/Guru.app'; fi")
+  })
 })

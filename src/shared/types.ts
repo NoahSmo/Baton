@@ -8,6 +8,8 @@ import type { Theme } from './themes'
 export const APP_NAME = 'Guru'
 /** Kept from the app's former name, Baton: it names the data folder (~/.baton) and the Linux install paths. */
 export const APP_SLUG = 'baton'
+/** Folder of the browser storage (rail layout, drafts, presets), named before the rename so it carries over. */
+export const USER_DATA_NAME = 'Baton'
 /** Where releases are published and how Homebrew knows the app; both still carry the former name. */
 export const GITHUB_REPO = 'NoahSmo/Baton'
 export const BREW_CASK = 'noahsmo/tap/baton'

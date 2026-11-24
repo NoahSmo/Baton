@@ -67,10 +67,21 @@ jobs:
       - run: npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm ci
       - run: npm run dist
+      # Installs from before the rename look for Baton-<version>.zip holding Baton.app.
+      - name: Package a copy for installs named Baton
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          tmp=$(mktemp -d)
+          ditto -x -k "dist/Guru-$VERSION.zip" "$tmp"
+          mv "$tmp/Guru.app" "$tmp/Baton.app"
+          ditto -c -k --sequesterRsrc --keepParent "$tmp/Baton.app" "dist/Baton-$VERSION.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: dist/Guru-${{ needs.version.outputs.version }}.zip
+          path: |
+            dist/Guru-${{ needs.version.outputs.version }}.zip
+            dist/Baton-${{ needs.version.outputs.version }}.zip
           if-no-files-found: error
 
   linux:
@@ -140,6 +151,11 @@ jobs:
           ls -l artifacts
           test "$(ls artifacts/Guru-"$VERSION"-linux-* | wc -l)" -eq 6
           test -f "artifacts/Guru-$VERSION.zip"
+          test -f "artifacts/Baton-$VERSION.zip"
+      # Installs from before the rename pick their update by the old name; the packages themselves did not change.
+      - name: Copy the Linux packages under the old name
+        run: |
+          for f in artifacts/Guru-"$VERSION"-linux-*; do cp "$f" "artifacts/Baton-${f#artifacts/Guru-}"; done
       - name: Create the GitHub release
         run: |
           gh release create "v$VERSION" artifacts/* \
