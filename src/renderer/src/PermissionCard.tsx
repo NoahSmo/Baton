@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { PermissionDecision } from '../../shared/types'
 import { useT } from './i18n'
 import { asQuestions, toolSummary, type Item } from './transcript'
@@ -30,7 +31,7 @@ export function PermissionCard({ item, onRespond }: Props) {
       <div className="card plan-card">
         <p className="card-title">{t.permission.plan}</p>
         <div className="plan-body">
-          <Markdown>{plan}</Markdown>
+          <Markdown remarkPlugins={[remarkGfm]}>{plan}</Markdown>
         </div>
         <div className="card-actions">
           <button className="primary" onClick={() => onRespond({ behavior: 'allow' })}>

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { atEdge, sentMessages, START, stepHistory, type HistoryCursor } from '../../shared/history'
 import { issuePrompt } from '../../shared/linear'
 import {
@@ -308,7 +309,7 @@ export function FeatureView({
             )}
             {stream && (
               <div className="msg assistant">
-                <Markdown>{stream}</Markdown>
+                <Markdown remarkPlugins={[remarkGfm]}>{stream}</Markdown>
               </div>
             )}
             {feature.status === 'working' && !stream && <div className="thinking">{t.feature.working}</div>}
@@ -526,7 +527,7 @@ function TranscriptItem({
     case 'assistant':
       return (
         <div className="msg assistant" onContextMenu={(e) => copyMenu(e, [{ label: 'message', text: item.text }])}>
-          <Markdown>{item.text}</Markdown>
+          <Markdown remarkPlugins={[remarkGfm]}>{item.text}</Markdown>
         </div>
       )
     case 'tool':
