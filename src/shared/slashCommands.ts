@@ -66,3 +66,11 @@ export function modelFromArgument(arg: string): AgentModel | null {
   if (!word) return null
   return AGENT_MODELS.find((m) => m === word) ?? MODEL_WORDS[word] ?? null
 }
+
+/** What a local command (/mcp, /cost…) printed, from the tagged user message it comes back in; "" for anything else. */
+export function localCommandOutput(content: string): string {
+  const parts = [...content.matchAll(/<local-command-(?:stdout|stderr)>([\s\S]*?)<\/local-command-(?:stdout|stderr)>/g)]
+  // The CLI pads some output with ANSI colours that a transcript cannot show.
+  // eslint-disable-next-line no-control-regex
+  return parts.map((p) => p[1].replace(/\u001b\[[0-9;]*m/g, '').trim()).filter(Boolean).join('\n')
+}
