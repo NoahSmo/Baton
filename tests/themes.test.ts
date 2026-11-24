@@ -31,6 +31,7 @@ describe('themes', () => {
   it('ships a dark rosy theme and a Wesur theme', () => {
     expect(themeById('rosy-dark').dark).toBe(true)
     expect(themeById('wesur').dark).toBe(false)
+    expect(themeById('wesur-dark').dark).toBe(true)
   })
 
   it('ships a light rosy theme', () => {
