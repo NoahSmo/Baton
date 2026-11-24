@@ -5,11 +5,13 @@ import { EditorState, Transaction, type Extension, type Text } from '@codemirror
 import { EditorView, keymap } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { openContextMenu } from './contextMenu'
 import type { Feature, FileEntry, GitChange, GitChangeKind, GitStatus } from '../../shared/types'
 import { DiffView } from './DiffView'
 import { GitActions } from './GitActions'
 import { editorTheme } from './editorTheme'
 import { HistoryGraph } from './HistoryGraph'
+import { PullRequestStatusCard } from './PullRequestStatusCard'
 import { useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
 import { Icon } from './ui/Icon'
@@ -75,6 +77,8 @@ export function EditorPane({ feature, visible, size, git, panel, onPanel }: Prop
   const [changesMode, setChangesMode] = useState<'commit' | 'turn'>('commit')
   /** Undefined while loading; null when no snapshot of the turn exists. */
   const [turn, setTurn] = useState<{ base: string; changes: GitChange[] } | null | undefined>(undefined)
+  /** A name being typed in the tree: for a new entry inside `dir`, or for the entry `path` being renamed. */
+  const [naming, setNaming] = useState<{ kind: 'create'; dir: string; isDirectory: boolean } | { kind: 'rename'; path: string } | null>(null)
   const buffers = useRef(new Map<string, Buffer>())
   const view = useRef<EditorView | null>(null)
   const host = useRef<HTMLDivElement>(null)
@@ -287,8 +291,88 @@ export function EditorPane({ feature, visible, size, git, panel, onPanel }: Prop
     if (visible) view.current?.requestMeasure()
   }, [visible])
 
+  /** Tabs of a path, or of anything inside it when it is a folder. */
+  const tabsUnder = (path: string) => latest.current.tabs.filter((x) => x.path === path || x.path.startsWith(`${path}/`))
+
+  async function commitName(value: string) {
+    const action = naming
+    setNaming(null)
+    const name = value.trim()
+    if (!action || !name) return
+    setError(null)
+    try {
+      if (action.kind === 'create') {
+        const path = await window.api.fileCreate(id, action.dir, name, action.isDirectory)
+        await loadDir(action.dir)
+        if (!action.isDirectory) void openFile(path)
+      } else {
+        if (name === action.path.slice(action.path.lastIndexOf('/') + 1)) return
+        // Open tabs would point at the old path: close them first, unless that costs unsaved changes.
+        for (const tab of tabsUnder(action.path)) await closeTab(tab.path)
+        if (tabsUnder(action.path).length) return
+        await window.api.fileRename(id, action.path, name)
+        await loadDir(parentOf(action.path))
+      }
+    } catch (err) {
+      setError(cleanError(err))
+    }
+  }
+
+  async function deleteEntry(path: string) {
+    setError(null)
+    try {
+      if (!(await window.api.fileDelete(id, path))) return
+      for (const tab of tabsUnder(path)) {
+        buffers.current.delete(tab.path)
+        setTabs((list) => list.filter((x) => x.path !== tab.path))
+        if (latest.current.activePath === tab.path) setActivePath(null)
+      }
+      await loadDir(parentOf(path))
+    } catch (err) {
+      setError(cleanError(err))
+    }
+  }
+
+  /** Right-click on a row, or on the empty part of the tree (the root). */
+  async function entryMenu(e: React.MouseEvent, path: string, isDirectory: boolean) {
+    e.stopPropagation()
+    const action = await openContextMenu(e, { kind: 'entry', path, isDirectory })
+    if (action === 'new-file' || action === 'new-folder') {
+      if (path && !expanded.has(path)) toggleDir(path)
+      setNaming({ kind: 'create', dir: path, isDirectory: action === 'new-folder' })
+    } else if (action === 'rename-entry') setNaming({ kind: 'rename', path })
+    else if (action === 'delete-entry') void deleteEntry(path)
+  }
+
+  /** The row where a name is typed; Enter keeps it, Escape or leaving the field drops it. */
+  function renderNameRow(depth: number, isDirectory: boolean, initial: string) {
+    return (
+      <div className="tree-row tree-naming" style={{ paddingLeft: 10 + depth * 12 }}>
+        <span className="tree-arrow" />
+        <input
+          className="tree-name-input"
+          aria-label={isDirectory ? t.editor.nameFolder : t.editor.nameFile}
+          defaultValue={initial}
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+          onBlur={(e) => void commitName(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+            if (e.key === 'Escape') {
+              e.currentTarget.value = ''
+              e.currentTarget.blur()
+            }
+            e.stopPropagation()
+          }}
+        />
+      </div>
+    )
+  }
+
   function renderDir(dir: string, depth: number): ReactNode {
-    return dirs[dir]?.map((entry) => {
+    const creating = naming?.kind === 'create' && naming.dir === dir ? naming : null
+    const rows = dirs[dir]?.map((entry) => {
+      if (naming?.kind === 'rename' && naming.path === entry.path) return <Fragment key={entry.path}>{renderNameRow(depth, entry.isDirectory, entry.name)}</Fragment>
       const open = entry.isDirectory && expanded.has(entry.path)
       return (
         <Fragment key={entry.path}>
@@ -298,6 +382,7 @@ export function EditorPane({ feature, visible, size, git, panel, onPanel }: Prop
             title={entry.path}
             aria-expanded={entry.isDirectory ? open : undefined}
             onClick={() => (entry.isDirectory ? toggleDir(entry.path) : void openFile(entry.path))}
+            onContextMenu={(e) => void entryMenu(e, entry.path, entry.isDirectory)}
           >
             <span className="tree-arrow">{entry.isDirectory && <Icon name={open ? 'chevron-down' : 'chevron-right'} size={12} />}</span>
             <span className={`tree-name${entry.isDirectory ? ' dir' : ''} ${changed.get(entry.path) ?? ''}`}>{entry.name}</span>
@@ -306,6 +391,12 @@ export function EditorPane({ feature, visible, size, git, panel, onPanel }: Prop
         </Fragment>
       )
     })
+    return (
+      <>
+        {creating && renderNameRow(depth, creating.isDirectory, '')}
+        {rows}
+      </>
+    )
   }
 
   const notice: Record<Exclude<Tab['status'], 'text'>, string> = {
@@ -342,7 +433,27 @@ export function EditorPane({ feature, visible, size, git, panel, onPanel }: Prop
           ))}
         </div>
         {panel === 'files' ? (
-          <div className="editor-tree-list">{renderDir('', 0)}</div>
+          <div className="editor-tree-list" onContextMenu={(e) => void entryMenu(e, '', true)}>
+            <div className="tree-tools">
+              <button
+                className="tree-tool"
+                title={t.editor.newFile}
+                aria-label={t.editor.newFile}
+                onClick={() => setNaming({ kind: 'create', dir: '', isDirectory: false })}
+              >
+                <Icon name="plus" size={12} />
+              </button>
+              <button
+                className="tree-tool"
+                title={t.editor.newFolder}
+                aria-label={t.editor.newFolder}
+                onClick={() => setNaming({ kind: 'create', dir: '', isDirectory: true })}
+              >
+                <Icon name="folder-plus" size={12} />
+              </button>
+            </div>
+            {renderDir('', 0)}
+          </div>
         ) : panel === 'pr' ? (
           <div className="editor-tree-list pr-panel">
             <p className="pr-branch">
@@ -351,6 +462,7 @@ export function EditorPane({ feature, visible, size, git, panel, onPanel }: Prop
               {git && git.behind > 0 && <span className="num">↓{git.behind}</span>}
             </p>
             {!feature.prUrl && <p className="tree-empty">{t.git.noPr}</p>}
+            <PullRequestStatusCard feature={feature} version={git} />
             <div className="pr-actions">
               <GitActions feature={feature} git={git} variant="sync" />
             </div>

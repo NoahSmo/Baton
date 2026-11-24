@@ -1,4 +1,5 @@
 import type { Lang } from './i18n'
+import type { ContextSnapshot } from './context'
 import type { SlashCommandInfo } from './slashCommands'
 import type { Theme } from './themes'
 
@@ -374,6 +375,20 @@ export interface PullRequestSupport {
   reason?: 'missing' | 'signed-out'
 }
 
+export type MergeMethod = 'squash' | 'merge' | 'rebase'
+
+/** Where a feature's pull request stands on GitHub. */
+export interface PullRequestStatus {
+  number: number
+  url: string
+  state: 'open' | 'merged' | 'closed'
+  draft: boolean
+  /** False when the branch conflicts with its base. */
+  mergeable: boolean | null
+  review: 'approved' | 'changes' | 'required' | null
+  checks: { passed: number; failed: number; pending: number }
+}
+
 /** Link from a feature to the Linear issue it was created from. */
 export interface LinearLink {
   issueId: string
@@ -573,7 +588,9 @@ export interface CreateFeatureInput {
 
 export type ContextMenuSpec =
   | { kind: 'feature'; featureId: string }
-  | { kind: 'project'; projectId: string }
+  | { kind: 'project'; projectId: string; /** Sits in a rail group. */ grouped?: boolean }
+  | { kind: 'entry'; path: string; isDirectory: boolean }
+  | { kind: 'group'; groupId: string; /** Folded away. */ collapsed?: boolean }
   | { kind: 'commit'; hash: string; subject: string }
   | { kind: 'issue'; identifier: string; url: string; branchName: string }
   | { kind: 'text'; entries: { label: 'message' | 'input' | 'output'; text: string }[] }
@@ -600,6 +617,17 @@ export type MenuAction =
   | 'link-feature'
   | 'new-feature'
   | 'project-settings'
+  | 'group-project'
+  | 'ungroup-project'
+  | 'rename-group'
+  | 'delete-group'
+  | 'toggle-group'
+  | 'new-file'
+  | 'new-folder'
+  | 'rename-entry'
+  | 'delete-entry'
+  | 'move-up'
+  | 'move-down'
   | 'continue-feature'
   | 'resume-terminal'
   | 'compare-commit'
@@ -788,6 +816,8 @@ export interface Api {
   setAgentEffort(featureId: string, effort: AgentEffort | null): Promise<void>
   /** Commands the agent's process offers after "/"; null while it is not running. */
   slashCommands(featureId: string): Promise<SlashCommandInfo[] | null>
+  /** What fills the agent's context window, by category: live when its process runs, else as of its last turn; null when never measured. */
+  contextUsage(featureId: string): Promise<ContextSnapshot | null>
   /** Whether agents stopped by the usage limit get a summarizing thread once it resets. */
   /** Whether agents whose branch has merged are deleted on their own after a while. */
   getAutoRemoveMerged(): Promise<boolean>
@@ -875,6 +905,12 @@ export interface Api {
    * on disk since, the user is asked first. Resolves with the new mtime, or null when kept.
    */
   fileWrite(featureId: string, path: string, content: string, mtimeMs: number): Promise<number | null>
+  /** Creates an empty file or folder in a directory of the worktree ('' for its root); resolves with its path. */
+  fileCreate(featureId: string, dir: string, name: string, isDirectory: boolean): Promise<string>
+  /** Renames a file or folder in place; resolves with its new path. */
+  fileRename(featureId: string, path: string, name: string): Promise<string>
+  /** Moves a file or folder to the system trash after asking; false when declined. */
+  fileDelete(featureId: string, path: string): Promise<boolean>
   /** Asks before throwing away unsaved changes. */
   confirmDiscard(name: string): Promise<boolean>
   filesWatch(featureId: string): Promise<void>
@@ -912,6 +948,10 @@ export interface Api {
   cancelDraftPullRequest(featureId: string): void
   /** Pushes the branch if needed and opens the pull request; resolves with its URL. */
   createPullRequest(featureId: string, draft: PullRequestDraft): Promise<string>
+  /** The pull request of the feature's branch; null when there is none or GitHub cannot be reached. */
+  pullRequestStatus(featureId: string): Promise<PullRequestStatus | null>
+  /** Merges the pull request after asking; false when declined. */
+  mergePullRequest(featureId: string, method: MergeMethod): Promise<boolean>
   /** Has Claude sum up an agent's work so another can carry on. */
   draftHandoff(featureId: string): Promise<HandoffDraft>
   cancelDraftHandoff(featureId: string): void

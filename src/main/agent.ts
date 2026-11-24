@@ -8,6 +8,7 @@ import {
   type SDKMessage,
   type SDKUserMessage
 } from '@anthropic-ai/claude-agent-sdk'
+import { byServer, type ContextUsage } from '../shared/context'
 import type { SlashCommandInfo } from '../shared/slashCommands'
 import type { AgentEffort, AgentModel, BackgroundTask, ImageInput, PermissionDecision, PermissionMode, UiEvent } from '../shared/types'
 import { claudeEnv } from './claudeAccount'
@@ -199,6 +200,22 @@ export class AgentSession {
     if (!this.q) return null
     const list = await this.q.supportedCommands()
     return list.map((c) => ({ name: c.name, description: c.description, ...(c.argumentHint ? { argumentHint: c.argumentHint } : {}) }))
+  }
+
+  /** What fills the context window, by category; null before the process is up. Estimated from the last response, without extra token counts. */
+  async contextUsage(): Promise<ContextUsage | null> {
+    if (!this.q) return null
+    const r = await this.q.getContextUsage({ detail: 'summary' })
+    return {
+      model: r.model,
+      totalTokens: r.totalTokens,
+      maxTokens: r.rawMaxTokens || r.maxTokens,
+      percentage: r.percentage,
+      categories: r.categories.map((c) => ({ ...(c.id ? { id: c.id } : {}), name: c.name, tokens: c.tokens, kind: c.kind })),
+      mcpServers: byServer(r.mcpTools),
+      memoryFiles: r.memoryFiles.map(({ path, type, tokens }) => ({ path, type, tokens })),
+      skills: (r.skills?.skillFrontmatter ?? []).map(({ name, tokens }: { name: string; tokens: number }) => ({ name, tokens }))
+    }
   }
 
   /** Takes effect from the next request. */

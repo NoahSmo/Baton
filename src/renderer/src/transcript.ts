@@ -169,3 +169,34 @@ export function pendingRequest(events: StoredEvent[]): { requestId: string } | n
   for (const [requestId, toolName] of open) if (toolName !== 'AskUserQuestion') return { requestId }
   return null
 }
+
+export type ToolItem = Extract<Item, { type: 'tool' }>
+
+/** What the thread shows: items, with runs of two or more tool calls folded into one cluster. */
+export type Block = Item | { type: 'tools'; seq: number; tools: ToolItem[] }
+
+/** Consecutive tool calls make a wall of boxes; a cluster keeps the conversation readable. */
+export function groupTools(items: Item[]): Block[] {
+  const out: Block[] = []
+  let run: ToolItem[] = []
+  const flush = () => {
+    if (run.length === 1) out.push(run[0])
+    else if (run.length > 1) out.push({ type: 'tools', seq: run[0].seq, tools: run })
+    run = []
+  }
+  for (const item of items) {
+    if (item.type === 'tool') run.push(item)
+    else {
+      flush()
+      out.push(item)
+    }
+  }
+  flush()
+  return out
+}
+
+/** How a tool call stands, for its icon and its label. */
+export function toolState(tool: ToolItem): 'running' | 'failed' | 'done' | 'orphaned' {
+  if (!tool.result) return tool.orphaned ? 'orphaned' : 'running'
+  return tool.result.isError ? 'failed' : 'done'
+}

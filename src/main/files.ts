@@ -1,5 +1,5 @@
 import { watch, type FSWatcher } from 'node:fs'
-import { open, readdir, realpath, stat, writeFile } from 'node:fs/promises'
+import { mkdir, open, readdir, realpath, rename, stat, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type { FileContent, FileEntry } from '../shared/types'
 
@@ -72,6 +72,38 @@ export async function writeTextFile(root: string, rel: string, content: string):
   const path = await resolveInside(root, rel)
   await writeFile(path, content, 'utf8')
   return (await stat(path)).mtimeMs
+}
+
+/** A name for one entry: no separators, nothing that points elsewhere. */
+function checkName(name: string): void {
+  if (!name.trim() || name === '.' || name === '..' || /[\\/]/.test(name)) throw new Error(`Not a valid name: ${name}`)
+}
+
+async function assertFree(path: string, rel: string): Promise<void> {
+  if (await stat(path).then(() => true, () => false)) throw new Error(`Already exists: ${rel}`)
+}
+
+/** Creates an empty file or a folder named `name` inside `dir`; fails when the name is taken. Resolves with its path. */
+export async function createEntry(root: string, dir: string, name: string, isDirectory: boolean): Promise<string> {
+  checkName(name)
+  const rel = dir ? `${dir}/${name}` : name
+  const path = await resolveInside(root, rel)
+  await assertFree(path, rel)
+  if (isDirectory) await mkdir(path)
+  else await writeFile(path, '', { flag: 'wx' })
+  return rel
+}
+
+/** Renames an entry in place; fails when the name is taken. Resolves with its new path. */
+export async function renameEntry(root: string, rel: string, name: string): Promise<string> {
+  checkName(name)
+  const from = await resolveInside(root, rel)
+  const parent = rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : ''
+  const next = parent ? `${parent}/${name}` : name
+  const to = await resolveInside(root, next)
+  if (to !== from) await assertFree(to, next)
+  await rename(from, to)
+  return next
 }
 
 /** Past this many paths in one burst (an install, a checkout), the editor refreshes everything instead. */

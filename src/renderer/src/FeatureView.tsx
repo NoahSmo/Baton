@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import Markdown from 'react-markdown'
-import { kTokens } from '../../shared/i18n'
 import { atEdge, sentMessages, START, stepHistory, type HistoryCursor } from '../../shared/history'
 import { issuePrompt } from '../../shared/linear'
 import {
@@ -13,10 +12,12 @@ import {
   type StoredEvent
 } from '../../shared/types'
 import { AttachButton, DraftAttachments, SentAttachments } from './Attachments'
+import { ContextMeter } from './ContextMeter'
 import { ConversationSearch } from './ConversationSearch'
 import { loadDraft, saveDraft } from './drafts'
 import { GitActions } from './GitActions'
 import { openContextMenu } from './contextMenu'
+import { Icon } from './ui/Icon'
 import { useLang, useT } from './i18n'
 import { LinkIssueDialog } from './LinkIssueDialog'
 import { ModelPicker } from './ModelPicker'
@@ -27,7 +28,7 @@ import { cleanError } from './NewFeatureDialog'
 import { PermissionCard } from './PermissionCard'
 import { attachTerminal, closeTerminal, fitTerminal, openTerminal, useCliTab, type TerminalTab } from './terminalStore'
 import { TemplateChips } from './TemplatesDialog'
-import { buildTranscript, toolSummary, type Item, type Todo } from './transcript'
+import { buildTranscript, groupTools, toolState, toolSummary, type Block, type Item, type ToolItem, type Todo } from './transcript'
 import { toMessageAttachments, useAttachments } from './useAttachments'
 
 interface Props {
@@ -65,6 +66,7 @@ export function FeatureView({
   const t = useT()
   const lang = useLang()
   const { items, todos } = useMemo(() => buildTranscript(events, t, lang), [events, t, lang])
+  const blocks: Block[] = useMemo(() => groupTools(items), [items])
   // What was typed here and not sent comes back when the agent does.
   const [draft, setDraft] = useState(() => loadDraft(feature.id))
   const attachments = useAttachments()
@@ -103,6 +105,8 @@ export function FeatureView({
   }, [])
   const scroller = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
+  /** Scrolled away from the newest output: offers a way back. */
+  const [away, setAway] = useState(false)
 
   // Follow new output only while the user is already at the bottom.
   useEffect(() => {
@@ -264,15 +268,7 @@ export function FeatureView({
           </button>
         </div>
         <div className="feature-stats">
-          <div className="stat" title={t.feature.contextSize}>
-            <span className="stat-label">{t.feature.context}</span>
-            <span className={`stat-value num${feature.contextTokens > 100_000 ? ' heavy' : ''}`}>{kTokens(feature.contextTokens)}</span>
-            {feature.contextTokens > 100_000 && feature.sessionId && (
-              <button className="link" title={t.handoff.heavy} onClick={onContinue}>
-                {t.handoff.button}
-              </button>
-            )}
-          </div>
+          <ContextMeter feature={feature} onContinue={onContinue} />
           <div className="stat">
             <span className="stat-label">{t.feature.cost}</span>
             <span className="stat-value num">≈ ${feature.costUsd.toFixed(2)}</span>
@@ -295,13 +291,20 @@ export function FeatureView({
           onScroll={(e) => {
             const el = e.currentTarget
             pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+            setAway(!pinned.current)
           }}
+          role="log"
+          aria-label={t.feature.conversation}
         >
           <div className="transcript-inner">
             {items.length === 0 && !stream && <p className="transcript-empty">{t.feature.sendFirst}</p>}
-            {items.map((item) => (
-              <TranscriptItem key={item.seq} item={item} featureId={feature.id} onRespond={respond} />
-            ))}
+            {blocks.map((block) =>
+              block.type === 'tools' ? (
+                <ToolCluster key={block.seq} tools={block.tools} />
+              ) : (
+                <TranscriptItem key={block.seq} item={block} featureId={feature.id} onRespond={respond} />
+              )
+            )}
             {stream && (
               <div className="msg assistant">
                 <Markdown>{stream}</Markdown>
@@ -319,6 +322,19 @@ export function FeatureView({
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+          <div className="jump-anchor">
+            {away && (
+              <button
+                className="jump-latest"
+                onClick={() => {
+                  const el = scroller.current
+                  if (el) el.scrollTo({ top: el.scrollHeight, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+                }}
+              >
+                <Icon name="chevron-down" size={12} /> {t.feature.jumpToLatest}
+              </button>
             )}
           </div>
         </div>
@@ -418,6 +434,44 @@ function CliView({ tab }: { tab: TerminalTab }) {
   return <div className="terminal-host cli-host" ref={host} />
 }
 
+/** Spinner, tick or cross: the state of a call without relying on color alone. */
+function ToolGlyph({ tool }: { tool: ToolItem }) {
+  const state = toolState(tool)
+  return (
+    <span className={`tool-glyph ${state}`} aria-hidden="true">
+      {state === 'done' && <Icon name="check" size={11} />}
+      {state === 'failed' && <Icon name="close" size={11} />}
+    </span>
+  )
+}
+
+/** Two or more tool calls in a row, folded to one line: what ran, and whether anything is running or failed. */
+function ToolCluster({ tools }: { tools: ToolItem[] }) {
+  const t = useT()
+  const states = tools.map(toolState)
+  const running = states.filter((s) => s === 'running').length
+  const failed = states.filter((s) => s === 'failed').length
+  const names = [...new Set(tools.map((x) => x.name))]
+  return (
+    <details className={`tool-cluster${failed ? ' failed' : ''}`}>
+      <summary>
+        <span className={`tool-glyph ${running ? 'running' : failed ? 'failed' : 'done'}`} aria-hidden="true">
+          {!running && (failed ? <Icon name="close" size={11} /> : <Icon name="check" size={11} />)}
+        </span>
+        <span className="tool-cluster-count">{t.feature.toolCalls(tools.length)}</span>
+        <span className="tool-summary">{names.join(', ')}</span>
+        {running > 0 && <span className="tool-state">{t.feature.toolsRunning(running)}</span>}
+        {failed > 0 && <span className="tool-state failed">{t.feature.toolsFailed(failed)}</span>}
+      </summary>
+      <div className="tool-cluster-body">
+        {tools.map((tool) => (
+          <TranscriptItem key={tool.seq} item={tool} featureId="" onRespond={() => {}} />
+        ))}
+      </div>
+    </details>
+  )
+}
+
 function PlanBanner({ todos }: { todos: Todo[] }) {
   const t = useT()
   const done = todos.filter((t) => t.status === 'completed').length
@@ -486,6 +540,7 @@ function TranscriptItem({
           }
         >
           <summary>
+            <ToolGlyph tool={item} />
             <span className="tool-name">{item.name}</span>
             <span className="tool-summary">{toolSummary(item.input)}</span>
             {!item.result && <span className="tool-state">{item.orphaned ? t.feature.noResult : t.feature.running}</span>}

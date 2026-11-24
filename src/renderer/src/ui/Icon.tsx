@@ -16,6 +16,7 @@ const PATHS = {
   settings: 'M3 5h10M3 11h10M6 3v4M10 9v4',
   chart: 'M3 13V8M8 13V3M13 13V6',
   pencil: 'M10.5 3.5l2 2L6 12l-3 1 1-3z',
+  'folder-plus': 'M2.5 4.5h4l1.5 1.5h5.5v6.5h-11zM8 7.5v3M6.5 9h3',
   more: 'M3.5 8h.01M8 8h.01M12.5 8h.01',
   menu: 'M2.5 4.5h11M2.5 8h11M2.5 11.5h11',
   'panel-right': 'M2.5 3h11v10h-11zM9.5 3v10'

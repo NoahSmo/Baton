@@ -35,7 +35,9 @@ import {
   type ConflictCheck,
   type ConflictEdit,
   type ConflictResolution,
+  type MergeMethod,
   type PullRequestDraft,
+  type PullRequestStatus,
   type RepoInfo,
   type StoredEvent,
   type TrashEntry,
@@ -55,7 +57,8 @@ import { conversationText } from './handoff'
 import { abortMerge, checkConflicts, finishMerge, mergeUpstream, resolveConflicts } from './conflicts'
 import { changesSince, commitChanges, commitOp, gitStatus, hasLanded, lastGitActivity, listBranches, pull, push, snapshotTree, strayWorktrees, switchBranch } from './git'
 import type { LinearClient } from './linear'
-import { createPullRequest } from './pullRequest'
+import type { ContextSnapshot } from '../shared/context'
+import { createPullRequest, mergePullRequest, pullRequestStatus } from './pullRequest'
 import type { Store } from './store'
 import { applyChanges, captureChanges, discardTrash, listTrash, readMeta, saveToTrash } from './trash'
 import { addWorktreeOnBranch, createWorktree, fetchRemotes, git, removeWorktree, repoState, type Worktree } from './worktree'
@@ -375,6 +378,22 @@ export class Manager {
   async slashCommands(featureId: string): Promise<SlashCommandInfo[] | null> {
     this.mustGet(featureId)
     return (await this.sessions.get(featureId)?.commands()) ?? null
+  }
+
+  /**
+   * The agent's context window by category: asked of its process when it runs, and kept;
+   * otherwise the breakdown kept from its last turn. Null when there never was one.
+   */
+  async contextUsage(featureId: string): Promise<ContextSnapshot | null> {
+    this.mustGet(featureId)
+    const usage = await this.sessions.get(featureId)?.contextUsage().catch(() => null)
+    if (usage) {
+      const at = Date.now()
+      this.store.setContextUsage(featureId, { usage, at })
+      return { usage, at, live: true }
+    }
+    const kept = this.store.getContextUsage(featureId)
+    return kept && { ...kept, live: false }
   }
 
   /** Takes effect from the agent's next request. */
@@ -805,6 +824,19 @@ export class Manager {
     return url
   }
 
+  async pullRequestStatus(featureId: string): Promise<PullRequestStatus | null> {
+    const feature = this.mustGet(featureId)
+    const { branch } = await gitStatus(feature.worktreePath)
+    return branch ? pullRequestStatus(feature.worktreePath, branch) : null
+  }
+
+  async mergePullRequest(featureId: string, method: MergeMethod): Promise<void> {
+    const feature = this.mustGet(featureId)
+    const { branch } = await gitStatus(feature.worktreePath)
+    if (!branch) throw new Error(this.t().errors.detachedHead)
+    await mergePullRequest(feature.worktreePath, branch, method)
+  }
+
   /** Looks up what has been merged on the remotes since the last time. */
   async refreshRemotes(): Promise<void> {
     await Promise.all(this.store.listProjects().map((p) => fetchRemotes(p.path)))
@@ -945,6 +977,8 @@ export class Manager {
     if (event.kind === 'result') {
       patch.costUsd = feature.costUsd + event.turnCostUsd
       this.inflight.delete(featureId)
+      // Kept at every turn's end, while the process is sure to be up, for when it no longer is.
+      void this.contextUsage(featureId).catch(() => {})
     }
     const account = feature.accountId ?? DEFAULT_ACCOUNT
     let failoverTo: string | undefined

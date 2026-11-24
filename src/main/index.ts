@@ -43,6 +43,7 @@ import {
   worksInPlace,
   type PromptTemplate,
   type ConflictEdit,
+  type MergeMethod,
   type PullRequestDraft,
   type TerminalTarget,
   type UpdateInfo,
@@ -52,7 +53,7 @@ import {
   type UsageWindow
 } from '../shared/types'
 import { readImageUrl, storedFilePath } from './attachments'
-import { fileMtime, FileWatchers, listDir, readTextFile, writeTextFile } from './files'
+import { createEntry, fileMtime, FileWatchers, listDir, readTextFile, renameEntry, resolveInside, writeTextFile } from './files'
 import { commitFiles, gitDirOf, gitLog, headContent, mergePreview } from './git'
 import { draftHandoff } from './handoff'
 import { draftPullRequest, pullRequestSupport } from './pullRequest'
@@ -774,6 +775,7 @@ function registerIpc(): void {
     if (AGENT_MODELS.includes(model)) return manager.setAgentModel(id, model)
   })
 
+  ipcMain.handle('feature:contextUsage', (_e, id: string) => manager.contextUsage(id))
   ipcMain.handle('feature:slashCommands', (_e, id: string) => manager.slashCommands(id))
 
   ipcMain.handle('feature:setAgentEffort', (_e, id: string, effort: AgentEffort | null) => {
@@ -796,6 +798,23 @@ function registerIpc(): void {
       if (!overwrite) return null
     }
     return writeTextFile(root, path, content)
+  })
+  ipcMain.handle('files:create', (_e, id: string, dir: string, name: string, isDirectory: boolean) =>
+    createEntry(manager.featureRoot(id), dir, name, isDirectory)
+  )
+  ipcMain.handle('files:rename', (_e, id: string, path: string, name: string) => renameEntry(manager.featureRoot(id), path, name))
+  ipcMain.handle('files:delete', async (_e, id: string, path: string) => {
+    const root = manager.featureRoot(id)
+    const target = await resolveInside(root, path)
+    if (target === (await resolveInside(root, ''))) throw new Error('The worktree itself cannot be deleted')
+    const confirmed = await askConfirm({
+      message: t().native.deleteEntryQuestion(basename(path)),
+      detail: t().native.deleteEntryDetail,
+      confirmLabel: t().common.delete,
+      danger: true
+    })
+    if (confirmed) await shell.trashItem(target)
+    return confirmed
   })
   ipcMain.handle('files:confirmDiscard', (_e, name: string) =>
     askConfirm({
@@ -840,6 +859,21 @@ function registerIpc(): void {
     }
   })
   ipcMain.on('git:cancelDraftCommit', (_e, id: string) => drafting.get(id)?.abort())
+  ipcMain.handle('pr:status', (_e, id: string) => manager.pullRequestStatus(id))
+  ipcMain.handle('pr:merge', async (_e, id: string, method: MergeMethod) => {
+    if (!['squash', 'merge', 'rebase'].includes(method)) return false
+    const feature = manager.getState().features.find((f) => f.id === id)
+    const confirmed = await askConfirm({
+      message: t().native.mergeQuestion(feature?.title ?? ''),
+      detail: t().native.mergeDetail,
+      confirmLabel: t().pr.merge,
+      danger: false
+    })
+    if (!confirmed) return false
+    await manager.mergePullRequest(id, method)
+    send('git:changed', id)
+    return true
+  })
   ipcMain.handle('pr:support', () => pullRequestSupport())
   ipcMain.handle('pr:draft', (_e, id: string) =>
     cancellable(draftingPrs, id, (abort) => draftPullRequest(manager.featureRoot(id), abort))

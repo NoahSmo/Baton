@@ -296,6 +296,39 @@ export const THEMES: Theme[] = [
       shadow: 'rgba(0, 0, 0, 0.18)',
       overlay: 'rgba(18, 18, 18, 0.32)'
     }
+  },
+  {
+    // The same unit in black anodised aluminium. Shares the layout overrides of 'teenage' in styles.css.
+    id: 'teenage-dark',
+    name: 'Teenage Engineering Dark',
+    dark: true,
+    colors: {
+      bg: '#161614',
+      panel: '#1d1d1b',
+      raised: '#262624',
+      hover: '#302f2d',
+      border: '#383835',
+      borderStrong: '#8d8d85',
+      text: '#f0f0ea',
+      muted: '#a6a69e',
+      faint: '#6f6f68',
+      accent: '#ff5a14',
+      accentHover: '#ff7338',
+      accentText: '#120a05',
+      blue: '#6c9bff',
+      amber: '#e6b23a',
+      green: '#3fd08a',
+      red: '#ff5f63',
+      redHover: '#ff7b7e',
+      dangerText: '#1c0708',
+      purple: '#a28bff',
+      cyan: '#35c4d4',
+      orange: '#ff8a3d',
+      punct: '#cfcfc6',
+      comment: '#7b7b73',
+      shadow: 'rgba(0, 0, 0, 0.6)',
+      overlay: 'rgba(0, 0, 0, 0.62)'
+    }
   }
 ]
 
