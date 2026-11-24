@@ -70,7 +70,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: dist/Baton-${{ needs.version.outputs.version }}.zip
+          path: dist/Guru-${{ needs.version.outputs.version }}.zip
           if-no-files-found: error
 
   linux:
@@ -138,8 +138,8 @@ jobs:
       - name: Check the artifacts
         run: |
           ls -l artifacts
-          test "$(ls artifacts/Baton-"$VERSION"-linux-* | wc -l)" -eq 6
-          test -f "artifacts/Baton-$VERSION.zip"
+          test "$(ls artifacts/Guru-"$VERSION"-linux-* | wc -l)" -eq 6
+          test -f "artifacts/Guru-$VERSION.zip"
       - name: Create the GitHub release
         run: |
           gh release create "v$VERSION" artifacts/* \
@@ -152,11 +152,11 @@ jobs:
             echo "::error::secret HOMEBREW_TAP_TOKEN is missing: the release is published but the cask was not updated"
             exit 1
           fi
-          sha256=$(sha256sum "artifacts/Baton-$VERSION.zip" | cut -d' ' -f1)
+          sha256=$(sha256sum "artifacts/Guru-$VERSION.zip" | cut -d' ' -f1)
           git clone "https://x-access-token:$TAP_TOKEN@github.com/NoahSmo/homebrew-tap.git" tap
           node scripts/bump-cask.mjs tap/Casks/baton.rb "$VERSION" "$sha256"
           cd tap
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "baton $VERSION"
+          git commit -am "guru $VERSION"
           git push

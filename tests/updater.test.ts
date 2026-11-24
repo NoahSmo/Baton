@@ -44,10 +44,10 @@ describe('checkForUpdate', () => {
   it('lists the packages with their checksum', async () => {
     const withAssets = {
       ...release,
-      assets: [{ name: 'Baton-0.3.0.zip', browser_download_url: 'https://example.test/a.zip', digest: 'sha256:abc' }]
+      assets: [{ name: 'Guru-0.3.0.zip', browser_download_url: 'https://example.test/a.zip', digest: 'sha256:abc' }]
     }
     const found = await checkForUpdate('0.2.0', github(200, withAssets))
-    expect(found?.assets).toEqual([{ name: 'Baton-0.3.0.zip', url: 'https://example.test/a.zip', sha256: 'abc' }])
+    expect(found?.assets).toEqual([{ name: 'Guru-0.3.0.zip', url: 'https://example.test/a.zip', sha256: 'abc' }])
   })
 
   it('stays quiet when up to date', async () => {
@@ -66,23 +66,23 @@ describe('checkForUpdate', () => {
 
 describe('pickAsset', () => {
   const names = [
-    'Baton-0.3.0.zip',
-    'Baton-0.3.0-linux-x64.tar.gz',
-    'Baton-0.3.0-linux-arm64.tar.gz',
-    'Baton-0.3.0-linux-amd64.deb',
-    'Baton-0.3.0-linux-arm64.deb',
-    'Baton-0.3.0-linux-x86_64.rpm',
-    'Baton-0.3.0-linux-aarch64.rpm'
+    'Guru-0.3.0.zip',
+    'Guru-0.3.0-linux-x64.tar.gz',
+    'Guru-0.3.0-linux-arm64.tar.gz',
+    'Guru-0.3.0-linux-amd64.deb',
+    'Guru-0.3.0-linux-arm64.deb',
+    'Guru-0.3.0-linux-x86_64.rpm',
+    'Guru-0.3.0-linux-aarch64.rpm'
   ]
   const assets = names.map((name) => ({ name, url: `https://example.test/${name}` }))
   const pick = (...args: Parameters<typeof pickAsset> extends [unknown, ...infer R] ? R : never) =>
     pickAsset(assets, ...args)?.name
 
   it('finds the package of each install mode', () => {
-    expect(pick('0.3.0', 'mac-zip', 'arm64')).toBe('Baton-0.3.0.zip')
-    expect(pick('0.3.0', 'linux-user', 'x64')).toBe('Baton-0.3.0-linux-x64.tar.gz')
-    expect(pick('0.3.0', 'linux-pkg', 'arm64', 'deb')).toBe('Baton-0.3.0-linux-arm64.deb')
-    expect(pick('0.3.0', 'linux-pkg', 'x64', 'rpm')).toBe('Baton-0.3.0-linux-x86_64.rpm')
+    expect(pick('0.3.0', 'mac-zip', 'arm64')).toBe('Guru-0.3.0.zip')
+    expect(pick('0.3.0', 'linux-user', 'x64')).toBe('Guru-0.3.0-linux-x64.tar.gz')
+    expect(pick('0.3.0', 'linux-pkg', 'arm64', 'deb')).toBe('Guru-0.3.0-linux-arm64.deb')
+    expect(pick('0.3.0', 'linux-pkg', 'x64', 'rpm')).toBe('Guru-0.3.0-linux-x86_64.rpm')
   })
 
   it('finds nothing when the release lacks it', () => {
@@ -95,7 +95,7 @@ describe('pickAsset', () => {
 describe('detectInstallMode', () => {
   const env = (over: Partial<InstallEnv>): InstallEnv => ({
     platform: 'darwin',
-    execPath: '/Applications/Baton.app/Contents/MacOS/Baton',
+    execPath: '/Applications/Guru.app/Contents/MacOS/Guru',
     home: '/home/me',
     brew: null,
     writable: () => true,
@@ -117,9 +117,9 @@ describe('detectInstallMode', () => {
   it('tells the Linux install kinds apart', () => {
     const linux = { platform: 'linux' as const }
     expect(detectInstallMode(env({ ...linux, execPath: '/home/me/.local/share/baton/baton' })).mode).toBe('linux-user')
-    expect(detectInstallMode(env({ ...linux, execPath: '/opt/Baton/baton' }))).toEqual({ mode: 'linux-pkg', packager: 'deb' })
-    expect(detectInstallMode(env({ ...linux, execPath: '/opt/Baton/baton', has: (p) => p !== 'apt-get' })).packager).toBe('rpm')
-    expect(detectInstallMode(env({ ...linux, execPath: '/opt/Baton/baton', has: () => false })).mode).toBe('manual')
+    expect(detectInstallMode(env({ ...linux, execPath: '/opt/Guru/baton' }))).toEqual({ mode: 'linux-pkg', packager: 'deb' })
+    expect(detectInstallMode(env({ ...linux, execPath: '/opt/Guru/baton', has: (p) => p !== 'apt-get' })).packager).toBe('rpm')
+    expect(detectInstallMode(env({ ...linux, execPath: '/opt/Guru/baton', has: () => false })).mode).toBe('manual')
   })
 })
 
@@ -145,7 +145,7 @@ describe('downloadAsset', () => {
 describe('install scripts', () => {
   const env: InstallEnv = {
     platform: 'darwin',
-    execPath: '/Applications/Baton.app/Contents/MacOS/Baton',
+    execPath: '/Applications/Guru.app/Contents/MacOS/Guru',
     home: '/home/u',
     brew: null,
     writable: () => true,
@@ -156,17 +156,17 @@ describe('install scripts', () => {
     const script = macSwapScript(42, env.execPath)
     expect(script).toContain('kill -TERM')
     expect(script).toContain('kill -KILL')
-    expect(script).toContain("pkill -f '/Applications/Baton.app/Contents/'")
+    expect(script).toContain("pkill -f '/Applications/Guru.app/Contents/'")
     expect(script.indexOf('kill -KILL')).toBeLessThan(script.indexOf('mv '))
-    expect(script).toContain("mv '/Applications/.Baton-update/Baton.app' '/Applications/Baton.app'")
+    expect(script).toContain("mv '/Applications/.Guru-update/Guru.app' '/Applications/Guru.app'")
     expect(script).not.toContain('ditto')
-    expect(script.lastIndexOf("open '/Applications/Baton.app'")).toBeLessThan(script.indexOf("rm -rf '/Applications/Baton.app.old' '/Applications/.Baton-update'"))
+    expect(script.lastIndexOf("open '/Applications/Guru.app'")).toBeLessThan(script.indexOf("rm -rf '/Applications/Guru.app.old' '/Applications/.Guru-update'"))
   })
 
   it('upgrades through brew only once the old app is gone, then opens it by path', () => {
-    const script = brewScript('/opt/homebrew/bin/brew', 42, '/Applications/Baton.app')
+    const script = brewScript('/opt/homebrew/bin/brew', 42, '/Applications/Guru.app')
     expect(script.indexOf('kill -KILL 42')).toBeLessThan(script.indexOf('upgrade --cask'))
-    expect(script).toContain("open '/Applications/Baton.app'")
+    expect(script).toContain("open '/Applications/Guru.app'")
     expect(script).not.toContain('open -a')
   })
 })

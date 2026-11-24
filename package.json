@@ -25,7 +25,7 @@
   },
   "build": {
     "appId": "com.noahsmo.baton",
-    "productName": "Baton",
+    "productName": "Guru",
     "directories": {
       "output": "dist"
     },
@@ -37,6 +37,26 @@
       {
         "from": "build/icons/512x512.png",
         "to": "icon.png"
+      },
+      {
+        "from": "build/icon.png",
+        "to": "app-icons/icon.png"
+      },
+      {
+        "from": "build/icons/512x512.png",
+        "to": "app-icons/icons/512x512.png"
+      },
+      {
+        "from": "build",
+        "to": "app-icons",
+        "filter": [
+          "guru-16/icon.png",
+          "guru-16/512x512.png",
+          "guru-8/icon.png",
+          "guru-8/512x512.png",
+          "classic/icon.png",
+          "classic/512x512.png"
+        ]
       }
     ],
     "asar": false,

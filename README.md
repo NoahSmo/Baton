@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="build/icon.png" width="96" alt="Baton logo: a pixel-art stick">
+<img src="build/icon.png" width="96" alt="Guru logo: a hooded figure in the dark, pulling glowing strings with both hands">
 
-# Baton
+# Guru
 
 **Run several Claude Code agents at once, one per feature, without losing track of any of them.**
 
@@ -17,7 +17,7 @@
 
 </div>
 
-Baton is a desktop app for people who work with several [Claude Code](https://claude.com/claude-code) agents in parallel. You do not manage terminals or worktrees: you create a **feature**, and it gets its own agent, its own branch and its own git worktree. The app shows which agents are working, which are done and which are waiting for you.
+Guru (formerly Baton) is a desktop app for people who work with several [Claude Code](https://claude.com/claude-code) agents in parallel. You do not manage terminals or worktrees: you create a **feature**, and it gets its own agent, its own branch and its own git worktree. The app shows which agents are working, which are done and which are waiting for you.
 
 > [!NOTE]
 > Independent project, not affiliated with Anthropic.
@@ -62,7 +62,7 @@ Baton is a desktop app for people who work with several [Claude Code](https://cl
 
 - **Notifications you choose.** Per event, with or without sound, and a count on the Dock icon on macOS.
 - **Context at a glance.** The gauge in the feature's header shows how full the agent's context window is; click it for what fills it (messages, tools, MCP servers, memory files, skills), as `/context` reports it.
-- **Usage overview.** Click the total in the status bar for the cost per day, project and agent. See [below](#going-easy-on-your-usage-limit) for how Baton spares your limit.
+- **Usage overview.** Click the total in the status bar for the cost per day, project and agent. See [below](#going-easy-on-your-usage-limit) for how Guru spares your limit.
 - **Search and shortcuts.** `⌘N` new agent, `⌘J` next agent waiting, `⌘[` `⌘]` previous or next, `⌘1…9` project (in rail order), `⌘E` editor, `⌘F` search the conversation, `⌘⇧F` search the agents. `Ctrl` outside macOS; all listed in Settings.
 - **A message box that remembers.** Drafts per agent, `↑` / `↓` for earlier messages, per-project **Prompts**, and Claude Code slash commands (`/compact`, `/model`, `/context`…).
 - **A trash for deleted agents.** Uncommitted changes are kept 7 days and can be restored from Settings.
@@ -84,7 +84,7 @@ brew install --cask noahsmo/tap/baton
 > The build is not notarized by Apple. The cask clears the quarantine flag so macOS lets the app open. If you download the zip from the [releases page](https://github.com/NoahSmo/Baton/releases) instead, run this yourself:
 >
 > ```sh
-> xattr -dr com.apple.quarantine /Applications/Baton.app
+> xattr -dr com.apple.quarantine /Applications/Guru.app
 > ```
 
 ### Linux
@@ -104,8 +104,8 @@ The script installs the `.deb` on Debian and Ubuntu, the `.rpm` on Fedora and op
 - Or take a package from the [releases page](https://github.com/NoahSmo/Baton/releases):
 
   ```sh
-  sudo apt install ./Baton-<version>-linux-amd64.deb     # Debian, Ubuntu
-  sudo dnf install ./Baton-<version>-linux-x86_64.rpm    # Fedora
+  sudo apt install ./Guru-<version>-linux-amd64.deb     # Debian, Ubuntu
+  sudo dnf install ./Guru-<version>-linux-x86_64.rpm    # Fedora
   ```
 
 - Homebrew on Linux does not install desktop apps, hence the script.
@@ -133,7 +133,7 @@ The script installs the `.deb` on Debian and Ubuntu, the `.rpm` on Fedora and op
 
 ## Going easy on your usage limit
 
-Every request an agent makes sends its whole conversation again. A conversation of 300k tokens read 30 times adds up fast, several agents at once even faster. Baton keeps that in check:
+Every request an agent makes sends its whole conversation again. A conversation of 300k tokens read 30 times adds up fast, several agents at once even faster. Guru keeps that in check:
 
 | Lever | What it does |
 |---|---|
@@ -164,7 +164,7 @@ The app works without Linear, and each project decides whether it is linked. Unt
 
 ## Themes
 
-Studio (default), Baton, Graphite, Fjord, light themes (Latte, Snow, Rosy), **Teenage Engineering** in light and dark, and your own: Settings has a color editor for custom themes.
+Studio (default), Baton, Graphite, Fjord, light themes (Latte, Snow, Rosy), **Teenage Engineering** in light and dark, and your own: Settings has a color editor for custom themes, and lets you pick the app icon: the guru in 32-bit (default), 16-bit or 8-bit, or the classic Baton stick.
 
 ## Updates
 
@@ -183,12 +183,12 @@ Everything stays on your machine, in `~/.baton/` (override with `BATON_DATA_DIR`
 |---|---|
 | `state.db` | projects, features and conversation history (SQLite) |
 | `worktrees/` | one git worktree per feature |
-| `settings.json` | language, theme, agents allowed at once, notifications |
+| `settings.json` | language, theme, app icon, agents allowed at once, notifications |
 | `trash/` | uncommitted changes of deleted agents, for 7 days |
 | `linear.key` | your Linear API key, encrypted with the system keychain |
 | `update.log` | output of the last Homebrew upgrade |
 
-The rail's layout (order and groups) is kept in the app's local storage. Baton talks to three services: Anthropic through Claude Code, Linear only if you connect it, and GitHub to check for updates. **There is no telemetry.**
+The rail's layout (order and groups) is kept in the app's local storage. Guru talks to three services: Anthropic through Claude Code, Linear only if you connect it, and GitHub to check for updates. **There is no telemetry.**
 
 ## Contributing
 
@@ -199,9 +199,9 @@ npm install
 npm run dev         # run the app with hot reload
 npm test            # unit tests (vitest)
 npm run typecheck
-npm run dist        # build Baton-<version>.zip in dist/ (on a Mac)
+npm run dist        # build Guru-<version>.zip in dist/ (on a Mac)
 npm run dist:linux  # build .deb, .rpm and .tar.gz in dist/ (on Linux)
-npm run icon        # regenerate the pixel-art icon from build/icon.svg
+npm run icon        # regenerate the icons from build/guru-*/source.png and build/classic/icon.svg
 ```
 
 The renderer reloads on save; restart `npm run dev` after changing anything under `src/main`. Pull requests are welcome: run `npm test` and `npm run typecheck` first.

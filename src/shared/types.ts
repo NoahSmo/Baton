@@ -5,13 +5,18 @@ import type { Theme } from './themes'
 
 // Single place to rename the app.
 
-export const APP_NAME = 'Baton'
+export const APP_NAME = 'Guru'
+/** Kept from the app's former name, Baton: it names the data folder (~/.baton) and the Linux install paths. */
 export const APP_SLUG = 'baton'
-/** Where releases are published and how Homebrew knows the app. */
+/** Where releases are published and how Homebrew knows the app; both still carry the former name. */
 export const GITHUB_REPO = 'NoahSmo/Baton'
 export const BREW_CASK = 'noahsmo/tap/baton'
 /** Installs or upgrades the app on Linux. */
 export const LINUX_INSTALL_COMMAND = `curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPO}/main/install.sh | sh`
+
+/** The app's icon: the hooded guru in 32-, 16- or 8-bit, or the pixel-art stick from the Baton days. The first is the default. */
+export const APP_ICONS = ['guru-32', 'guru-16', 'guru-8', 'classic'] as const
+export type AppIcon = (typeof APP_ICONS)[number]
 
 export type UpdateInstallMode = 'brew' | 'mac-zip' | 'linux-user' | 'linux-pkg' | 'manual'
 
@@ -875,6 +880,9 @@ export interface Api {
   /** Themes the user made, saved as a whole. */
   getCustomThemes(): Promise<Theme[]>
   setCustomThemes(themes: Theme[]): Promise<void>
+  getAppIcon(): Promise<AppIcon>
+  /** Swaps the Dock icon (macOS) or the window icon (Linux) at once. */
+  setAppIcon(icon: AppIcon): Promise<void>
   linearStatus(): Promise<LinearStatus>
   /** Validates the API key against Linear before storing it. */
   linearConnect(apiKey: string): Promise<LinearStatus>
