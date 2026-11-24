@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { contextRows, type ContextRow, type ContextUsage } from '../../shared/context'
+import { contextRows, type ContextRow, type ContextSnapshot } from '../../shared/context'
 import { kTokens } from '../../shared/i18n'
 import type { Feature } from '../../shared/types'
-import { useT } from './i18n'
+import { useLang, useT } from './i18n'
 import { Icon } from './ui/Icon'
 
 /** Color of a row, by its stable id; rows the app does not know yet stay neutral. */
@@ -17,6 +17,16 @@ const COLORS: Record<string, string> = {
   memory_files: 'var(--faint)'
 }
 const colorOf = (row: ContextRow) => (row.kind === 'used' ? (COLORS[row.id ?? ''] ?? 'var(--muted)') : undefined)
+
+/** "3 hours ago", in the interface language. */
+function ago(at: number, lang: string, now = Date.now()): string {
+  const rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' })
+  const minutes = Math.round((at - now) / 60_000)
+  if (Math.abs(minutes) < 60) return rtf.format(minutes, 'minute')
+  const hours = Math.round(minutes / 60)
+  if (Math.abs(hours) < 48) return rtf.format(hours, 'hour')
+  return rtf.format(Math.round(hours / 24), 'day')
+}
 
 const percent = (share: number) => `${share < 10 ? share.toFixed(1) : Math.round(share)} %`
 
@@ -35,24 +45,26 @@ function UsageBar({ rows, reserve }: { rows: ContextRow[]; reserve: number }) {
 /** Header gauge of the agent's context window; opens a card with what fills it, like /context. */
 export function ContextMeter({ feature, onContinue }: { feature: Feature; onContinue(): void }) {
   const t = useT()
-  const [usage, setUsage] = useState<ContextUsage | null>(null)
+  const lang = useLang()
+  const [snapshot, setSnapshot] = useState<ContextSnapshot | null>(null)
+  const usage = snapshot?.usage ?? null
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const heavy = feature.contextTokens > 100_000
 
-  // Asked again after every turn (the size moves) and on opening; null while the agent's process is down.
+  // Asked again after every turn (the size moves) and on opening; while the process is down, the one kept from its last turn comes back.
   useEffect(() => {
     let stale = false
     window.api
       .contextUsage(feature.id)
-      .then((next) => !stale && next && setUsage(next))
+      .then((next) => !stale && setSnapshot(next))
       .catch(() => {})
     return () => {
       stale = true
     }
   }, [feature.id, feature.contextTokens, open])
 
-  useEffect(() => setUsage(null), [feature.id])
+  useEffect(() => setSnapshot(null), [feature.id])
 
   useEffect(() => {
     if (!open) return
@@ -103,6 +115,7 @@ export function ContextMeter({ feature, onContinue }: { feature: Feature; onCont
                   {kTokens(usage.totalTokens)} / {kTokens(usage.maxTokens)}
                 </span>
               </p>
+              {snapshot && !snapshot.live && <p className="ctx-asof">{t.contextCard.asOf(ago(snapshot.at, lang))}</p>}
               <UsageBar rows={rows.used} reserve={reserve} />
               <ul className="ctx-rows">
                 {rows.used.map((row) => (

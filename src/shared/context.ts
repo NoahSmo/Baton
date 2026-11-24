@@ -24,6 +24,14 @@ export interface ContextUsage {
   skills: { name: string; tokens: number }[]
 }
 
+/** A breakdown and when it was taken: `live` from the running process, otherwise the one kept from its last turn. */
+export interface ContextSnapshot {
+  usage: ContextUsage
+  /** Epoch milliseconds. */
+  at: number
+  live: boolean
+}
+
 export interface ContextRow extends ContextCategory {
   /** Share of the window, 0-100; null for deferred rows, which are outside it. */
   share: number | null

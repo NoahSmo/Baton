@@ -46,3 +46,19 @@ describe('legacy project Linear labels', () => {
     expect(new Store(file).getProject('p')?.linearLabels).toEqual([{ id: 'l1', name: 'Web' }])
   })
 })
+
+describe('kept context breakdown', () => {
+  it('keeps the last breakdown of an agent, and nothing for one never measured', () => {
+    const store = new Store(':memory:')
+    store.insertProject(project)
+    store.insertFeature({
+      id: 'f', projectId: 'p', title: 'T', linear: null, branch: 'b', worktreePath: '/w', status: 'idle', permissionMode: 'default',
+      agentModel: 'sonnet', agentEffort: null, sessionId: null, model: null, costUsd: 0, contextTokens: 0, limitResetsAt: null,
+      pinned: false, archived: false, queuePosition: null, prUrl: null, turnBase: null, createdAt: 0, updatedAt: 0
+    })
+    expect(store.getContextUsage('f')).toBeNull()
+    const usage = { model: 'm', totalTokens: 10, maxTokens: 100, percentage: 10, categories: [], mcpServers: [], memoryFiles: [], skills: [] }
+    store.setContextUsage('f', { usage, at: 42 })
+    expect(store.getContextUsage('f')).toEqual({ usage, at: 42 })
+  })
+})

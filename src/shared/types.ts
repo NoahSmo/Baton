@@ -1,5 +1,5 @@
 import type { Lang } from './i18n'
-import type { ContextUsage } from './context'
+import type { ContextSnapshot } from './context'
 import type { SlashCommandInfo } from './slashCommands'
 import type { Theme } from './themes'
 
@@ -816,8 +816,8 @@ export interface Api {
   setAgentEffort(featureId: string, effort: AgentEffort | null): Promise<void>
   /** Commands the agent's process offers after "/"; null while it is not running. */
   slashCommands(featureId: string): Promise<SlashCommandInfo[] | null>
-  /** What fills the agent's context window, by category; null while its process is not running. */
-  contextUsage(featureId: string): Promise<ContextUsage | null>
+  /** What fills the agent's context window, by category: live when its process runs, else as of its last turn; null when never measured. */
+  contextUsage(featureId: string): Promise<ContextSnapshot | null>
   /** Whether agents stopped by the usage limit get a summarizing thread once it resets. */
   /** Whether agents whose branch has merged are deleted on their own after a while. */
   getAutoRemoveMerged(): Promise<boolean>

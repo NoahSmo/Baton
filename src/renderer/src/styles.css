@@ -6174,3 +6174,9 @@ button.kanban-card {
 :root:is([data-theme='teenage'], [data-theme='teenage-dark']) .ctx-swatch {
   border-radius: 0;
 }
+
+.ctx-asof {
+  margin: -4px 0 8px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}

@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite'
+import type { ContextUsage } from '../shared/context'
 import { AGENT_EFFORTS, AGENT_MODELS, DEFAULT_AGENT_MODEL, DEFAULT_QA, PROJECT_COLORS, type AgentEffort, type AgentModel, type Feature, type LaunchCommand, type LinearLabel, type LinearProjectLink, type Project, type QaConfig, type QaRun, type PromptTemplate, type StoredEvent, type TurnCost, type UiEvent } from '../shared/types'
 
 type Row = Record<string, unknown>
@@ -157,7 +158,8 @@ export class Store {
       'pinned INTEGER',
       'archived INTEGER',
       'pr_url TEXT',
-      'turn_base TEXT'
+      'turn_base TEXT',
+      'context_usage TEXT'
     ])
     this.addColumns('projects', ['color TEXT', 'linear_label_id TEXT', 'linear_label_name TEXT', 'linear_labels TEXT', 'linear_projects TEXT', 'commands TEXT', 'templates TEXT', 'worktrees INTEGER', 'qa TEXT', 'image TEXT', 'account_ids TEXT'])
   }
@@ -272,6 +274,20 @@ export class Store {
         f.accountId,
         f.id
       )
+  }
+
+  /** Last context breakdown of an agent, kept so it can be shown while its process is down. */
+  getContextUsage(featureId: string): { usage: ContextUsage; at: number } | null {
+    const row = this.db.prepare('SELECT context_usage FROM features WHERE id = ?').get(featureId) as Row | undefined
+    try {
+      return typeof row?.context_usage === 'string' ? (JSON.parse(row.context_usage) as { usage: ContextUsage; at: number }) : null
+    } catch {
+      return null
+    }
+  }
+
+  setContextUsage(featureId: string, snapshot: { usage: ContextUsage; at: number }): void {
+    this.db.prepare('UPDATE features SET context_usage = ? WHERE id = ?').run(JSON.stringify(snapshot), featureId)
   }
 
   deleteFeature(id: string): void {

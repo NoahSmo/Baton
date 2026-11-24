@@ -265,7 +265,8 @@ const en = {
   contextCard: {
     title: 'Context',
     used: (pct: number) => `${pct} % used`,
-    offline: 'The breakdown shows once the agent is running: send it a message.',
+    offline: 'No breakdown yet: it is measured at the end of each turn of the agent.',
+    asOf: (when: string) => `As of the last turn, ${when}`,
     deferredHint: 'Loaded only when the agent needs them; outside the window until then.',
     mcpTools: 'MCP tools',
     memoryFiles: 'Memory files',
@@ -1121,7 +1122,8 @@ const fr: Dict = {
   contextCard: {
     title: 'Contexte',
     used: (pct) => `${pct} % utilisé`,
-    offline: "Le détail s'affiche quand l'agent tourne : envoie-lui un message.",
+    offline: "Pas encore de détail : il est mesuré à la fin de chaque tour de l'agent.",
+    asOf: (when) => `Au dernier tour, ${when}`,
     deferredHint: "Chargés seulement quand l'agent en a besoin ; hors de la fenêtre jusque-là.",
     mcpTools: 'Outils MCP',
     memoryFiles: 'Fichiers mémoire',

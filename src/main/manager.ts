@@ -57,7 +57,7 @@ import { conversationText } from './handoff'
 import { abortMerge, checkConflicts, finishMerge, mergeUpstream, resolveConflicts } from './conflicts'
 import { changesSince, commitChanges, commitOp, gitStatus, hasLanded, lastGitActivity, listBranches, pull, push, snapshotTree, strayWorktrees, switchBranch } from './git'
 import type { LinearClient } from './linear'
-import type { ContextUsage } from '../shared/context'
+import type { ContextSnapshot } from '../shared/context'
 import { createPullRequest, mergePullRequest, pullRequestStatus } from './pullRequest'
 import type { Store } from './store'
 import { applyChanges, captureChanges, discardTrash, listTrash, readMeta, saveToTrash } from './trash'
@@ -380,10 +380,20 @@ export class Manager {
     return (await this.sessions.get(featureId)?.commands()) ?? null
   }
 
-  /** The agent's context window by category; null while its process is not running. */
-  async contextUsage(featureId: string): Promise<ContextUsage | null> {
+  /**
+   * The agent's context window by category: asked of its process when it runs, and kept;
+   * otherwise the breakdown kept from its last turn. Null when there never was one.
+   */
+  async contextUsage(featureId: string): Promise<ContextSnapshot | null> {
     this.mustGet(featureId)
-    return (await this.sessions.get(featureId)?.contextUsage().catch(() => null)) ?? null
+    const usage = await this.sessions.get(featureId)?.contextUsage().catch(() => null)
+    if (usage) {
+      const at = Date.now()
+      this.store.setContextUsage(featureId, { usage, at })
+      return { usage, at, live: true }
+    }
+    const kept = this.store.getContextUsage(featureId)
+    return kept && { ...kept, live: false }
   }
 
   /** Takes effect from the agent's next request. */
@@ -967,6 +977,8 @@ export class Manager {
     if (event.kind === 'result') {
       patch.costUsd = feature.costUsd + event.turnCostUsd
       this.inflight.delete(featureId)
+      // Kept at every turn's end, while the process is sure to be up, for when it no longer is.
+      void this.contextUsage(featureId).catch(() => {})
     }
     const account = feature.accountId ?? DEFAULT_ACCOUNT
     let failoverTo: string | undefined
