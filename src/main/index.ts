@@ -5,6 +5,7 @@ import { homedir } from 'node:os'
 import { randomUUID } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import { configDirOf, setAccounts } from './claudeAccount'
+import { setLinuxDesktopIcon } from './linuxIcon'
 import { accountStatus, loginAccount } from './claudeLogin'
 import { fetchClaudeUsage } from './claudeUsage'
 import { normalizeAccounts } from '../shared/accounts'
@@ -178,7 +179,16 @@ function applyAppIcon(next: AppIcon, initial = false): void {
     // A packaged app starting with its own icon leaves the Dock to the bundle.
     if (!(initial && app.isPackaged && next === APP_ICONS[0])) app.dock?.setIcon(iconFile(next))
   } else if (process.platform === 'linux') {
+    // X11 window lists use the window's icon; docks and menus the desktop entry's.
     win?.setIcon(iconFile(next))
+    // Starting with the default icon leaves the installed entry alone.
+    if (app.isPackaged && !(initial && next === APP_ICONS[0])) {
+      try {
+        setLinuxDesktopIcon(iconFile(next), next, { home: homedir(), slug: APP_SLUG, store: join(dataDir, 'app-icons') })
+      } catch (err) {
+        console.error('app icon: could not update the desktop entry', err)
+      }
+    }
   }
 }
 
