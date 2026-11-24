@@ -19,6 +19,7 @@ import {
   APP_NAME,
   APP_SLUG,
   DEFAULT_MAX_RUNNING,
+  USER_DATA_NAME,
   type AgentEffort,
   type AgentModel,
   type AppIcon,
@@ -995,6 +996,8 @@ function registerIpc(): void {
 }
 
 app.setName(APP_NAME)
+// setName would move the browser storage to a new folder and leave the old one behind.
+app.setPath('userData', join(app.getPath('appData'), USER_DATA_NAME))
 
 void app.whenReady().then(() => {
   mkdirSync(dataDir, { recursive: true })

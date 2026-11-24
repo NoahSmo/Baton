@@ -116,10 +116,13 @@ export function fetchWithBrew(brew: string, onOutput: () => void = () => {}): Pr
 }
 
 export function brewScript(brew: string, pid: number, bundle: string): string {
+  // The cask installs the bundle under the app's current name, which is not the
+  // running one's after a rename (Baton.app became Guru.app).
+  const installed = join(dirname(bundle), `${APP_NAME}.app`)
   return [
     stopOldApp(pid, bundle),
     `${quote(brew)} update; ${quote(brew)} upgrade --cask ${BREW_CASK}`,
-    `open ${quote(bundle)}`
+    `if [ -d ${quote(bundle)} ]; then open ${quote(bundle)}; else open ${quote(installed)}; fi`
   ].join('\n')
 }
 
