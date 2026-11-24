@@ -164,7 +164,7 @@ The app works without Linear, and each project decides whether it is linked. Unt
 
 ## Themes
 
-Studio (default), Baton, Graphite, Fjord, Rosy Dark, light themes (Latte, Snow, Rosy, Wesur), **Teenage Engineering** in light and dark, and your own: Settings has a color editor for custom themes, and lets you pick the app icon: the guru in 32-bit (default), 16-bit or 8-bit, or the classic Baton stick.
+Studio (default), Baton, Graphite, Fjord, Rosy Dark, Wesur Dark, light themes (Latte, Snow, Rosy, Wesur), **Teenage Engineering** in light and dark, and your own: Settings has a color editor for custom themes, and lets you pick the app icon: the guru in 32-bit (default), 16-bit or 8-bit, or the classic Baton stick.
 
 ## Updates
 

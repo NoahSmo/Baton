@@ -6801,3 +6801,60 @@ button.kanban-card {
   color: var(--muted);
   font-size: var(--fs-xs);
 }
+
+/* Wesur: its design system's rules on top of the palette. Surfaces part by their fill, not by a rule;
+   square radii; two-layer shadows tinted navy; one action blue, filled at 133° towards sky. */
+
+:root:is([data-theme='wesur'], [data-theme='wesur-dark']) {
+  --radius: 8px;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow-sm: 0 1px 3px rgba(6, 33, 100, 0.03), 0 4px 12px -2px rgba(6, 33, 100, 0.05);
+  --shadow-md: 0 2px 6px rgba(6, 33, 100, 0.03), 0 16px 40px -8px rgba(6, 33, 100, 0.08);
+  --shadow-lg: 0 4px 12px rgba(6, 33, 100, 0.04), 0 28px 72px -12px rgba(6, 33, 100, 0.1);
+  --w-action-end: #0077d9;
+}
+
+:root[data-theme='wesur-dark'] {
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 12px -2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.3), 0 16px 40px -8px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.35), 0 28px 72px -12px rgba(0, 0, 0, 0.6);
+  --w-action-end: #0069c2;
+}
+
+/* Secondary keys are a grey fill with no outline. */
+:root:is([data-theme='wesur'], [data-theme='wesur-dark']) button {
+  border-color: transparent;
+}
+
+:root:is([data-theme='wesur'], [data-theme='wesur-dark']) button:hover:not(:disabled) {
+  border-color: transparent;
+}
+
+:root:is([data-theme='wesur'], [data-theme='wesur-dark']) button.primary {
+  background: linear-gradient(133deg, var(--accent), var(--w-action-end));
+  border-color: transparent;
+}
+
+:root:is([data-theme='wesur'], [data-theme='wesur-dark']) button.primary:hover:not(:disabled) {
+  background: linear-gradient(133deg, var(--accent-hover), var(--w-action-end));
+}
+
+/* Fields: a filled well, lit by a 2px blue frame on focus. */
+:root:is([data-theme='wesur'], [data-theme='wesur-dark']) :is(input:not([type='checkbox'], [type='radio'], [type='color'], .switch), textarea, select) {
+  background: var(--raised);
+  border-color: transparent;
+}
+
+:root:is([data-theme='wesur'], [data-theme='wesur-dark']) :is(input:not([type='checkbox'], [type='radio'], [type='color'], .switch), textarea, select):focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--accent);
+  outline: none;
+}
+
+/* Cards in Settings stand out by their fill alone. */
+:root:is([data-theme='wesur'], [data-theme='wesur-dark']) .settings-card {
+  border-color: transparent;
+}
