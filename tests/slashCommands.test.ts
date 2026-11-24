@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BUILTIN_COMMANDS, commandQuery, matchCommands, mergeCommands, modelFromArgument, parseSlashCommand } from '../src/shared/slashCommands'
+import { BUILTIN_COMMANDS, commandQuery, matchCommands, mergeCommands, modelFromArgument, localCommandOutput, parseSlashCommand } from '../src/shared/slashCommands'
 
 describe('parseSlashCommand', () => {
   it('splits the name from its arguments', () => {
@@ -62,5 +62,15 @@ describe('modelFromArgument', () => {
   it('refuses what it does not know', () => {
     expect(modelFromArgument('')).toBeNull()
     expect(modelFromArgument('gpt')).toBeNull()
+  })
+})
+
+describe('localCommandOutput', () => {
+  it('extracts the output of a local command', () => {
+    expect(localCommandOutput('<local-command-stdout>\u001b[1mMCP\u001b[0m servers: 2</local-command-stdout>')).toBe('MCP servers: 2')
+  })
+  it('ignores ordinary and caveat messages', () => {
+    expect(localCommandOutput('hello')).toBe('')
+    expect(localCommandOutput('<local-command-caveat>Caveat</local-command-caveat>')).toBe('')
   })
 })

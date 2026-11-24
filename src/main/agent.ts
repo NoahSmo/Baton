@@ -9,7 +9,7 @@ import {
   type SDKUserMessage
 } from '@anthropic-ai/claude-agent-sdk'
 import { byServer, type ContextUsage } from '../shared/context'
-import type { SlashCommandInfo } from '../shared/slashCommands'
+import { localCommandOutput, type SlashCommandInfo } from '../shared/slashCommands'
 import type { AgentEffort, AgentModel, BackgroundTask, ImageInput, PermissionDecision, PermissionMode, UiEvent } from '../shared/types'
 import { claudeEnv } from './claudeAccount'
 
@@ -399,7 +399,13 @@ export class AgentSession {
       }
 
       case 'user': {
-        if (m.parent_tool_use_id || typeof m.message.content === 'string') return
+        if (m.parent_tool_use_id) return
+        if (typeof m.message.content === 'string') {
+          // Local commands (/mcp, /cost…) answer as a user message wrapping their output in tags.
+          const output = localCommandOutput(m.message.content)
+          if (output) emit({ kind: 'assistant_text', text: output })
+          return
+        }
         for (const block of m.message.content) {
           if (block.type !== 'tool_result') continue
           const content = flattenContent(block.content)
