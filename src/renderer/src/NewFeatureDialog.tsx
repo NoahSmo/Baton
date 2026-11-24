@@ -180,7 +180,7 @@ export function NewFeatureDialog({
 
         {linearConnected && (hasLinks || issue) && (
           <>
-            <label>{hasLinks ? t.newFeature.issueOf(projectNames(links)) : t.newFeature.linearIssue}</label>
+            <label className="issue-source">{hasLinks ? t.newFeature.issueOf(projectNames(links)) : t.newFeature.linearIssue}</label>
             {issue ? (
               <div className="issue-picked">
                 <span className="issue-id">{issue.identifier}</span>
