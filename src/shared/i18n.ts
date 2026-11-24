@@ -1,5 +1,5 @@
 import type { SidebarSort } from './features'
-import type { AgentEffort, AgentModel, FeatureStatus, GitChangeKind, PermissionMode } from './types'
+import type { AgentEffort, AgentModel, FeatureStatus, GitChangeKind, MergeMethod, PermissionMode, PullRequestStatus } from './types'
 
 export type Lang = 'en' | 'fr'
 
@@ -45,7 +45,7 @@ const en = {
 
   topbar: { newProject: 'New project', waitingBadge: 'Agents waiting for an answer', search: 'Search', editor: 'Editor', menu: 'Projects and agents' },
 
-  rail: { projects: 'Projects' },
+  rail: { projects: 'Projects', newGroup: 'Group', groupName: 'Group name', expand: (name: string) => `Expand ${name}`, collapse: (name: string) => `Collapse ${name}` },
 
 
   sidebar: {
@@ -248,6 +248,11 @@ const en = {
     running: 'running',
     failed: 'failed',
     noResult: 'no result',
+    toolCalls: (n: number) => `${n} tool calls`,
+    toolsRunning: (n: number) => `${n} running`,
+    toolsFailed: (n: number) => `${n} failed`,
+    jumpToLatest: 'Latest',
+    conversation: 'Conversation',
     noOutput: '(no output)',
     stopped: 'Stopped',
     turnFailed: 'Turn failed',
@@ -255,6 +260,31 @@ const en = {
     backgroundRunning: (n: number) => `${n} ${n === 1 ? 'task' : 'tasks'} still running in the background`,
     approveHint: 'Allow the first pending request',
     templates: 'Prompts'
+  },
+
+  contextCard: {
+    title: 'Context',
+    used: (pct: number) => `${pct} % used`,
+    offline: 'The breakdown shows once the agent is running: send it a message.',
+    deferredHint: 'Loaded only when the agent needs them; outside the window until then.',
+    mcpTools: 'MCP tools',
+    memoryFiles: 'Memory files',
+    skills: 'Skills',
+    rows: {
+      messages: 'Messages',
+      mcp_tools: 'MCP tools',
+      system_tools: 'System tools',
+      system_prompt: 'System prompt',
+      custom_agents: 'Custom agents',
+      skills: 'Skills',
+      mcp_instructions: 'MCP server instructions',
+      memory_files: 'Memory files',
+      autocompact_buffer: 'Compaction buffer',
+      compact_buffer: 'Compaction buffer',
+      free_space: 'Free space',
+      mcp_tools_deferred: 'MCP tools (deferred)',
+      system_tools_deferred: 'System tools (deferred)'
+    } as Record<string, string>
   },
 
   editor: {
@@ -268,7 +298,11 @@ const en = {
     save: 'Save',
     close: 'Close',
     changedOnDisk: 'This file changed on disk while you were editing it.',
-    reload: 'Reload from disk'
+    reload: 'Reload from disk',
+    nameFile: 'File name',
+    nameFolder: 'Folder name',
+    newFile: 'New file',
+    newFolder: 'New folder'
   },
 
   git: {
@@ -564,6 +598,16 @@ const en = {
     resumeTerminal: 'Continue in Claude Code (terminal)',
     settings: 'Project settings…',
     removeProject: 'Remove project…',
+    groupProject: 'Move to a new group',
+    ungroupProject: 'Remove from group',
+    expandGroup: 'Expand group',
+    collapseGroup: 'Collapse group',
+    deleteGroup: 'Dissolve group',
+    newFile: 'New file…',
+    newFolder: 'New folder…',
+    copyRelativePath: 'Copy relative path',
+    moveUp: 'Move up',
+    moveDown: 'Move down',
     cut: 'Cut',
     copy: 'Copy',
     paste: 'Paste',
@@ -677,6 +721,10 @@ const en = {
     removeProjectDetail: 'Its folder and branches are left untouched.',
     remove: 'Remove',
     overwriteQuestion: (name: string) => `Overwrite “${name}”?`,
+    mergeQuestion: (title: string) => `Merge the pull request of “${title}”?`,
+    mergeDetail: 'The branch is merged on GitHub. Your worktree is left as it is.',
+    deleteEntryQuestion: (name: string) => `Move “${name}” to the trash?`,
+    deleteEntryDetail: 'Unsaved changes in it are lost. You can restore it from the trash.',
     overwriteDetail: 'The file changed on disk since you opened it. Saving replaces those changes with yours.',
     overwrite: 'Overwrite',
     discardQuestion: (name: string) => `Close “${name}” without saving?`,
@@ -785,6 +833,18 @@ const en = {
     create: 'Create PR',
     createHint: 'Open a pull request for this branch',
     open: 'Open the pull request',
+    merge: 'Merge',
+    mergeMethod: 'Merge method',
+    methods: { squash: 'Squash and merge', merge: 'Create a merge commit', rebase: 'Rebase and merge' } as Record<MergeMethod, string>,
+    state: { open: 'Open', merged: 'Merged', closed: 'Closed' } as Record<PullRequestStatus['state'], string>,
+    draftState: 'Draft',
+    conflicts: 'Conflicts with the base branch',
+    review: { approved: 'Approved', changes: 'Changes requested', required: 'Review required' } as Record<NonNullable<PullRequestStatus['review']>, string>,
+    checks: (passed: number, failed: number, pending: number) =>
+      [failed && `${failed} failing`, pending && `${pending} running`, passed && `${passed} passing`].filter(Boolean).join(' · ') || 'No checks',
+    mergeFailed: 'Could not merge the pull request.',
+    merging: 'Merging…',
+    refresh: 'Refresh',
     title: 'Create a pull request',
     hint: 'The branch is pushed first if needed.',
     titleLabel: 'Title',
@@ -841,7 +901,7 @@ const fr: Dict = {
 
   topbar: { newProject: 'Nouveau projet', waitingBadge: 'Agents en attente de réponse', search: 'Rechercher', editor: 'Éditeur', menu: 'Projets et agents' },
 
-  rail: { projects: 'Projets' },
+  rail: { projects: 'Projets', newGroup: 'Groupe', groupName: 'Nom du groupe', expand: (name: string) => `Déplier ${name}`, collapse: (name: string) => `Replier ${name}` },
 
 
   sidebar: {
@@ -1044,6 +1104,11 @@ const fr: Dict = {
     running: 'en cours',
     failed: 'échec',
     noResult: 'sans résultat',
+    toolCalls: (n) => `${n} appels d'outils`,
+    toolsRunning: (n) => `${n} en cours`,
+    toolsFailed: (n) => `${n} en échec`,
+    jumpToLatest: 'Dernier message',
+    conversation: 'Conversation',
     noOutput: '(aucune sortie)',
     stopped: 'Arrêté',
     turnFailed: 'Tour en échec',
@@ -1051,6 +1116,31 @@ const fr: Dict = {
     backgroundRunning: (n) => `${n} ${n > 1 ? 'tâches' : 'tâche'} encore en cours en arrière-plan`,
     approveHint: 'Autoriser la première demande en attente',
     templates: 'Prompts'
+  },
+
+  contextCard: {
+    title: 'Contexte',
+    used: (pct) => `${pct} % utilisé`,
+    offline: "Le détail s'affiche quand l'agent tourne : envoie-lui un message.",
+    deferredHint: "Chargés seulement quand l'agent en a besoin ; hors de la fenêtre jusque-là.",
+    mcpTools: 'Outils MCP',
+    memoryFiles: 'Fichiers mémoire',
+    skills: 'Skills',
+    rows: {
+      messages: 'Messages',
+      mcp_tools: 'Outils MCP',
+      system_tools: 'Outils système',
+      system_prompt: 'Invite système',
+      custom_agents: 'Agents personnalisés',
+      skills: 'Skills',
+      mcp_instructions: 'Instructions des serveurs MCP',
+      memory_files: 'Fichiers mémoire',
+      autocompact_buffer: 'Tampon de compaction',
+      compact_buffer: 'Tampon de compaction',
+      free_space: 'Espace libre',
+      mcp_tools_deferred: 'Outils MCP (différés)',
+      system_tools_deferred: 'Outils système (différés)'
+    }
   },
 
   editor: {
@@ -1064,7 +1154,11 @@ const fr: Dict = {
     save: 'Enregistrer',
     close: 'Fermer',
     changedOnDisk: 'Ce fichier a changé sur le disque pendant que tu le modifiais.',
-    reload: 'Recharger depuis le disque'
+    reload: 'Recharger depuis le disque',
+    nameFile: 'Nom du fichier',
+    nameFolder: 'Nom du dossier',
+    newFile: 'Nouveau fichier',
+    newFolder: 'Nouveau dossier'
   },
 
   git: {
@@ -1359,6 +1453,16 @@ const fr: Dict = {
     resumeTerminal: 'Continuer dans Claude Code (terminal)',
     settings: 'Réglages du projet…',
     removeProject: 'Retirer le projet…',
+    groupProject: 'Déplacer dans un nouveau groupe',
+    ungroupProject: 'Sortir du groupe',
+    expandGroup: 'Déplier le groupe',
+    collapseGroup: 'Replier le groupe',
+    deleteGroup: 'Dissoudre le groupe',
+    newFile: 'Nouveau fichier…',
+    newFolder: 'Nouveau dossier…',
+    copyRelativePath: 'Copier le chemin relatif',
+    moveUp: 'Monter',
+    moveDown: 'Descendre',
     cut: 'Couper',
     copy: 'Copier',
     paste: 'Coller',
@@ -1471,6 +1575,10 @@ const fr: Dict = {
     removeProjectDetail: 'Son dossier et ses branches ne sont pas touchés.',
     remove: 'Retirer',
     overwriteQuestion: (name) => `Écraser « ${name} » ?`,
+    mergeQuestion: (title) => `Fusionner la pull request de « ${title} » ?`,
+    mergeDetail: 'La branche est fusionnée sur GitHub. Ton worktree reste tel quel.',
+    deleteEntryQuestion: (name) => `Mettre « ${name} » à la corbeille ?`,
+    deleteEntryDetail: 'Les modifications non enregistrées sont perdues. Tu peux le restaurer depuis la corbeille.',
     overwriteDetail: "Le fichier a changé sur le disque depuis son ouverture. L'enregistrer remplace ces changements par les tiens.",
     overwrite: 'Écraser',
     discardQuestion: (name) => `Fermer « ${name} » sans enregistrer ?`,
@@ -1579,6 +1687,18 @@ const fr: Dict = {
     create: 'Créer la PR',
     createHint: 'Ouvrir une pull request pour cette branche',
     open: 'Ouvrir la pull request',
+    merge: 'Fusionner',
+    mergeMethod: 'Méthode de fusion',
+    methods: { squash: 'Squash et fusion', merge: 'Commit de fusion', rebase: 'Rebase et fusion' },
+    state: { open: 'Ouverte', merged: 'Fusionnée', closed: 'Fermée' },
+    draftState: 'Brouillon',
+    conflicts: 'Conflits avec la branche de base',
+    review: { approved: 'Approuvée', changes: 'Modifications demandées', required: 'Review requise' },
+    checks: (passed, failed, pending) =>
+      [failed && `${failed} en échec`, pending && `${pending} en cours`, passed && `${passed} réussis`].filter(Boolean).join(' · ') || 'Aucun check',
+    mergeFailed: "La pull request n'a pas pu être fusionnée.",
+    merging: 'Fusion…',
+    refresh: 'Actualiser',
     title: 'Créer une pull request',
     hint: "La branche est d'abord poussée si besoin.",
     titleLabel: 'Titre',

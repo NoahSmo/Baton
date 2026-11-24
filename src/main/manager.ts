@@ -35,7 +35,9 @@ import {
   type ConflictCheck,
   type ConflictEdit,
   type ConflictResolution,
+  type MergeMethod,
   type PullRequestDraft,
+  type PullRequestStatus,
   type RepoInfo,
   type StoredEvent,
   type TrashEntry,
@@ -55,7 +57,8 @@ import { conversationText } from './handoff'
 import { abortMerge, checkConflicts, finishMerge, mergeUpstream, resolveConflicts } from './conflicts'
 import { changesSince, commitChanges, commitOp, gitStatus, hasLanded, lastGitActivity, listBranches, pull, push, snapshotTree, strayWorktrees, switchBranch } from './git'
 import type { LinearClient } from './linear'
-import { createPullRequest } from './pullRequest'
+import type { ContextUsage } from '../shared/context'
+import { createPullRequest, mergePullRequest, pullRequestStatus } from './pullRequest'
 import type { Store } from './store'
 import { applyChanges, captureChanges, discardTrash, listTrash, readMeta, saveToTrash } from './trash'
 import { addWorktreeOnBranch, createWorktree, fetchRemotes, git, removeWorktree, repoState, type Worktree } from './worktree'
@@ -375,6 +378,12 @@ export class Manager {
   async slashCommands(featureId: string): Promise<SlashCommandInfo[] | null> {
     this.mustGet(featureId)
     return (await this.sessions.get(featureId)?.commands()) ?? null
+  }
+
+  /** The agent's context window by category; null while its process is not running. */
+  async contextUsage(featureId: string): Promise<ContextUsage | null> {
+    this.mustGet(featureId)
+    return (await this.sessions.get(featureId)?.contextUsage().catch(() => null)) ?? null
   }
 
   /** Takes effect from the agent's next request. */
@@ -803,6 +812,19 @@ export class Manager {
     const url = await createPullRequest(feature.worktreePath, status.branch, draft)
     this.patch(featureId, { prUrl: url })
     return url
+  }
+
+  async pullRequestStatus(featureId: string): Promise<PullRequestStatus | null> {
+    const feature = this.mustGet(featureId)
+    const { branch } = await gitStatus(feature.worktreePath)
+    return branch ? pullRequestStatus(feature.worktreePath, branch) : null
+  }
+
+  async mergePullRequest(featureId: string, method: MergeMethod): Promise<void> {
+    const feature = this.mustGet(featureId)
+    const { branch } = await gitStatus(feature.worktreePath)
+    if (!branch) throw new Error(this.t().errors.detachedHead)
+    await mergePullRequest(feature.worktreePath, branch, method)
   }
 
   /** Looks up what has been merged on the remotes since the last time. */

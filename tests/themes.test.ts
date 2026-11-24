@@ -34,6 +34,12 @@ describe('themes', () => {
     expect(rosy.dark).toBe(false)
   })
 
+  it('ships Teenage Engineering in a light and a dark variant', () => {
+    expect(themeById('teenage').dark).toBe(false)
+    expect(themeById('teenage-dark').dark).toBe(true)
+    expect(Object.keys(themeById('teenage-dark').colors)).toEqual(Object.keys(themeById('teenage').colors))
+  })
+
   it('finds custom themes by id', () => {
     const custom = newCustomTheme(themeById('rosy'), 'Mine')
     expect(themeById(custom.id, [custom])).toBe(custom)

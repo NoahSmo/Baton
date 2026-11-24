@@ -4966,7 +4966,7 @@ button.kanban-card {
 /* Teenage Engineering: a refit, not a recolor. Flat aluminium panels, hard black rules, mono caps labels,
    round color knobs for projects and a black display for the status bar. Every other theme keeps the base style. */
 
-:root[data-theme='teenage'] {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) {
   --radius: 2px;
   --r-sm: 1px;
   --r-md: 2px;
@@ -4981,13 +4981,13 @@ button.kanban-card {
   --ease: cubic-bezier(0.3, 0, 0, 1);
 }
 
-:root[data-theme='teenage'] body {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) body {
   font-family: var(--te-sans);
   letter-spacing: 0.005em;
 }
 
 /* Labels: small mono caps, as printed on the hardware. */
-:root[data-theme='teenage'] :is(
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(
     .sidebar-title,
     .stat-label,
     .status-pill,
@@ -5009,36 +5009,36 @@ button.kanban-card {
   font-size: 10.5px;
 }
 
-:root[data-theme='teenage'] h1,
-:root[data-theme='teenage'] .topbar-name {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) h1,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .topbar-name {
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
-:root[data-theme='teenage'] .feature-head h1 {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .feature-head h1 {
   font-size: 20px;
   text-transform: lowercase;
 }
 
 /* Controls: flat keys with a hard edge, pressed straight down. */
-:root[data-theme='teenage'] button {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) button {
   border-color: var(--border);
   background: var(--raised);
   box-shadow: inset 0 -1px 0 var(--border);
 }
 
-:root[data-theme='teenage'] button:hover:not(:disabled) {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) button:hover:not(:disabled) {
   border-color: var(--border-strong);
   background: var(--raised);
 }
 
-:root[data-theme='teenage'] button:active:not(:disabled) {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) button:active:not(:disabled) {
   scale: 1;
   translate: 0 1px;
   box-shadow: none;
 }
 
-:root[data-theme='teenage'] button.primary {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) button.primary {
   background: var(--accent);
   border-color: var(--border-strong);
   color: var(--accent-text);
@@ -5046,28 +5046,28 @@ button.kanban-card {
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18);
 }
 
-:root[data-theme='teenage'] button.primary:hover:not(:disabled) {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) button.primary:hover:not(:disabled) {
   background: var(--accent-hover);
 }
 
-:root[data-theme='teenage'] :is(input, textarea, select) {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(input, textarea, select) {
   background: var(--raised);
   border-color: var(--border);
 }
 
-:root[data-theme='teenage'] :is(input, textarea, select):focus {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(input, textarea, select):focus {
   border-color: var(--border-strong);
   box-shadow: 0 0 0 1px var(--border-strong);
 }
 
-:root[data-theme='teenage'] :focus-visible {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
-:root[data-theme='teenage'] a,
-:root[data-theme='teenage'] button.link,
-:root[data-theme='teenage'] .feature-row-issue {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) a,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) button.link,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .feature-row-issue {
   color: var(--text);
   text-decoration: underline;
   text-decoration-color: var(--accent);
@@ -5076,31 +5076,31 @@ button.kanban-card {
 }
 
 /* Top bar: a plain rule, the search as an inset field. */
-:root[data-theme='teenage'] .topbar {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .topbar {
   background: var(--bg);
   border-bottom: 1px solid var(--border-strong);
 }
 
-:root[data-theme='teenage'] .topbar-search {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .topbar-search {
   background: var(--raised);
   border-color: var(--border);
   box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.06);
 }
 
-:root[data-theme='teenage'] .topbar-editor.toggled,
-:root[data-theme='teenage'] .topbar-menu.toggled {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .topbar-editor.toggled,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .topbar-menu.toggled {
   background: var(--text);
   color: var(--bg);
   border-color: var(--text);
 }
 
 /* Rail: projects as round knobs, the selected one ringed in black. */
-:root[data-theme='teenage'] .rail {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail {
   background: var(--bg);
   border-right: 1px solid var(--border-strong);
 }
 
-:root[data-theme='teenage'] .rail-avatar {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-avatar {
   border-radius: 50%;
   background: var(--tab-color);
   color: #fff;
@@ -5109,55 +5109,55 @@ button.kanban-card {
   box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18), inset 0 2px 0 rgba(255, 255, 255, 0.25);
 }
 
-:root[data-theme='teenage'] .rail-item:hover:not(.active) .rail-avatar,
-:root[data-theme='teenage'] .rail-item.active .rail-avatar {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-item:hover:not(.active) .rail-avatar,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-item.active .rail-avatar {
   border-radius: 50%;
 }
 
-:root[data-theme='teenage'] .rail-item.active .rail-avatar {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-item.active .rail-avatar {
   border-color: transparent;
   box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--border-strong);
 }
 
-:root[data-theme='teenage'] .rail-item.active::before {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-item.active::before {
   border-radius: 0;
   background: var(--accent);
   width: 4px;
 }
 
 /* Sidebar: a printed panel; the selected agent inverts like a lit display row. */
-:root[data-theme='teenage'] .sidebar {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .sidebar {
   background: var(--panel);
   border-right: 1px solid var(--border-strong);
 }
 
-:root[data-theme='teenage'] .sidebar-tabs {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .sidebar-tabs {
   background: transparent;
   border: 1px solid var(--border-strong);
   padding: 0;
   gap: 0;
 }
 
-:root[data-theme='teenage'] .sidebar-tab {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .sidebar-tab {
   border: none;
   border-radius: 0;
   box-shadow: none;
 }
 
-:root[data-theme='teenage'] .sidebar-tab + .sidebar-tab {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .sidebar-tab + .sidebar-tab {
   border-left: 1px solid var(--border-strong);
 }
 
-:root[data-theme='teenage'] .sidebar-tab.selected {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .sidebar-tab.selected {
   background: var(--text);
   color: var(--bg);
 }
 
-:root[data-theme='teenage'] :is(.sidebar-project, .sidebar-section) {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) :is(.sidebar-project, .sidebar-section) {
   border-top: 1px solid var(--border-strong);
 }
 
-:root[data-theme='teenage'] .feature-row {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .feature-row {
   border-radius: 0;
   margin-bottom: 0;
   border-width: 0 0 1px;
@@ -5165,112 +5165,112 @@ button.kanban-card {
   box-shadow: none;
 }
 
-:root[data-theme='teenage'] .feature-row:hover:not(.selected) {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .feature-row:hover:not(.selected) {
   background: var(--hover);
 }
 
-:root[data-theme='teenage'] .feature-row.selected {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .feature-row.selected {
   background: var(--text);
   border-color: var(--text);
   color: var(--bg);
 }
 
-:root[data-theme='teenage'] .feature-row.selected :is(.feature-row-sub, .feature-row-status, .feature-row-issue) {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .feature-row.selected :is(.feature-row-sub, .feature-row-status, .feature-row-issue) {
   color: color-mix(in srgb, var(--bg) 75%, transparent);
 }
 
 /* LEDs: square, unglowing. */
-:root[data-theme='teenage'] .dot {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dot {
   border-radius: 1px;
 }
 
-:root[data-theme='teenage'] .status-pill {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .status-pill {
   border-radius: 0;
   border: 1px solid currentColor;
   background: transparent;
 }
 
 /* Conversation header and stats read as a spec plate. */
-:root[data-theme='teenage'] .feature-head {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .feature-head {
   border-bottom: 1px solid var(--border-strong);
   background: var(--panel);
 }
 
-:root[data-theme='teenage'] .feature-stats {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .feature-stats {
   gap: 0;
   border: 1px solid var(--border-strong);
 }
 
-:root[data-theme='teenage'] .stat {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .stat {
   padding: 3px 10px;
   align-items: flex-start;
 }
 
-:root[data-theme='teenage'] .stat + .stat {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .stat + .stat {
   border-left: 1px solid var(--border-strong);
 }
 
-:root[data-theme='teenage'] .stat-value {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .stat-value {
   font-family: var(--mono);
   font-size: 15px;
 }
 
-:root[data-theme='teenage'] .view-switch {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .view-switch {
   border: 1px solid var(--border-strong);
   border-radius: 0;
   padding: 0;
   background: transparent;
 }
 
-:root[data-theme='teenage'] .view-switch button {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .view-switch button {
   border-radius: 0;
   border: none;
   box-shadow: none;
 }
 
-:root[data-theme='teenage'] .view-switch button.selected {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .view-switch button.selected {
   background: var(--accent);
   color: var(--accent-text);
 }
 
 /* Transcript on a dot grid, like the back of a field unit. */
-:root[data-theme='teenage'] .transcript {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .transcript {
   background-color: var(--bg);
   background-image: radial-gradient(circle, rgba(0, 0, 0, 0.11) 1px, transparent 1.2px);
   background-size: 16px 16px;
 }
 
-:root[data-theme='teenage'] .msg.user {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .msg.user {
   background: var(--text);
   color: var(--bg);
   border-color: var(--text);
   border-radius: 0;
 }
 
-:root[data-theme='teenage'] .msg.assistant pre,
-:root[data-theme='teenage'] .tool {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .msg.assistant pre,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .tool {
   border-radius: 0;
   background: var(--raised);
   border-color: var(--border);
 }
 
-:root[data-theme='teenage'] .tool-name {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .tool-name {
   color: var(--accent);
   font-weight: 700;
 }
 
-:root[data-theme='teenage'] .turn-end {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .turn-end {
   color: var(--muted);
 }
 
 /* Composer: the input sits in a black bezel, the send key is the orange one. */
-:root[data-theme='teenage'] .composer textarea {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .composer textarea {
   background: var(--raised);
   border: 1px solid var(--border-strong);
   border-radius: 0;
 }
 
-:root[data-theme='teenage'] .composer-modes .filter {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .composer-modes .filter {
   border-radius: 0;
   font-family: var(--mono);
   font-size: 10.5px;
@@ -5278,14 +5278,14 @@ button.kanban-card {
   letter-spacing: 0.06em;
 }
 
-:root[data-theme='teenage'] .composer-modes .filter.selected {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .composer-modes .filter.selected {
   background: var(--text);
   border-color: var(--text);
   color: var(--bg);
 }
 
 /* Status bar: the unit's black display. */
-:root[data-theme='teenage'] .statusbar {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .statusbar {
   background: var(--te-display);
   border-top: 1px solid var(--border-strong);
   color: #a9a9a2;
@@ -5295,45 +5295,45 @@ button.kanban-card {
   font-size: 10px;
 }
 
-:root[data-theme='teenage'] .statusbar :is(.strong, .num.strong) {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .statusbar :is(.strong, .num.strong) {
   color: var(--te-display-text);
 }
 
-:root[data-theme='teenage'] .statusbar :is(button, .statusbar-linear) {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .statusbar :is(button, .statusbar-linear) {
   color: inherit;
   background: transparent;
   box-shadow: none;
 }
 
-:root[data-theme='teenage'] .statusbar .credit-bar {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .statusbar .credit-bar {
   background: #2c2c2a;
   border-radius: 0;
 }
 
-:root[data-theme='teenage'] .statusbar-sep {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .statusbar-sep {
   background: #3a3a37;
 }
 
 /* Panels, menus and dialogs: no blur, a hard offset shadow. */
-:root[data-theme='teenage'] .dialog {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .dialog {
   border-radius: 3px;
   border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-lg);
 }
 
-:root[data-theme='teenage'] .editor {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .editor {
   border-left: 1px solid var(--border-strong);
 }
 
-:root[data-theme='teenage'] .workspace.stacked > .editor {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .workspace.stacked > .editor {
   border-top: 1px solid var(--border-strong);
 }
 
-:root[data-theme='teenage'] .resizer {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .resizer {
   background: var(--border-strong);
 }
 
-:root[data-theme='teenage'] .app.compact .sidebar {
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .app.compact .sidebar {
   box-shadow: 8px 0 0 rgba(0, 0, 0, 0.12);
 }
 
@@ -5435,4 +5435,742 @@ button.kanban-card {
 
 .issue-comment header {
   margin: 0 0 4px;
+}
+
+/* Rail groups and drag-to-reorder.
+   A group is a bracket: a small label that folds, and a thin rule down the left edge tying its projects together. */
+
+.rail-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding-bottom: 8px;
+}
+
+.rail-group:not(.collapsed)::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 22px;
+  bottom: 12px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--border-strong);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.rail-group-head {
+  width: 100%;
+  padding: 0 6px 0 8px;
+}
+
+.rail-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  min-height: 20px;
+  padding: 2px 4px 2px 2px;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm, 4px);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.rail-group-toggle .icon-svg {
+  flex: none;
+  transition: transform var(--dur-fast, 0.12s) var(--ease, ease);
+}
+
+.rail-group-toggle:hover,
+.rail-group-head.has-active .rail-group-toggle {
+  color: var(--text);
+}
+
+.rail-group-toggle:hover {
+  background: var(--raised);
+}
+
+.rail-group-toggle:focus-visible,
+.rail-item:focus-visible,
+.rail-group-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.rail-group-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A folded group still tells what is inside: agents waiting, agents working, the project on screen. */
+.rail-group-badge {
+  flex: none;
+  min-width: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--amber);
+  color: #1a1204;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+
+.rail-group-dot {
+  flex: none;
+}
+
+.rail-group-head.has-active .rail-group-toggle::after {
+  content: '';
+  flex: none;
+  width: 5px;
+  height: 5px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.rail-group-input {
+  width: 100%;
+  min-width: 0;
+  padding: 2px 4px;
+  font-size: 10px;
+}
+
+.rail-group.collapsed {
+  padding-bottom: 0;
+}
+
+.rail-item.dragging,
+.rail-group.dragging {
+  opacity: 0.35;
+}
+
+/* Drop feedback: a bar where the entry would land, a frame around the group it would join. */
+.rail-item.drop-before::after,
+.rail-item.drop-after::after,
+.rail-group.drop-before::after,
+.rail-group.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.rail-item.drop-before::after,
+.rail-group.drop-before::after {
+  top: -6px;
+}
+
+.rail-item.drop-after::after,
+.rail-group.drop-after::after {
+  bottom: -6px;
+}
+
+.rail-group.drop-into {
+  border-radius: var(--r-md, 8px);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
+.rail-list.drop-end::after {
+  content: '';
+  flex: none;
+  width: calc(100% - 16px);
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.rail-item.grouped {
+  padding-left: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-group-toggle .icon-svg {
+    transition: none;
+  }
+}
+
+/* Teenage Engineering: group labels are printed caps like the rest, and the bracket is a hard black rule. */
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group-toggle {
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 9px;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group:not(.collapsed)::before {
+  width: 3px;
+  border-radius: 0;
+  background: var(--border-strong);
+  opacity: 1;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group-toggle:hover,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group-head.has-active .rail-group-toggle {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .rail-group.drop-into {
+  border-radius: 0;
+}
+
+/* Teenage Engineering, dark: black anodised panels, the same orange key. Only what the light refit hard-codes is redone here. */
+:root[data-theme='teenage-dark'] {
+  --shadow-md: 0 0 0 1px var(--border-strong), 6px 6px 0 rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 0 0 1px var(--border-strong), 8px 8px 0 rgba(0, 0, 0, 0.5);
+  --te-display: #070706;
+  --te-display-text: #f2f2ee;
+}
+
+:root[data-theme='teenage-dark'] .transcript {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1.2px);
+}
+
+:root[data-theme='teenage-dark'] .topbar-search {
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme='teenage-dark'] .app.compact .sidebar {
+  box-shadow: 8px 0 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Editor tree: new, rename */
+.tree-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+  padding: 2px 6px;
+}
+
+.tree-tool {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+}
+
+.tree-tool:hover {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.tree-tool:focus-visible,
+.tree-name-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.tree-naming {
+  display: flex;
+  align-items: center;
+}
+
+.tree-name-input {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  font-size: var(--fs-sm);
+}
+
+/* Conversation thread: tool clusters, call states, way back to the newest message */
+
+.tool summary,
+.tool-cluster > summary {
+  min-height: 28px;
+}
+
+.tool summary::-webkit-details-marker,
+.tool-cluster > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tool summary:focus-visible,
+.tool-cluster > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--r-md);
+}
+
+.tool-glyph {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  color: var(--bg);
+}
+
+.tool-glyph.done {
+  background: var(--green);
+}
+
+.tool-glyph.failed {
+  background: var(--red);
+  color: var(--danger-text, #fff);
+}
+
+.tool-glyph.orphaned {
+  border: 1.5px dashed var(--faint);
+}
+
+.tool-glyph.running {
+  border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-top-color: var(--accent);
+  animation: tool-spin 0.8s linear infinite;
+}
+
+@keyframes tool-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tool-cluster {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--panel);
+}
+
+.tool-cluster.failed {
+  border-color: color-mix(in srgb, var(--red) 50%, var(--border));
+}
+
+.tool-cluster > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.tool-cluster-count {
+  flex: none;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.tool-state.failed {
+  color: var(--red);
+}
+
+/* Calls inside a cluster lose their own frame: the cluster is the box. */
+.tool-cluster-body {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.tool-cluster-body .tool {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.tool-cluster-body .tool + .tool {
+  border-top: 1px solid var(--border);
+}
+
+/* The thread reads as turns: a gap before each of the user's messages. */
+.msg.user {
+  margin-top: 10px;
+}
+
+.transcript {
+  position: relative;
+  scroll-behavior: auto;
+}
+
+.jump-anchor {
+  position: sticky;
+  bottom: 12px;
+  height: 0;
+  overflow: visible;
+}
+
+.jump-latest {
+  position: absolute;
+  right: 20px;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px 5px 8px;
+  border-radius: 999px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.jump-latest:hover {
+  background: var(--hover);
+}
+
+.jump-latest:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking {
+    animation: none;
+  }
+
+  .tool-glyph.running {
+    animation-duration: 2.4s;
+  }
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .tool-cluster {
+  border-radius: 0;
+  background: var(--raised);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .jump-latest {
+  border-radius: 0;
+  background: var(--accent);
+  border-color: var(--border-strong);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+/* Pull request status and merge */
+.pr-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--panel);
+}
+
+.pr-status-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  font-weight: 600;
+}
+
+.pr-state {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: var(--fs-xs);
+}
+
+.pr-state.open {
+  color: var(--green);
+}
+
+.pr-state.merged {
+  color: var(--purple);
+}
+
+.pr-state.closed {
+  color: var(--red);
+}
+
+.pr-state.draft {
+  color: var(--muted);
+}
+
+.pr-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+
+/* A glyph before each fact, so state never rests on color alone. */
+.pr-facts li::before {
+  display: inline-block;
+  width: 1.2em;
+  font-weight: 700;
+}
+
+.pr-facts li.ok {
+  color: var(--green);
+}
+
+.pr-facts li.ok::before {
+  content: '✓';
+}
+
+.pr-facts li.bad {
+  color: var(--red);
+}
+
+.pr-facts li.bad::before {
+  content: '✕';
+}
+
+.pr-facts li.wait {
+  color: var(--amber);
+}
+
+.pr-facts li.wait::before {
+  content: '…';
+}
+
+.pr-merge {
+  display: flex;
+  gap: 6px;
+}
+
+.pr-merge select {
+  flex: 1;
+  min-width: 0;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .pr-status {
+  border-radius: 0;
+  background: var(--raised);
+}
+
+/* Context gauge and card, as /context reports it */
+.stat.ctx {
+  position: relative;
+}
+
+.ctx-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  color: inherit;
+  line-height: 1.3;
+}
+
+.ctx-trigger:hover {
+  background: var(--raised);
+}
+
+.ctx-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.ctx-trigger .ctx-bar {
+  width: 64px;
+  height: 3px;
+}
+
+.ctx-bar {
+  display: flex;
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--raised);
+}
+
+.ctx-bar > span {
+  flex: none;
+  min-width: 1px;
+}
+
+.ctx-bar-reserve {
+  background: repeating-linear-gradient(135deg, var(--border-strong) 0 2px, transparent 2px 4px);
+}
+
+.ctx-card {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--z-overlay, 50);
+  width: 300px;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  text-align: left;
+  line-height: 1.4;
+}
+
+.ctx-title {
+  margin: 0 0 10px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ctx-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 0 8px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.ctx-muted {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.ctx-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.ctx-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+
+.ctx-rows + .ctx-rows {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.ctx-row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto 48px;
+  align-items: center;
+  gap: 8px;
+}
+
+.ctx-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--border-strong);
+}
+
+.ctx-row.free .ctx-swatch {
+  background: var(--raised);
+  border: 1px solid var(--border);
+}
+
+.ctx-row.buffer .ctx-swatch {
+  background: repeating-linear-gradient(135deg, var(--border-strong) 0 2px, transparent 2px 4px);
+}
+
+.ctx-deferred {
+  color: var(--muted);
+}
+
+.ctx-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ctx-share {
+  text-align: right;
+}
+
+.ctx-details {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-sm);
+}
+
+.ctx-details + .ctx-details {
+  margin-top: 0;
+  border-top: none;
+}
+
+.ctx-details summary {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ctx-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.ctx-details[open] summary .icon-svg {
+  transform: rotate(90deg);
+}
+
+.ctx-details summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ctx-details ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0 0 0 18px;
+  list-style: none;
+}
+
+.ctx-details li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ctx-model {
+  margin: 12px 0 0;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .ctx-card {
+  border-color: var(--border-strong);
+  border-radius: 0;
+}
+
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .ctx-bar,
+:root:is([data-theme='teenage'], [data-theme='teenage-dark']) .ctx-swatch {
+  border-radius: 0;
 }

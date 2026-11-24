@@ -91,6 +91,12 @@ export function contextMenuTemplate(spec: ContextMenuSpec, ctx: MenuContext): Me
         { label: t.sidebar.newFeature, click: () => ctx.choose('new-feature') },
         { label: t.menu.settings, click: () => ctx.choose('project-settings') },
         separator,
+        { label: t.menu.moveUp, click: () => ctx.choose('move-up') },
+        { label: t.menu.moveDown, click: () => ctx.choose('move-down') },
+        separator,
+        { label: t.menu.groupProject, click: () => ctx.choose('group-project') },
+        ...(spec.grouped ? [{ label: t.menu.ungroupProject, click: () => ctx.choose('ungroup-project') }] : []),
+        separator,
         { label: t.feature.openFolder, click: () => void shell.openPath(project.path) },
         ...(isMac ? [{ label: t.menu.openTerminal, click: () => openInTerminal(project.path) }] : []),
         { label: t.menu.copyPath, click: () => clipboard.writeText(project.path) },
@@ -104,6 +110,35 @@ export function contextMenuTemplate(spec: ContextMenuSpec, ctx: MenuContext): Me
         }
       ]
     }
+
+    case 'entry':
+      return [
+        ...(spec.isDirectory
+          ? [
+              { label: t.menu.newFile, click: () => ctx.choose('new-file') },
+              { label: t.menu.newFolder, click: () => ctx.choose('new-folder') },
+              separator
+            ]
+          : []),
+        ...(spec.path
+          ? [
+              { label: t.menu.rename, click: () => ctx.choose('rename-entry') },
+              { label: t.menu.copyRelativePath, click: () => clipboard.writeText(spec.path) },
+              separator,
+              { label: t.menu.delete, danger: true, click: () => ctx.choose('delete-entry') }
+            ]
+          : [])
+      ]
+
+    case 'group':
+      return [
+        { label: spec.collapsed ? t.menu.expandGroup : t.menu.collapseGroup, click: () => ctx.choose('toggle-group') },
+        { label: t.menu.rename, click: () => ctx.choose('rename-group') },
+        { label: t.menu.moveUp, click: () => ctx.choose('move-up') },
+        { label: t.menu.moveDown, click: () => ctx.choose('move-down') },
+        separator,
+        { label: t.menu.deleteGroup, click: () => ctx.choose('delete-group') }
+      ]
 
     case 'commit':
       return [

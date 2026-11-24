@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { fileMtime, isNoise, listDir, MAX_FILE_BYTES, readTextFile, resolveInside, writeTextFile } from '../src/main/files'
+import { createEntry, fileMtime, isNoise, listDir, MAX_FILE_BYTES, readTextFile, renameEntry, resolveInside, writeTextFile } from '../src/main/files'
 
 let base: string
 let root: string
@@ -87,5 +87,26 @@ describe('isNoise', () => {
     expect(isNoise('packages/app/node_modules/x/index.js')).toBe(true)
     expect(isNoise('src/gitignore.ts')).toBe(false)
     expect(isNoise('.github/workflows/ci.yml')).toBe(false)
+  })
+})
+
+describe('createEntry and renameEntry', () => {
+  it('creates an empty file and a folder, and refuses a taken name', async () => {
+    expect(await createEntry(root, 'src', 'new.ts', false)).toBe('src/new.ts')
+    expect(readFileSync(join(root, 'src', 'new.ts'), 'utf8')).toBe('')
+    expect(await createEntry(root, '', 'docs', true)).toBe('docs')
+    await expect(createEntry(root, 'src', 'new.ts', false)).rejects.toThrow('Already exists')
+  })
+
+  it('refuses names that leave the folder', async () => {
+    for (const name of ['', '  ', '..', 'a/b', '../x']) await expect(createEntry(root, 'src', name, false)).rejects.toThrow('Not a valid name')
+    await expect(createEntry(root, '../', 'x', false)).rejects.toThrow('Outside')
+  })
+
+  it('renames in place and refuses a taken name', async () => {
+    expect(await renameEntry(root, 'src/new.ts', 'renamed.ts')).toBe('src/renamed.ts')
+    expect(await renameEntry(root, 'docs', 'guides')).toBe('guides')
+    await expect(renameEntry(root, 'src/renamed.ts', 'b.ts')).rejects.toThrow('Already exists')
+    await expect(renameEntry(root, 'src/renamed.ts', '../out.ts')).rejects.toThrow('Not a valid name')
   })
 })

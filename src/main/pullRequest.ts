@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { PullRequestDraft, PullRequestSupport } from '../shared/types'
+import type { MergeMethod, PullRequestDraft, PullRequestStatus, PullRequestSupport } from '../shared/types'
 import { askClaude } from './ask'
 import { clip } from './commitMessage'
 import { git, gitRaw } from './worktree'
@@ -98,6 +98,54 @@ export async function createPullRequest(root: string, branch: string, draft: Pul
     // gh refuses a second pull request for a branch, but says where the first one is.
     const existing = ((err as { stderr?: string }).stderr ?? '').match(/https?:\/\/\S+\/pull\/\d+/)?.[0]
     if (existing) return existing
+    throw explain(err)
+  }
+}
+
+/** What `gh pr view --json …` said, reduced to what the panel shows; null when it is not a pull request. */
+export function parseStatus(raw: unknown): PullRequestStatus | null {
+  const pr = (raw ?? {}) as Record<string, unknown>
+  if (typeof pr.number !== 'number' || typeof pr.url !== 'string') return null
+  const checks = { passed: 0, failed: 0, pending: 0 }
+  for (const c of Array.isArray(pr.statusCheckRollup) ? (pr.statusCheckRollup as Record<string, unknown>[]) : []) {
+    // A check run has a status and a conclusion; a commit status has only a state.
+    const outcome = String(c.conclusion || c.state || c.status || '').toUpperCase()
+    if (['SUCCESS', 'NEUTRAL', 'SKIPPED'].includes(outcome)) checks.passed++
+    else if (['FAILURE', 'ERROR', 'TIMED_OUT', 'CANCELLED', 'ACTION_REQUIRED', 'STARTUP_FAILURE'].includes(outcome)) checks.failed++
+    else checks.pending++
+  }
+  const state = String(pr.state).toUpperCase()
+  const review = { APPROVED: 'approved', CHANGES_REQUESTED: 'changes', REVIEW_REQUIRED: 'required' }[String(pr.reviewDecision)] as PullRequestStatus['review'] | undefined
+  return {
+    number: pr.number,
+    url: pr.url,
+    state: state === 'MERGED' ? 'merged' : state === 'CLOSED' ? 'closed' : 'open',
+    draft: pr.isDraft === true,
+    mergeable: pr.mergeable === 'MERGEABLE' ? true : pr.mergeable === 'CONFLICTING' ? false : null,
+    review: review ?? null,
+    checks
+  }
+}
+
+/** The pull request of a branch; null when there is none, or `gh` cannot say. */
+export async function pullRequestStatus(root: string, branch: string): Promise<PullRequestStatus | null> {
+  try {
+    const { stdout } = await exec(
+      'gh',
+      ['pr', 'view', branch, '--json', 'number,url,state,isDraft,mergeable,reviewDecision,statusCheckRollup'],
+      { cwd: root, timeout: 30_000 }
+    )
+    return parseStatus(JSON.parse(stdout))
+  } catch {
+    return null
+  }
+}
+
+/** Merges the pull request of a branch on GitHub. The local branch and worktree are left alone. */
+export async function mergePullRequest(root: string, branch: string, method: MergeMethod): Promise<void> {
+  try {
+    await exec('gh', ['pr', 'merge', branch, `--${method}`], { cwd: root, timeout: 60_000 })
+  } catch (err) {
     throw explain(err)
   }
 }

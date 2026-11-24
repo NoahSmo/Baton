@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTranscript, pendingRequest, toolSummary } from '../src/renderer/src/transcript'
+import { buildTranscript, groupTools, pendingRequest, toolState, toolSummary, type Item } from '../src/renderer/src/transcript'
 import { DICTS } from '../src/shared/i18n'
 import type { StoredEvent, UiEvent } from '../src/shared/types'
 
@@ -167,5 +167,21 @@ describe('pendingRequest', () => {
     expect(pendingRequest(journal([ask('q', 'AskUserQuestion'), ask('r', 'Bash')]))).toEqual({ requestId: 'r' })
     expect(pendingRequest(journal([ask('r', 'Bash'), { kind: 'permission_resolved', requestId: 'r', behavior: 'deny' }]))).toBeNull()
     expect(pendingRequest([])).toBeNull()
+  })
+})
+
+describe('groupTools', () => {
+  const tool = (seq: number, result?: { content: string; isError: boolean }): Item => ({ type: 'tool', seq, name: 'Read', input: {}, result })
+  const text = (seq: number): Item => ({ type: 'assistant', seq, text: 'hi' })
+
+  it('folds runs of two or more tool calls and leaves a lone one alone', () => {
+    const blocks = groupTools([text(1), tool(2), tool(3), tool(4), text(5), tool(6), text(7)])
+    expect(blocks.map((b) => b.type)).toEqual(['assistant', 'tools', 'assistant', 'tool', 'assistant'])
+    expect(blocks[1]).toMatchObject({ seq: 2, tools: [{ seq: 2 }, { seq: 3 }, { seq: 4 }] })
+  })
+
+  it('states how a call stands', () => {
+    const [a, b, c, d] = [tool(1), tool(2, { content: '', isError: false }), tool(3, { content: '', isError: true }), { ...tool(4), orphaned: true }]
+    expect([a, b, c, d].map((x) => toolState(x as never))).toEqual(['running', 'done', 'failed', 'orphaned'])
   })
 })

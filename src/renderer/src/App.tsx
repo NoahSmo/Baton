@@ -21,6 +21,7 @@ import { NewFeatureDialog } from './NewFeatureDialog'
 import { IS_MAC } from './platform'
 import { ProjectDialog } from './ProjectDialog'
 import { ProjectRail } from './ProjectRail'
+import { useRailLayout } from './useRailLayout'
 import { Sidebar } from './Sidebar'
 import { StatusBar } from './StatusBar'
 import { TemplatesDialog } from './TemplatesDialog'
@@ -65,6 +66,9 @@ type Dialog =
 
 export function App() {
   const [projects, setProjects] = useState<Project[]>([])
+  const rail = useRailLayout(projects)
+  /** Projects as the rail lists them: what the number shortcuts and the palette follow. */
+  const railProjects = rail.order.flatMap((id) => projects.find((p) => p.id === id) ?? [])
   const [features, setFeatures] = useState<Feature[]>([])
   const [qaRuns, setQaRuns] = useState<QaRun[]>([])
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
@@ -288,8 +292,8 @@ export function App() {
   }
 
   // Keyboard shortcuts read the latest state through a ref: the listener is attached once.
-  const shortcutContext = useRef({ dialog: null as Dialog, dialogOpen: false, boardShown: false, project, feature, listed, projects, events })
-  shortcutContext.current = { dialog, dialogOpen: dialog !== null, boardShown, project, feature, listed, projects, events }
+  const shortcutContext = useRef({ dialog: null as Dialog, dialogOpen: false, boardShown: false, project, feature, listed, projects: railProjects, events })
+  shortcutContext.current = { dialog, dialogOpen: dialog !== null, boardShown, project, feature, listed, projects: railProjects, events }
   const actions = useRef({ showFeature, goToProject, goToNextWaiting, toggleEditor, openNewFeature: () => setDialog({ kind: 'feature' }) })
   actions.current = { showFeature, goToProject, goToNextWaiting, toggleEditor, openNewFeature: () => setDialog({ kind: 'feature' }) }
 
@@ -387,7 +391,7 @@ export function App() {
         status: f.status,
         run: () => showFeature(f)
       })),
-      ...projects
+      ...railProjects
         .filter((p) => p.id !== activeProjectId || boardShown)
         .map((p): PaletteEntry => ({ id: `project:${p.id}`, group: 'projects', label: p.name, run: () => goToProject(p.id) })),
       ...commands
@@ -427,6 +431,7 @@ export function App() {
       {drawer && <div className="nav-scrim" onClick={closeNav} />}
       <ProjectRail
         projects={projects}
+        rail={rail}
         features={features}
         activeId={activeProjectId}
         onSelect={goToProject}
