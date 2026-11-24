@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Markdown, { type Components } from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { Feature, LinearIssue, LinearIssueDetails, LinearState } from '../../shared/types'
 import { useLang, useT } from './i18n'
 import { cleanError } from './NewFeatureDialog'
@@ -99,7 +100,7 @@ export function IssueDetailDialog({ issue, states, projectName, feature, canStar
         </dl>
 
         <div className="issue-markdown">
-          {description?.trim() ? <Markdown components={MARKDOWN}>{description}</Markdown> : <p className="hint">{t.linearView.noDescription}</p>}
+          {description?.trim() ? <Markdown remarkPlugins={[remarkGfm]} components={MARKDOWN}>{description}</Markdown> : <p className="hint">{t.linearView.noDescription}</p>}
         </div>
 
         {error && <p className="form-error" role="alert">{error}</p>}
@@ -114,7 +115,7 @@ export function IssueDetailDialog({ issue, states, projectName, feature, canStar
                   {date(c.createdAt)}
                 </header>
                 <div className="issue-markdown">
-                  <Markdown components={MARKDOWN}>{c.body}</Markdown>
+                  <Markdown remarkPlugins={[remarkGfm]} components={MARKDOWN}>{c.body}</Markdown>
                 </div>
               </article>
             ))}

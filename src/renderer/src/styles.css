@@ -1181,6 +1181,27 @@ button.link:hover:not(:disabled) {
   color: var(--accent);
 }
 
+.msg.assistant table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.msg.assistant th,
+.msg.assistant td {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.msg.assistant th {
+  background: var(--panel);
+  font-weight: 600;
+}
+
 .tool {
   border: 1px solid var(--border);
   border-radius: var(--r-md);
@@ -4479,9 +4500,11 @@ button.kanban-card {
 /* Project settings dialog */
 
 .dialog.project-dialog {
+  --dialog-pad: 0px;
   width: 540px;
   max-height: calc(100vh - 60px);
   padding: 0;
+  overflow: hidden;
 }
 
 .project-dialog h2 {
@@ -4496,6 +4519,7 @@ button.kanban-card {
   padding: 0 var(--sp-6) var(--sp-4);
   overflow-y: auto;
   min-height: 0;
+  flex: 1 1 auto;
 }
 
 .project-body label,
@@ -4649,7 +4673,8 @@ button.kanban-card {
   font-size: var(--fs-xs);
 }
 
-.project-dialog .dialog-actions {
+.dialog.project-dialog > .dialog-actions {
+  margin: 0;
   align-items: center;
   padding: var(--sp-4) var(--sp-6);
   border-top: 1px solid var(--border);
