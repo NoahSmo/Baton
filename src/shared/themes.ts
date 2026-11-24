@@ -265,6 +265,72 @@ export const THEMES: Theme[] = [
     }
   },
   {
+    // Rosy by night: the same pink, lit on plum.
+    id: 'rosy-dark',
+    name: 'Rosy Dark',
+    dark: true,
+    colors: {
+      bg: '#1a1317',
+      panel: '#21181d',
+      raised: '#2a1f25',
+      hover: '#34262e',
+      border: '#382931',
+      borderStrong: '#523846',
+      text: '#f6e7ed',
+      muted: '#b996a6',
+      faint: '#7a5e6b',
+      accent: '#ee5f98',
+      accentHover: '#f47dab',
+      accentText: '#24101a',
+      blue: '#7ea4ef',
+      amber: '#e2a84c',
+      green: '#5ec48b',
+      red: '#f26b7d',
+      redHover: '#f68a98',
+      dangerText: '#2a0f15',
+      purple: '#c38df0',
+      cyan: '#4fc3ce',
+      orange: '#ea925b',
+      punct: '#d8bdc8',
+      comment: '#8d7180',
+      shadow: 'rgba(0, 0, 0, 0.5)',
+      overlay: 'rgba(12, 4, 9, 0.6)'
+    }
+  },
+  {
+    // wesur.fr: its blue on a lavender white, navy text.
+    id: 'wesur',
+    name: 'Wesur',
+    dark: false,
+    colors: {
+      bg: '#f8f8fd',
+      panel: '#f1f1fa',
+      raised: '#e9e9f8',
+      hover: '#dfdff5',
+      border: '#e1e1f2',
+      borderStrong: '#c3c3ec',
+      text: '#1f1d4e',
+      muted: '#5d5b8a',
+      faint: '#a2a1c6',
+      accent: '#4150f7',
+      accentHover: '#2f3de2',
+      accentText: '#ffffff',
+      blue: '#2f6fd6',
+      amber: '#b07f06',
+      green: '#1f8a5b',
+      red: '#d6336c',
+      redHover: '#b8275a',
+      dangerText: '#fff5f8',
+      purple: '#7a4fd6',
+      cyan: '#0d86a0',
+      orange: '#d9661f',
+      punct: '#3d3b6b',
+      comment: '#8f8db8',
+      shadow: 'rgba(31, 29, 78, 0.14)',
+      overlay: 'rgba(31, 29, 78, 0.32)'
+    }
+  },
+  {
     // Brushed aluminium, black print and one orange key. Its layout overrides live in styles.css, under its id.
     id: 'teenage',
     name: 'Teenage Engineering',

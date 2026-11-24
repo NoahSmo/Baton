@@ -184,7 +184,7 @@ const en = {
     deleteTheme: 'Delete theme',
     themeName: 'Name',
     appIcon: 'App icon',
-    appIconHint: 'On macOS the Dock shows it while the app runs; Finder keeps the 32-bit icon.',
+    appIconHint: 'On macOS the Dock shows it while the app runs; Finder keeps the 32-bit icon. On Linux the dock may only pick it up once the app restarts.',
     appIcons: { 'guru-32': '32-bit', 'guru-16': '16-bit', 'guru-8': '8-bit', classic: 'Baton' },
     themeDark: 'Dark theme',
     themeColors: {
@@ -1045,7 +1045,7 @@ const fr: Dict = {
     deleteTheme: 'Supprimer le thème',
     themeName: 'Nom',
     appIcon: "Icône de l'app",
-    appIconHint: "Sur macOS, le Dock l'affiche tant que l'app tourne ; le Finder garde l'icône 32 bits.",
+    appIconHint: "Sur macOS, le Dock l'affiche tant que l'app tourne ; le Finder garde l'icône 32 bits. Sur Linux, le dock peut ne la prendre qu'au redémarrage de l'app.",
     appIcons: { 'guru-32': '32 bits', 'guru-16': '16 bits', 'guru-8': '8 bits', classic: 'Baton' },
     themeDark: 'Thème sombre',
     themeColors: {
