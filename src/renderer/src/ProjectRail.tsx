@@ -151,6 +151,16 @@ export function ProjectRail({ projects, rail, features, activeId, onSelect, onNe
     const name = group.name || t.rail.newGroup
     const dropClass = hint?.id === group.id ? ` drop-${hint.place}` : ''
     const toggle = () => rail.update((layout) => updateGroup(layout, group.id, { collapsed: !group.collapsed }))
+    const nameInput = (
+      <GroupNameInput
+        initial={group.name}
+        label={t.rail.groupName}
+        onDone={(value) => {
+          setEditing(null)
+          if (value !== null) rail.update((layout) => updateGroup(layout, group.id, { name: value }))
+        }}
+      />
+    )
     return (
       <div
         key={group.id}
@@ -179,28 +189,40 @@ export function ProjectRail({ projects, rail, features, activeId, onSelect, onNe
           }}
           {...dragSource('group', group.id)}
         >
-          {editing === group.id ? (
-            <GroupNameInput
-              initial={group.name}
-              label={t.rail.groupName}
-              onDone={(value) => {
-                setEditing(null)
-                if (value !== null) rail.update((layout) => updateGroup(layout, group.id, { name: value }))
-              }}
-            />
+          {group.collapsed ? (
+            editing === group.id ? (
+              <div className="rail-folder">
+                <FolderTile members={members} />
+                {nameInput}
+              </div>
+            ) : (
+              <button
+                className="rail-folder"
+                title={name}
+                aria-expanded={false}
+                aria-label={t.rail.expand(name)}
+                onClick={toggle}
+                onDoubleClick={() => setEditing(group.id)}
+              >
+                <FolderTile members={members} />
+                <span className="rail-name">{name}</span>
+                {waiting > 0 && <span className="rail-badge num">{waiting}</span>}
+                {working && <span className="dot working rail-dot" />}
+              </button>
+            )
+          ) : editing === group.id ? (
+            nameInput
           ) : (
             <button
-              className="rail-group-toggle"
+              className="rail-group-lid"
               title={name}
-              aria-expanded={!group.collapsed}
-              aria-label={group.collapsed ? t.rail.expand(name) : t.rail.collapse(name)}
+              aria-expanded
+              aria-label={t.rail.collapse(name)}
               onClick={toggle}
               onDoubleClick={() => setEditing(group.id)}
             >
-              <Icon name={group.collapsed ? 'chevron-right' : 'chevron-down'} size={10} />
               <span className="rail-group-name">{name}</span>
-              {group.collapsed && waiting > 0 && <span className="rail-group-badge num">{waiting}</span>}
-              {group.collapsed && working && <span className="dot working rail-group-dot" />}
+              <Icon name="chevron-down" size={10} />
             </button>
           )}
         </div>
@@ -234,6 +256,23 @@ export function ProjectRail({ projects, rail, features, activeId, onSelect, onNe
         </button>
       </div>
     </nav>
+  )
+}
+
+/** A folded group's face: its first four projects in a 2×2 grid, the way a phone shows a folder of apps. */
+function FolderTile({ members }: { members: Project[] }) {
+  return (
+    <span className="rail-folder-tile" aria-hidden>
+      {[0, 1, 2, 3].map((i) => {
+        const p = members[i]
+        if (!p) return <span key={i} className="rail-folder-cell empty" />
+        return (
+          <span key={p.id} className="rail-folder-cell" style={{ '--tab-color': p.color } as React.CSSProperties}>
+            {p.image && <img src={p.image} alt="" draggable={false} />}
+          </span>
+        )
+      })}
+    </span>
   )
 }
 

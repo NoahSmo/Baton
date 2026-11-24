@@ -25,6 +25,7 @@ import { EffortPicker } from './EffortPicker'
 import { CommandMenu } from './CommandMenu'
 import { commandQuery, matchCommands, mergeCommands, modelFromArgument, parseSlashCommand, type SlashCommandInfo } from '../../shared/slashCommands'
 import { cleanError } from './NewFeatureDialog'
+import { statusText } from './Sidebar'
 import { PermissionCard } from './PermissionCard'
 import { attachTerminal, closeTerminal, fitTerminal, openTerminal, useCliTab, type TerminalTab } from './terminalStore'
 import { TemplateChips } from './TemplatesDialog'
@@ -209,7 +210,7 @@ export function FeatureView({
             <h1>{feature.title}</h1>
             <span className={`status-pill ${feature.status}`}>
               <span className={`dot ${feature.status}`} />
-              {t.status[feature.status]}
+              {statusText(feature, t, lang)}
             </span>
           </div>
           <p className="feature-meta">
