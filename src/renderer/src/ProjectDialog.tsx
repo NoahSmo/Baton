@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } 
 import {
   PROJECT_COLORS,
   type ClaudeAccount,
+  type GitBranch,
   type LinearProject,
   type LinearProjectLink,
   type LinearStatus,
@@ -54,6 +55,8 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
   const [labelFilter, setLabelFilter] = useState('')
   const [linearError, setLinearError] = useState('')
   const [worktrees, setWorktrees] = useState(project?.worktrees ?? true)
+  const [pullBranch, setPullBranch] = useState<string | null>(project?.pullBranch ?? null)
+  const [branches, setBranches] = useState<GitBranch[]>([])
   const [accountIds, setAccountIds] = useState<string[]>(project?.accountIds ?? [])
   const [accounts, setAccounts] = useState<ClaudeAccount[]>([])
   const [copied, setCopied] = useState(false)
@@ -64,6 +67,13 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
   useEffect(() => {
     void window.api.getClaudeAccounts().then((a) => setAccounts(a.accounts))
   }, [])
+
+  const repoPath = project?.path ?? repo?.path
+  const isGit = project ? true : Boolean(repo?.isGit)
+  useEffect(() => {
+    if (!repoPath || !isGit) return setBranches([])
+    void window.api.projectBranches(repoPath).then(setBranches)
+  }, [repoPath, isGit])
 
   useEffect(() => {
     if (!linear.connected) return
@@ -84,6 +94,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
     setRepo(picked)
     setName(picked.name)
     setWorktrees(picked.isGit)
+    setPullBranch(null)
   }
 
   async function pickImage(file: File | undefined) {
@@ -117,7 +128,7 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
     setBusy(true)
     setError('')
     try {
-      const patch = { name, color, image, linearProjects: chosen, worktrees, accountIds }
+      const patch = { name, color, image, linearProjects: chosen, worktrees, pullBranch, accountIds }
       onSaved(
         project
           ? await window.api.updateProject(project.id, patch)
@@ -267,6 +278,24 @@ export function ProjectDialog({ project, linear, onClose, onSaved, onExisting }:
               </div>
               <input type="checkbox" checked={worktrees} onChange={(e) => setWorktrees(e.target.checked)} />
             </label>
+          )}
+
+          {/* The branch only matters when a new agent branches off something: always, with worktrees. */}
+          {worktrees && branches.length > 0 && (
+            <div>
+              <label htmlFor="pd-pull-branch">{t.project.pullBranch}</label>
+              <select id="pd-pull-branch" value={pullBranch ?? ''} onChange={(e) => setPullBranch(e.target.value || null)}>
+                <option value="">{t.project.pullBranchCurrent}</option>
+                {/* A branch deleted since it was chosen stays listed, so saving does not silently drop it. */}
+                {pullBranch && !branches.some((b) => b.name === pullBranch) && <option value={pullBranch}>{pullBranch}</option>}
+                {branches.map((b) => (
+                  <option key={b.name} value={b.name}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+              <p className="hint">{t.project.pullBranchHint}</p>
+            </div>
           )}
 
           {/* Linear is optional: the section only exists for those who connected it. */}

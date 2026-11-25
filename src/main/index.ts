@@ -617,6 +617,7 @@ function registerIpc(): void {
     if (res.canceled || !res.filePaths[0]) return null
     return manager.inspectFolder(res.filePaths[0])
   })
+  ipcMain.handle('project:branches', (_e, path: string) => manager.projectBranches(path))
   ipcMain.handle('project:create', (_e, input: ProjectInput) => manager.createProject(input))
   ipcMain.handle('project:update', (_e, id: string, patch: ProjectPatch) => manager.updateProject(id, patch))
   ipcMain.handle('project:setCommands', (_e, id: string, commands: LaunchCommand[]) =>

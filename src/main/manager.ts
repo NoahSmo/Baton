@@ -268,6 +268,7 @@ export class Manager {
       commands: [],
       templates: [],
       worktrees: isGit && input.worktrees,
+      pullBranch: isGit ? (input.pullBranch ?? null) : null,
       accountIds: input.accountIds ?? [],
       qa: DEFAULT_QA
     }
@@ -286,6 +287,7 @@ export class Manager {
       linearProjects: patch.linearProjects,
       linearLabels: [],
       worktrees: patch.worktrees && (await repoState(project.path)).isGit,
+      pullBranch: patch.pullBranch ?? null,
       accountIds: patch.accountIds ?? []
     }
     this.store.updateProject(updated)
@@ -417,6 +419,10 @@ export class Manager {
     return status
   }
 
+  async projectBranches(path: string): Promise<GitBranch[]> {
+    return listBranches(path).catch(() => [])
+  }
+
   /** Branches of the feature's worktree, those in use elsewhere named after their feature or project. */
   async gitBranches(featureId: string): Promise<GitBranch[]> {
     const { projects, features } = this.getState()
@@ -508,7 +514,9 @@ export class Manager {
           project.path,
           this.projectWorktrees(project),
           slugify(issue ? `${issue.identifier} ${issue.title}` : title),
-          issue?.branchName || undefined
+          issue?.branchName || undefined,
+          undefined,
+          project.pullBranch
         )
       : await this.inPlace(project)
     return this.register(project, worktree, input)
@@ -584,7 +592,7 @@ export class Manager {
         linear: source.linear ?? undefined
       })
     }
-    const worktree = await createWorktree(project.path, this.projectWorktrees(project), slugify(title), undefined, source.branch)
+    const worktree = await createWorktree(project.path, this.projectWorktrees(project), slugify(title), undefined, source.branch, project.pullBranch)
     const carry = await mkdtemp(join(tmpdir(), 'baton-carry-'))
     try {
       if (await captureChanges(source.worktreePath, carry)) await applyChanges(carry, worktree.path)

@@ -10,6 +10,7 @@ function subscribe<A extends unknown[]>(channel: string, cb: (...args: A) => voi
 const api: Api = {
   getState: () => ipcRenderer.invoke('state:get'),
   pickProjectFolder: () => ipcRenderer.invoke('project:pickFolder'),
+  projectBranches: (path) => ipcRenderer.invoke('project:branches', path),
   createProject: (input) => ipcRenderer.invoke('project:create', input),
   updateProject: (id, patch) => ipcRenderer.invoke('project:update', id, patch),
   setProjectCommands: (id, commands) => ipcRenderer.invoke('project:setCommands', id, commands),

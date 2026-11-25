@@ -28,9 +28,24 @@ export async function fetchRemotes(repo: string): Promise<void> {
  * worktree starts from the latest work. Fast-forward only: nothing is merged or
  * lost. Offline, without upstream or diverged, the branch is left as it is.
  */
-export async function pullBase(repo: string): Promise<void> {
+export async function pullBase(repo: string, branch?: string | null): Promise<void> {
   const env = { ...process.env, GIT_TERMINAL_PROMPT: '0' }
-  await exec('git', ['pull', '--ff-only', '--quiet'], { cwd: repo, env, timeout: 60_000 }).catch(() => undefined)
+  const run = (...args: string[]) => exec('git', args, { cwd: repo, env, timeout: 60_000 })
+  if (!branch || (await git(repo, 'branch', '--show-current').catch(() => '')) === branch) {
+    await run('pull', '--ff-only', '--quiet').catch(() => undefined)
+    return
+  }
+  // Not checked out here: fast-forward the local branch to its remote without touching the folder.
+  const remote = (await git(repo, 'config', `branch.${branch}.remote`).catch(() => '')) || 'origin'
+  if (await branchExists(repo, branch)) await run('fetch', '--quiet', remote, `${branch}:${branch}`).catch(() => undefined)
+  else await run('fetch', '--quiet', remote, branch).catch(() => undefined)
+}
+
+/** Where a new worktree starts from `branch`: the local branch, or the remote's when only that exists. */
+async function startPointOf(repo: string, branch: string): Promise<string | undefined> {
+  if (await branchExists(repo, branch)) return branch
+  const remote = (await git(repo, 'config', `branch.${branch}.remote`).catch(() => '')) || 'origin'
+  return git(repo, 'rev-parse', '--verify', '--quiet', `refs/remotes/${remote}/${branch}`).then(() => `${remote}/${branch}`, () => undefined)
 }
 
 export async function isGitRepo(path: string): Promise<boolean> {
@@ -91,10 +106,13 @@ export async function createWorktree(
   slug: string,
   preferredBranch?: string,
   /** Where the new branch starts: the repo's current HEAD when absent. */
-  startPoint?: string
+  startPoint?: string,
+  /** Branch pulled beforehand, and branched from unless `startPoint` says otherwise: the checked out one when absent. */
+  pullBranch?: string | null
 ): Promise<Worktree> {
   await mkdir(worktreesRoot, { recursive: true })
-  await pullBase(repo)
+  await pullBase(repo, pullBranch)
+  if (!startPoint && pullBranch) startPoint = await startPointOf(repo, pullBranch)
   const base = preferredBranch ?? `feat/${slug}`
   let branch = base
   let name = slug

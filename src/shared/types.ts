@@ -287,6 +287,8 @@ export interface Project {
   templates: PromptTemplate[]
   /** Each agent works in a worktree of its own. Off, they all work in the project folder itself. */
   worktrees: boolean
+  /** Branch updated from its remote, and branched from, whenever an agent starts; null for whichever branch the folder is on. */
+  pullBranch: string | null
   /** Accounts its agents may run under (DEFAULT_ACCOUNT for the default login); empty for any. */
   accountIds: string[]
   qa: QaConfig
@@ -315,6 +317,7 @@ export interface ProjectInput {
   linearProjects: LinearProjectLink[]
   /** Ignored for a folder that is not a git repository: agents can only work in place there. */
   worktrees: boolean
+  pullBranch: string | null
   accountIds: string[]
 }
 
@@ -782,6 +785,8 @@ export interface TerminalInfo {
 export interface Api {
   getState(): Promise<AppState>
   pickProjectFolder(): Promise<RepoInfo | null>
+  /** Branches of a project's repository, for choosing the one new agents start from. */
+  projectBranches(path: string): Promise<GitBranch[]>
   createProject(input: ProjectInput): Promise<Project>
   updateProject(projectId: string, patch: ProjectPatch): Promise<Project>
   /** Replaces the launch commands of a project; those without a command are dropped. */

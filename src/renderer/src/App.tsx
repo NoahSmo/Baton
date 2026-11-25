@@ -182,7 +182,7 @@ export function App() {
         for (const p of legacy) {
           const known = new Set(p.linearProjects.map((l) => l.id))
           const links = [...p.linearProjects, ...linksFromLabels(p.linearLabels, all).filter((l) => !known.has(l.id))]
-          upsertProject(await window.api.updateProject(p.id, { name: p.name, color: p.color, image: p.image, linearProjects: links, worktrees: p.worktrees, accountIds: p.accountIds }))
+          upsertProject(await window.api.updateProject(p.id, { name: p.name, color: p.color, image: p.image, linearProjects: links, worktrees: p.worktrees, pullBranch: p.pullBranch, accountIds: p.accountIds }))
         }
       })
       .catch(() => {})
