@@ -45,6 +45,9 @@ const MIN_CHAT_WIDTH = 340
 const MIN_CHAT_HEIGHT = 240
 /** Top bar and status bar. */
 const CHROME_HEIGHT = 48 + 28
+/** How long the pointer rests on the left edge before the drawer opens, and away from it before it closes. */
+const NAV_EDGE_OPEN_MS = 150
+const NAV_EDGE_CLOSE_MS = 300
 
 /** Where the conversation column starts: the sidebar narrows on small windows. */
 function sidebarRight(): number {
@@ -106,7 +109,24 @@ export function App() {
   const compact = useMediaQuery('(max-width: 1099px)')
   const [navOpen, setNavOpen] = useState(false)
   const drawer = compact && navOpen
-  const closeNav = () => setNavOpen(false)
+  /** Opened by bringing the pointer to the left edge: it closes again once the pointer moves away. */
+  const navByHover = useRef(false)
+  const hoverTimer = useRef<number | undefined>(undefined)
+  const clearHoverTimer = () => window.clearTimeout(hoverTimer.current)
+  const closeNav = () => {
+    clearHoverTimer()
+    navByHover.current = false
+    setNavOpen(false)
+  }
+  /** A short pause, so the pointer passing by the edge on its way elsewhere opens nothing. */
+  const hoverNav = (open: boolean) => {
+    clearHoverTimer()
+    hoverTimer.current = window.setTimeout(() => {
+      navByHover.current = open
+      setNavOpen(open)
+    }, open ? NAV_EDGE_OPEN_MS : NAV_EDGE_CLOSE_MS)
+  }
+  useEffect(() => clearHoverTimer, [])
   useEffect(() => {
     if (!drawer) return
     const onKey = (e: KeyboardEvent) => {
@@ -424,11 +444,26 @@ export function App() {
         editor={feature && !boardShown ? { open: panelOpen, toggle: toggleEditor } : undefined}
         nav={
           compact
-            ? { open: navOpen, toggle: () => setNavOpen((open) => !open), waiting: features.filter((f) => f.status === 'waiting').length }
+            ? {
+                open: navOpen,
+                toggle: () => {
+                  clearHoverTimer()
+                  navByHover.current = false
+                  setNavOpen((open) => !open)
+                },
+                waiting: features.filter((f) => f.status === 'waiting').length }
             : undefined
         }
       />
-      {drawer && <div className="nav-scrim" onClick={closeNav} />}
+      {compact && !navOpen && !dialog && <div className="nav-edge" aria-hidden="true" onMouseEnter={() => hoverNav(true)} onMouseLeave={clearHoverTimer} />}
+      {drawer && (
+        <div
+          className="nav-scrim"
+          onClick={closeNav}
+          onMouseEnter={() => navByHover.current && hoverNav(false)}
+          onMouseLeave={() => navByHover.current && clearHoverTimer()}
+        />
+      )}
       <ProjectRail
         projects={projects}
         rail={rail}
