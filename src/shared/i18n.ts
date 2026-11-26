@@ -223,6 +223,12 @@ const en = {
     firstProjectBody: 'A project is a folder, ideally a git repository. Its agents can each work in their own worktree.'
   },
 
+  artifacts: {
+    title: 'Artifacts',
+    count: (n: number) => (n === 1 ? '1 artifact' : `${n} artifacts`),
+    kind: 'Claude artifact',
+    open: 'Open'
+  },
   feature: {
     context: 'Context',
     cost: 'Cost',
@@ -1087,6 +1093,12 @@ const fr: Dict = {
     firstProjectBody: 'Un projet est un dossier, de préférence un dépôt git. Ses agents peuvent chacun travailler dans leur propre worktree.'
   },
 
+  artifacts: {
+    title: 'Artifacts',
+    count: (n) => (n === 1 ? '1 artifact' : `${n} artifacts`),
+    kind: 'Artifact Claude',
+    open: 'Ouvrir'
+  },
   feature: {
     context: 'Contexte',
     cost: 'Coût',

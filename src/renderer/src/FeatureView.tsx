@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { atEdge, sentMessages, START, stepHistory, type HistoryCursor } from '../../shared/history'
@@ -12,6 +12,8 @@ import {
   type Project,
   type StoredEvent
 } from '../../shared/types'
+import { ArtifactCards, ArtifactsMenu } from './ArtifactsMenu'
+import { collectArtifacts, toolArtifacts } from './artifacts'
 import { AttachButton, DraftAttachments, SentAttachments } from './Attachments'
 import { ContextMeter } from './ContextMeter'
 import { ConversationSearch } from './ConversationSearch'
@@ -69,6 +71,7 @@ export function FeatureView({
   const lang = useLang()
   const { items, todos } = useMemo(() => buildTranscript(events, t, lang), [events, t, lang])
   const blocks: Block[] = useMemo(() => groupTools(items), [items])
+  const artifacts = useMemo(() => collectArtifacts(items), [items])
   // What was typed here and not sent comes back when the agent does.
   const [draft, setDraft] = useState(() => loadDraft(feature.id))
   const attachments = useAttachments()
@@ -236,6 +239,7 @@ export function FeatureView({
               </>
             )}
             <GitActions feature={feature} git={git} />
+            <ArtifactsMenu artifacts={artifacts} />
             {feature.linear ? (
               <>
                 <span className="sep">·</span>
@@ -302,7 +306,13 @@ export function FeatureView({
             {items.length === 0 && !stream && <p className="transcript-empty">{t.feature.sendFirst}</p>}
             {blocks.map((block) =>
               block.type === 'tools' ? (
-                <ToolCluster key={block.seq} tools={block.tools} />
+                <ToolRun key={block.seq} tools={block.tools}>
+                  <ToolCluster tools={block.tools} />
+                </ToolRun>
+              ) : block.type === 'tool' ? (
+                <ToolRun key={block.seq} tools={[block]}>
+                  <TranscriptItem item={block} featureId={feature.id} onRespond={respond} />
+                </ToolRun>
               ) : (
                 <TranscriptItem key={block.seq} item={block} featureId={feature.id} onRespond={respond} />
               )
@@ -444,6 +454,17 @@ function ToolGlyph({ tool }: { tool: ToolItem }) {
       {state === 'done' && <Icon name="check" size={11} />}
       {state === 'failed' && <Icon name="close" size={11} />}
     </span>
+  )
+}
+
+/** Tool calls followed by the artifacts they published, which stay in sight when the calls are folded. */
+function ToolRun({ tools, children }: { tools: ToolItem[]; children: ReactNode }) {
+  const artifacts = useMemo(() => toolArtifacts(tools), [tools])
+  return (
+    <>
+      {children}
+      {artifacts.length > 0 && <ArtifactCards artifacts={artifacts} />}
+    </>
   )
 }
 

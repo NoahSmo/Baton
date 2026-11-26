@@ -4923,6 +4923,21 @@ button.kanban-card {
   transition: transform var(--dur-base) var(--ease);
 }
 
+/* Compact: an invisible strip on the left edge opens the drawer when the pointer rests on it. */
+.nav-edge {
+  display: none;
+}
+
+.app.compact .nav-edge {
+  display: block;
+  position: fixed;
+  top: 48px;
+  bottom: 28px;
+  left: 0;
+  width: 8px;
+  z-index: calc(var(--z-overlay) - 2);
+}
+
 .app.compact .nav-scrim {
   display: block;
   position: fixed;
@@ -6882,4 +6897,81 @@ button.kanban-card {
 /* Cards in Settings stand out by their fill alone. */
 :root:is([data-theme='wesur'], [data-theme='wesur-dark']) .settings-card {
   border-color: transparent;
+}
+
+/* Artifacts published on claude.ai: cards under the calls that made them, and a menu in the header. */
+.artifact-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.artifact-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 240px;
+  max-width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+
+.artifact-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+}
+
+.artifact-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.artifact-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.artifact-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-kind {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.artifact-open {
+  flex: none;
+  font-size: var(--fs-sm);
+  color: var(--accent);
+}
+
+.artifacts-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.artifacts-item svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.artifacts-item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
