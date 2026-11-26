@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { collectArtifacts, toolArtifacts } from '../src/renderer/src/artifacts'
 import type { Item, ToolItem } from '../src/renderer/src/transcript'
 
-const tool = (seq: number, input: Record<string, unknown>, content: string): ToolItem => ({
+const tool = (seq: number, input: Record<string, unknown>, content: string, name = 'Artifact'): ToolItem => ({
   type: 'tool',
   seq,
-  name: 'Artifact',
+  name,
   input,
   result: { content, isError: false }
 })
@@ -23,6 +23,21 @@ describe('toolArtifacts', () => {
 
   it('finds nothing in plain calls', () => {
     expect(toolArtifacts([tool(1, { command: 'ls' }, 'a.ts')])).toEqual([])
+  })
+
+  it('ignores links other tools merely pass around', () => {
+    const grep = tool(1, { pattern: 'claude.ai' }, 'notes.md: https://claude.ai/artifact/abc', 'Bash')
+    const written = tool(2, { content: 'https://claude.ai/artifact/def' }, 'File created', 'Write')
+    expect(toolArtifacts([grep, written])).toEqual([])
+  })
+
+  it('reads the link from the result, not from what the tool was sent', () => {
+    expect(toolArtifacts([tool(1, { url: 'https://claude.ai/artifact/old' }, 'Updated')])).toEqual([])
+  })
+
+  it('accepts the claude.ai docs connector', () => {
+    const found = toolArtifacts([tool(1, {}, 'Created https://claude.ai/artifact/doc1', 'mcp__claude_ai_Claude_Docs__batch')])
+    expect(found.map((a) => a.url)).toEqual(['https://claude.ai/artifact/doc1'])
   })
 })
 

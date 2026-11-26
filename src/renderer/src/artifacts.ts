@@ -10,6 +10,12 @@ export interface Artifact {
 }
 
 const ARTIFACT_URL = /https:\/\/(?:claude\.ai\/(?:public\/)?artifacts?|claude\.site\/artifacts)\/[A-Za-z0-9_-]+/g
+/**
+ * Tools that publish artifacts: the Artifact tool family and the claude.ai docs connector. Any other
+ * tool only passes links around (a grep, a file written), which says nothing of a page existing.
+ */
+const PUBLISHING_TOOL = /artifact|claude_docs/i
+
 const MARKDOWN_LINK = /\[([^\]\n]+)\]\((https:\/\/[^)\s]+)\)/g
 
 function urlsIn(text: string): string[] {
@@ -28,13 +34,13 @@ function inputTitle(input: Record<string, unknown>): string | undefined {
   return undefined
 }
 
-/** Artifacts a run of tool calls published, in the order they came. */
+/** Artifacts a run of tool calls published, in the order they came: read from what came back, never from what was sent. */
 export function toolArtifacts(tools: ToolItem[]): Artifact[] {
   const found = new Map<string, Artifact>()
   for (const tool of tools) {
-    const text = `${JSON.stringify(tool.input)}\n${tool.result?.content ?? ''}`
+    if (!PUBLISHING_TOOL.test(tool.name) || !tool.result || tool.result.isError) continue
     const title = inputTitle(tool.input)
-    for (const url of urlsIn(text)) found.set(url, { url, title: title ?? found.get(url)?.title ?? fallbackTitle(url), seq: tool.seq })
+    for (const url of urlsIn(tool.result.content)) found.set(url, { url, title: title ?? found.get(url)?.title ?? fallbackTitle(url), seq: tool.seq })
   }
   return [...found.values()]
 }
